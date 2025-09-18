@@ -1,0 +1,28 @@
+[2025-09-11T23:15:02.224Z] 🔍 INICIANDO DIAGNÓSTICO DE FIREBASE AUTH
+[2025-09-11T23:15:02.236Z] === VERIFICACIÓN DE VARIABLES DE ENTORNO ===
+[2025-09-11T23:15:02.237Z] ✅ NEXT_PUBLIC_FIREBASE_API_KEY: AIzaSyAGbLMGcxSRumk-...
+[2025-09-11T23:15:02.238Z] ✅ NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: teereserve-golf.fire...
+[2025-09-11T23:15:02.240Z] ✅ NEXT_PUBLIC_FIREBASE_PROJECT_ID: teereserve-golf...
+[2025-09-11T23:15:02.242Z] ✅ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: teereserve-golf.fire...
+[2025-09-11T23:15:02.243Z] ✅ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: 502212139547...
+[2025-09-11T23:15:02.245Z] ✅ NEXT_PUBLIC_FIREBASE_APP_ID: 1:502212139547:web:3...
+[2025-09-11T23:15:02.247Z] 
+=== PRUEBA DE INICIALIZACIÓN DE FIREBASE ===
+[2025-09-11T23:15:02.625Z] Inicializando Firebase...
+[2025-09-11T23:15:02.630Z] ✅ Firebase inicializado correctamente
+[2025-09-11T23:15:02.631Z] Project ID: teereserve-golf
+[2025-09-11T23:15:02.632Z] Auth Domain: teereserve-golf.firebaseapp.com
+[2025-09-11T23:15:02.635Z] 
+=== DIAGNÓSTICO COMPLETADO ===
+[2025-09-11T23:15:02.636Z] ✅ Configuración básica de Firebase está correcta
+[2025-09-11T23:15:02.637Z] 📝 El error auth/invalid-credential probablemente se debe a:
+[2025-09-11T23:15:02.639Z]    1. Usuario inexistente
+[2025-09-11T23:15:02.639Z]    2. Contraseña incorrecta
+[2025-09-11T23:15:02.640Z]    3. Email/Password no habilitado en Firebase Console
+[2025-09-11T23:15:02.641Z]    4. Restricciones de dominio en Firebase Console
+[2025-09-11T23:15:02.642Z] 
+🔧 ACCIONES RECOMENDADAS:
+[2025-09-11T23:15:02.643Z] 1. Verificar en Firebase Console > Authentication > Sign-in method
+[2025-09-11T23:15:02.644Z] 2. Asegurar que "Email/Password" esté habilitado
+[2025-09-11T23:15:02.645Z] 3. Verificar que el usuario existe en la pestaña "Users"
+[2025-09-11T23:15:02.646Z] 4. Intentar crear un nuevo usuario para probar

@@ -1,0 +1,40 @@
+diff --git a/node_modules/@radix-ui/react-dialog/dist/index.mjs b/node_modules/@radix-ui/react-dialog/dist/index.mjs
+index 9931b23..4591a34 100644
+--- a/node_modules/@radix-ui/react-dialog/dist/index.mjs
++++ b/node_modules/@radix-ui/react-dialog/dist/index.mjs
+@@ -3,7 +3,7 @@ import { createContext, useCallback, useContext, useMemo, useState, useEffect, useRef, Component, forwardRef } from "react";
+ import { composeEventHandlers } from "@radix-ui/primitive";
+ import { useComposedRefs } from "@radix-ui/react-compose-refs";
+ import { createContextScope } from "@radix-ui/react-context";
+-import { DismissableLayer } from "@radix-ui/react-dismissable-layer";
++import { DismissableLayer, Branch } from "@radix-ui/react-dismissable-layer";
+ import { FocusScope } from "@radix-ui/react-focus-scope";
+ import { Portal as Portal$1 } from "@radix-ui/react-portal";
+ import { Presence } from "@radix-ui/react-presence";
+diff --git a/node_modules/@radix-ui/react-dialog/dist/index.d.ts b/node_modules/@radix-ui/react-dialog/dist/index.d.ts
+index e50d373..a03c39c 100644
+--- a/node_modules/@radix-ui/react-dialog/dist/index.d.ts
++++ b/node_modules/@radix-ui/react-dialog/dist/index.d.ts
+@@ -1,5 +1,6 @@
+ import * as React from 'react';
+ import * as Radix from '@radix-ui/react-primitive';
++import { DismissableLayerBranchProps } from '@radix-ui/react-dismissable-layer';
+ import * as PortalPrimitive from '@radix-ui/react-portal';
+ type DialogProps = {
+     children?: React.ReactNode;
+@@ -62,6 +63,9 @@ interface DialogContentImplProps extends Omit<DialogContentTypeProps, keyof Dial
+  * DialogContent can be animated by leveraging the `data-state` attribute.
+  */
+ declare const DialogContent: React.ForwardRefExoticComponent<DialogContentProps & React.RefAttributes<HTMLDivElement>>;
++interface DialogDismissableLayerBranchProps extends DismissableLayerBranchProps {
++}
++declare const DialogDismissableLayerBranch: React.ForwardRefExoticComponent<DialogDismissableLayerBranchProps & React.RefAttributes<HTMLDivElement>>;
+ type DialogTitleProps = Radix.ComponentPropsWithoutRef<'h2'>;
+ /**
+  * An accessible title to be announced when the dialog is opened.
+@@ -87,4 +91,4 @@ declare const DialogDescription: React.ForwardRefExoticComponent<DialogDescript
+ declare const DialogClose: React.ForwardRefExoticComponent<DialogCloseProps & React.RefAttributes<HTMLButtonElement>>;
+ declare const Root: React.FC<DialogProps>;
+ declare const Trigger: React.ForwardRefExoticComponent<DialogTriggerProps & React.RefAttributes<HTMLButtonElement>>;
+-export { Dialog, DialogPortal, DialogOverlay, DialogContent, DialogTitle, DialogDescription, DialogClose, Root, Trigger, };
++export { Dialog, DialogPortal, DialogOverlay, DialogContent, DialogDismissableLayerBranch, DialogTitle, DialogDescription, DialogClose, Root, Trigger, };

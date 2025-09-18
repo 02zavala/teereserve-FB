@@ -1,0 +1,103 @@
+# Settings to manage and configure a Firebase App Hosting backend.
+# Optimized for Next.js 15 with Node.js 20 runtime
+runConfig:
+  # Production settings
+  cpu: 1
+  memory: 1GiB
+  maxInstances: 10
+  minInstances: 0
+  concurrency: 100
+  
+  # Environment variables for production
+  env:
+    # Stripe Configuration
+    - variable: STRIPE_SECRET_KEY
+      secret: STRIPE_SECRET_KEY
+    - variable: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+      secret: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    - variable: STRIPE_WEBHOOK_SECRET
+      secret: STRIPE_WEBHOOK_SECRET
+    
+    # PayPal Configuration
+    - variable: PAYPAL_CLIENT_SECRET
+      secret: PAYPAL_CLIENT_SECRET
+    - variable: NEXT_PUBLIC_PAYPAL_CLIENT_ID
+      secret: NEXT_PUBLIC_PAYPAL_CLIENT_ID
+    - variable: NEXT_PUBLIC_PAYPAL_ENVIRONMENT
+      secret: NEXT_PUBLIC_PAYPAL_ENVIRONMENT
+    - variable: PAYPAL_WEBHOOK_ID
+      secret: PAYPAL_WEBHOOK_ID
+    - variable: PAYPAL_WEBHOOK_URL
+      secret: PAYPAL_WEBHOOK_URL
+    
+    # Google Services
+    - variable: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+      secret: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    - variable: GOOGLE_CLIENT_ID
+      secret: GOOGLE_CLIENT_ID
+    
+    # reCAPTCHA
+    - variable: NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+      secret: NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+    - variable: RECAPTCHA_SECRET_KEY
+      secret: RECAPTCHA_SECRET_KEY
+    
+    # AI Services
+    - variable: GEMINI_API_KEY
+      secret: GEMINI_API_KEY
+    
+    # Firebase Client Configuration
+    - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+      secret: NEXT_PUBLIC_FIREBASE_API_KEY
+    - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+      secret: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+      secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+      secret: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+      secret: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+      secret: NEXT_PUBLIC_FIREBASE_APP_ID
+    - variable: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+      secret: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+    - variable: NEXT_PUBLIC_FIREBASE_DATABASE_URL
+      secret: NEXT_PUBLIC_FIREBASE_DATABASE_URL
+    
+    # Firebase Admin SDK
+    - variable: FIREBASE_PROJECT_ID
+      secret: FIREBASE_PROJECT_ID
+    - variable: FIREBASE_CLIENT_EMAIL
+      secret: FIREBASE_CLIENT_EMAIL
+    - variable: FIREBASE_PRIVATE_KEY
+      secret: FIREBASE_PRIVATE_KEY
+    
+    # Email Configuration
+    - variable: RESEND_API_KEY
+      secret: RESEND_API_KEY
+    - variable: RESEND_FROM_EMAIL
+      secret: RESEND_FROM_EMAIL
+    - variable: RESEND_REPLY_TO
+      secret: RESEND_REPLY_TO
+    - variable: EMAIL_FROM
+      secret: EMAIL_FROM
+    - variable: CONTACT_FORM_RECIPIENT
+      secret: CONTACT_FORM_RECIPIENT
+    
+    # Zoho Mail (Backup)
+    - variable: ZOHO_MAIL_CLIENT_ID
+      secret: ZOHO_MAIL_CLIENT_ID
+    - variable: ZOHO_MAIL_CLIENT_SECRET
+      secret: ZOHO_MAIL_CLIENT_SECRET
+    - variable: ZOHO_MAIL_REFRESH_TOKEN
+      secret: ZOHO_MAIL_REFRESH_TOKEN
+    - variable: ZOHO_MAIL_FROM
+      secret: ZOHO_MAIL_FROM
+    
+    # Security
+    - variable: JWT_SECRET
+      secret: JWT_SECRET
+    
+    # Node.js Environment
+     - variable: NODE_ENV
+       value: "production"
