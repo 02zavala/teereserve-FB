@@ -72,6 +72,7 @@ export default function CheckoutForm() {
     const [termsAccepted, setTermsAccepted] = useState(false);
     const { paymentMethods, processPaymentWithSavedMethod } = usePaymentMethods();
     const { validateCard, isValidating } = useCardValidation();
+    const [isPaymentElementReady, setIsPaymentElementReady] = useState(false);
     
     // Guest user form fields
     const [guestInfo, setGuestInfo] = useState({
@@ -972,7 +973,10 @@ export default function CheckoutForm() {
                                     
                                     <TabsContent value="new" className="space-y-4">
                                         <form onSubmit={handleSubmit} className="space-y-4">
-                                            <PaymentElement options={paymentElementOptions} />
+                                            <PaymentElement
+                                                options={paymentElementOptions}
+                                                onReady={() => setIsPaymentElementReady(true)}
+                                            />
                                             
                                             <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-md">
                                                 <input 
@@ -993,9 +997,11 @@ export default function CheckoutForm() {
                                             <Button 
                                                 type="submit" 
                                                 className="w-full text-lg font-bold h-12" 
-                                                disabled={!stripe || isProcessing || isValidating}
+                                                disabled={!stripe || isProcessing || isValidating || !isPaymentElementReady}
                                             >
-                                                {(isProcessing || isValidating) ? (
+                                                {!isPaymentElementReady ? (
+                                                    "Cargando..."
+                                                ) : (isProcessing || isValidating) ? (
                                                     <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> 
                                                     {isValidating ? 'Validando tarjeta...' : 'Procesando...'}</>
                                                 ) : (
