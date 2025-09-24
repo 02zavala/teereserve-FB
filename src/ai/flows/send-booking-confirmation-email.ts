@@ -9,8 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import nodemailer from 'nodemailer';
-import { format } from 'date-fns';
-import { es, enUS } from 'date-fns/locale';
+import { formatBookingDate } from '@/lib/date-utils';
 
 const SendBookingConfirmationEmailInputSchema = z.object({
   bookingId: z.string().describe('The unique ID of the booking.'),
@@ -62,8 +61,7 @@ const sendBookingConfirmationEmailFlow = ai.defineFlow(
       locale,
     } = input;
 
-    const dateLocale = locale === 'es' ? es : enUS;
-    const formattedDate = format(new Date(date), "PPP", { locale: dateLocale });
+    const formattedDate = formatBookingDate(date, "PPP", locale);
     
     // Función para formatear moneda correctamente
     const formatCurrency = (amount: number): string => {

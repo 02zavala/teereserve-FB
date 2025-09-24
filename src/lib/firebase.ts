@@ -128,17 +128,31 @@ if (isConfigValid) {
                 const checkGoogleApisConnectivity = async (): Promise<boolean> => {
                     try {
                         const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos timeout
+                        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 segundos timeout (más rápido)
                         
                         const response = await fetch('https://apis.google.com/js/api.js', {
                             method: 'HEAD',
                             signal: controller.signal,
-                            cache: 'no-cache'
+                            cache: 'no-cache',
+                            mode: 'no-cors' // Evita algunos errores CORS
                         });
                         
                         clearTimeout(timeoutId);
                         return response.ok;
                     } catch (error) {
+                        // Silenciar errores específicos de red para reducir ruido en consola
+                        if (error instanceof Error) {
+                            const errorMsg = error.message.toLowerCase();
+                            if (errorMsg.includes('aborted') || 
+                                errorMsg.includes('network') || 
+                                errorMsg.includes('fetch')) {
+                                // Solo log en desarrollo para debugging
+                                if (process.env.NODE_ENV === 'development') {
+                                    console.log('🔐 Google APIs: Conectividad limitada (modo offline)');
+                                }
+                                return false;
+                            }
+                        }
                         console.log('🔐 Google APIs no disponibles:', error instanceof Error ? error.message : 'Unknown error');
                         return false;
                     }

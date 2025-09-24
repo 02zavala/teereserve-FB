@@ -15,11 +15,10 @@ import Link from 'next/link';
 import { getCourseById, getBookingById } from '@/lib/data';
 import type { GolfCourse, Booking } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
 import type { Locale } from '@/i18n-config';
 import { useAuth } from '@/context/AuthContext';
 import { Separator } from '@/components/ui/separator';
-import { dateLocales } from '@/lib/date-utils';
+import { formatBookingDate } from '@/lib/date-utils';
 import { PriceBreakdown } from '@/components/PriceBreakdown';
 import { usePriceBreakdown } from '@/components/PriceBreakdown';
 
@@ -110,7 +109,7 @@ function SuccessPageContent() {
     useEffect(() => {
         if (date && isClient) {
             try {
-                setFormattedDate(format(new Date(date), "PPP", { locale: dateLocales[lang] }));
+                setFormattedDate(formatBookingDate(date, "PPP", lang));
             } catch (e) {
                 console.error("Invalid date format:", date);
                 setFormattedDate("Invalid Date");
@@ -166,7 +165,7 @@ function SuccessPageContent() {
     const getShareMessage = () => {
         const confirmationText = booking?.confirmationNumber ? `\nConfirmation #: ${booking.confirmationNumber}` : '';
         const courseName = booking?.courseName || course?.name;
-        const bookingDate = booking?.date ? format(new Date(booking.date), "PPP", { locale: dateLocales[lang] }) : formattedDate;
+        const bookingDate = booking?.date ? formatBookingDate(booking.date, "PPP", lang) : formattedDate;
         const bookingTime = booking?.time || time;
         const bookingPlayers = booking?.players || players;
         const bookingHoles = booking?.holes || holes || '18';
@@ -187,7 +186,7 @@ function SuccessPageContent() {
     const getEmailMessage = () => {
         const courseName = booking?.courseName || course?.name;
         const confirmationText = booking?.confirmationNumber ? `\nConfirmation Number: ${booking.confirmationNumber}` : '';
-        const bookingDate = booking?.date ? format(new Date(booking.date), "PPP", { locale: dateLocales[lang] }) : formattedDate;
+        const bookingDate = booking?.date ? formatBookingDate(booking.date, "PPP", lang) : formattedDate;
         const bookingTime = booking?.time || time;
         const bookingPlayers = booking?.players || players;
         const bookingHoles = booking?.holes || holes || '18';
@@ -220,7 +219,7 @@ function SuccessPageContent() {
                         confirmationNumber: booking?.confirmationNumber,
                         courseName: booking?.courseName || course?.name,
                         courseLocation: course?.location,
-                        date: booking?.date ? format(new Date(booking.date), "PPP", { locale: dateLocales[lang] }) : formattedDate,
+                        date: booking?.date ? formatBookingDate(booking.date, "PPP", lang) : formattedDate,
                         time: booking?.time || time,
                         players: booking?.players || players,
                         holes: booking?.holes || holes || '18',
@@ -363,7 +362,7 @@ function SuccessPageContent() {
                                      <Calendar className="h-4 w-4 mr-2" /> Date: 
                                      <span className="font-medium text-foreground ml-1">
                                        {isClient && (booking?.date || formattedDate) ? 
-                                         (booking?.date ? format(new Date(booking.date), "PPP", { locale: dateLocales[lang] }) : formattedDate) : 
+                                         (booking?.date ? formatBookingDate(booking.date, "PPP", lang) : formattedDate) : 
                                          <Skeleton className="h-4 w-24 inline-block" />
                                        }
                                      </span>

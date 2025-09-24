@@ -19,13 +19,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useErrorHandler, commonValidators } from '@/hooks/useErrorHandler';
 import { ValidationError } from '@/lib/error-handling';
 import { createBooking } from '@/lib/data';
-import { format } from 'date-fns';
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
 import { Locale } from '@/i18n-config';
 import { Skeleton } from './ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from './ui/separator';
-import { dateLocales } from '@/lib/date-utils';
+import { formatBookingDate } from '@/lib/date-utils';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { SavedPaymentMethods } from './SavedPaymentMethods';
@@ -232,7 +231,7 @@ export default function CheckoutForm() {
 
         if (date && isClient) {
             try {
-                setFormattedDate(format(new Date(date), "PPP", { locale: dateLocales[lang] }));
+                setFormattedDate(formatBookingDate(date, "PPP", lang));
             } catch (e) {
                 console.error("Invalid date format:", date);
                 setFormattedDate("Invalid Date");

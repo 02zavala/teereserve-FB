@@ -9,8 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import nodemailer from 'nodemailer';
-import { format } from 'date-fns';
-import { es, enUS } from 'date-fns/locale';
+import { formatBookingDate } from '@/lib/date-utils';
 
 const SendReviewInvitationEmailInputSchema = z.object({
   bookingId: z.string().describe('The unique ID of the booking.'),
@@ -46,8 +45,7 @@ const sendReviewInvitationEmailFlow = ai.defineFlow(
       locale,
     } = input;
 
-    const dateLocale = locale === 'es' ? es : enUS;
-    const formattedDate = format(new Date(date), "PPP", { locale: dateLocale });
+    const formattedDate = formatBookingDate(date, "PPP", locale);
     
     // Create review URL with pre-filled course information
     const reviewUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/${locale}/courses/${courseId}?review=true&booking=${bookingId}`;
