@@ -116,15 +116,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setLoading(false);
         });
 
-        getRedirectResult(auth)
-            .then(async (result) => {
+        // Manejar getRedirectResult con mejor manejo de errores
+        const handleRedirectResult = async () => {
+            try {
+                // Verificar conectividad antes de intentar getRedirectResult
+                if (!navigator.onLine) {
+                    console.warn("Skipping redirect result check - offline mode");
+                    return;
+                }
+                
+                const result = await getRedirectResult(auth);
                 if (result) {
                     await createUserInFirestore(result.user);
                 }
-            })
-            .catch((error) => {
-                console.error("Error getting redirect result:", error);
-            });
+            } catch (error: any) {
+                // Manejar errores específicos de Google APIs
+                if (error.code === 'auth/internal-error') {
+                    console.warn("Google APIs not available - redirect result skipped");
+                    return;
+                }
+                
+                // Manejar errores de red
+                if (error.message?.includes('Failed to fetch') || 
+                    error.message?.includes('Network request failed')) {
+                    console.warn("Network error during redirect result - skipped");
+                    return;
+                }
+                
+                // Solo mostrar errores que no sean de conectividad
+                if (!error.message?.includes('apis.google.com') && 
+                    !error.message?.includes('Network unavailable')) {
+                    console.error("Error getting redirect result:", error);
+                }
+            }
+        };
+        
+        // Ejecutar con un pequeño delay para permitir que la red se estabilice
+        setTimeout(handleRedirectResult, 1000);
 
         return () => {
             clearTimeout(loadingTimeout);

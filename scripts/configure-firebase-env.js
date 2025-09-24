@@ -30,7 +30,6 @@ const envMapping = {
   'paypal.webhook_url': process.env.PAYPAL_WEBHOOK_URL,
   
   // Google Services
-  'google.maps_api_key': process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
   'google.client_id': process.env.GOOGLE_CLIENT_ID,
   
   // reCAPTCHA

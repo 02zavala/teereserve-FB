@@ -99,29 +99,17 @@ export class GlobalErrorHandler {
       const tagName = target.tagName?.toLowerCase();
       const src = (target as any).src || (target as any).href;
       
-      // Filter out Google Analytics and Google Maps errors - these are non-critical
+      // Filter out Google Analytics errors - these are non-critical
       if (src && (
         src.includes('googletagmanager.com') || 
         src.includes('google-analytics.com') ||
         src.includes('gtag/js') ||
-        src.includes('maps.googleapis.com') ||
-        src.includes('maps.gstatic.com')
+        src.includes('stats.g.doubleclick.net')
       )) {
-        // Log as warning instead of error for GA/Maps failures
-        const serviceType = src.includes('maps.googleapis.com') || src.includes('maps.gstatic.com') 
-          ? 'Google Maps' 
-          : 'Google Analytics';
+        const serviceType = 'Google Analytics';
         
-        logger.warn(
-          `${serviceType} resource failed to load (non-critical): ${src}`,
-          'GlobalErrorHandler',
-          {
-            tagName,
-            src,
-            type: serviceType.toLowerCase().replace(' ', '-') + '-resource-error',
-            severity: 'low'
-          }
-        );
+        // Use console.info for AdBlock scenarios
+        console.info(`${serviceType} blocked by ad blocker or privacy filter - this is normal and doesn't affect functionality`);
         return;
       }
       

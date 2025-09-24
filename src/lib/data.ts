@@ -890,6 +890,36 @@ export async function createBooking(bookingData: BookingInput, lang: Locale): Pr
             // Don't throw error to user, as booking was successful. Log for monitoring.
         }
     }
+
+    // Send admin alerts if booking is confirmed
+    if (bookingId && bookingData.status === 'confirmed') {
+        try {
+            const { sendAdminBookingAlert } = await import('./admin-alerts-service');
+            
+            const adminAlertData = {
+                bookingId: bookingId,
+                courseName: bookingData.courseName,
+                customerName: bookingData.userName,
+                customerEmail: emailToUse,
+                customerPhone: phoneToUse,
+                date: bookingData.date,
+                time: bookingData.time,
+                players: bookingData.players,
+                totalAmount: bookingData.totalPrice,
+                currency: 'EUR', // Default currency, could be made configurable
+                paymentMethod: 'stripe', // Default payment method, should be passed from booking data
+                transactionId: (bookingData as any).transactionId,
+                bookingUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://teereserve.golf'}/booking/${bookingId}`,
+                createdAt: new Date()
+            };
+
+            await sendAdminBookingAlert(adminAlertData);
+            console.log(`Admin alerts sent for confirmed booking: ${bookingId}`);
+        } catch (adminAlertError) {
+            console.error(`Booking ${bookingId} created, but admin alerts failed:`, adminAlertError);
+            // Don't throw error to user, as booking was successful. Log for monitoring.
+        }
+    }
     
     return bookingId;
 }

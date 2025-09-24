@@ -47,6 +47,11 @@ const formSchema = z.object({
     message: "Closing time must be after opening time",
     path: ["closingTime"]
   }),
+  // Location coordinates
+  latLng: z.object({
+    lat: z.coerce.number().min(-90, "Latitude must be between -90 and 90").max(90, "Latitude must be between -90 and 90"),
+    lng: z.coerce.number().min(-180, "Longitude must be between -180 and 180").max(180, "Longitude must be between -180 and 180")
+  }).optional(),
   // Course specifications
   availableHoles: z.array(z.number()).min(1, "At least one hole option must be selected"),
   totalYards: z.coerce.number().min(1000, "Total yards must be at least 1000").max(15000, "Total yards cannot exceed 15,000").optional(),
@@ -105,6 +110,7 @@ export function CourseForm({ course, lang }: CourseFormProps) {
         openingTime: course?.operatingHours?.openingTime || "06:00",
         closingTime: course?.operatingHours?.closingTime || "19:00"
       },
+      latLng: course?.latLng || undefined,
       availableHoles: course?.availableHoles || [18],
       totalYards: course?.totalYards || undefined,
       par: course?.par || 72,
@@ -206,6 +212,52 @@ export function CourseForm({ course, lang }: CourseFormProps) {
                                 </FormItem>
                             )}
                         />
+                    </div>
+
+                    {/* Coordinates Section */}
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-semibold">Map Coordinates (Optional)</h3>
+                        <p className="text-sm text-muted-foreground">
+                            Add latitude and longitude to display the course location on the map. You can find coordinates using Google Maps.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="latLng.lat"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Latitude</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type="number" 
+                                            step="any"
+                                            placeholder="e.g., 22.8905" 
+                                            {...field} 
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="latLng.lng"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Longitude</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type="number" 
+                                            step="any"
+                                            placeholder="e.g., -109.9167" 
+                                            {...field} 
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                     </div>
                    
                     <FormField

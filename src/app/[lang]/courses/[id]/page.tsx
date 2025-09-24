@@ -5,7 +5,7 @@ import { getDictionary } from '@/lib/get-dictionary';
 import { notFound, useParams, usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { MapPin, ShieldCheck, Star, Sun, Wind, Droplets, Eye, Gauge, CheckCircle } from 'lucide-react';
-import { LazyTeeTimePicker, LazyReviewSection, LazyRecommendations, LazyCourseMap } from '@/components/LazyComponents';
+import { LazyTeeTimePickerWithSuspense, LazyReviewSection, LazyRecommendations, LazyTRMapWithSuspense, LazyWeatherWithSuspense } from '@/components/LazyComponents';
 import { Suspense, useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,97 +19,7 @@ import { BookingModal } from '@/components/BookingModal';
 import { useAuth } from '@/context/AuthContext';
 import { pricingEngine } from '@/lib/pricing-engine';
 
-function WeatherPlaceholder() {
-    return (
-        <Card className="bg-card/90 backdrop-blur-sm border-border/60 shadow-lg">
-            <CardHeader>
-                <CardTitle className="font-headline text-2xl text-primary">Today's Forecast</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="flex items-start justify-between">
-                    <div>
-                        <p className="text-5xl font-bold">28°C</p>
-                        <p className="font-semibold text-foreground">Sunny</p>
-                        <p className="text-sm text-muted-foreground">Feels like 31°C</p>
-                    </div>
-                    <Sun className="h-16 w-16 text-yellow-500" />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                        <Droplets className="h-5 w-5 text-blue-400" />
-                        <div>
-                            <p className="text-muted-foreground">Humidity</p>
-                            <p className="font-bold">65%</p>
-                        </div>
-                    </div>
-                     <div className="flex items-center gap-2">
-                        <Wind className="h-5 w-5 text-gray-400" />
-                        <div>
-                            <p className="text-muted-foreground">Wind</p>
-                            <p className="font-bold">12 km/h</p>
-                        </div>
-                    </div>
-                     <div className="flex items-center gap-2">
-                        <Eye className="h-5 w-5 text-gray-400" />
-                        <div>
-                            <p className="text-muted-foreground">Visibility</p>
-                            <p className="font-bold">10 km</p>
-                        </div>
-                    </div>
-                     <div className="flex items-center gap-2">
-                        <Gauge className="h-5 w-5 text-gray-400" />
-                        <div>
-                            <p className="text-muted-foreground">Pressure</p>
-                            <p className="font-bold">1013 hPa</p>
-                        </div>
-                    </div>
-                </div>
 
-                <div>
-                    <p className="font-semibold mb-2">UV Index</p>
-                    <div className="flex items-center gap-2">
-                         <Badge variant="destructive">8 Very High</Badge>
-                    </div>
-                </div>
-
-                <div>
-                    <p className="font-semibold mb-2">Hourly Forecast</p>
-                    <div className="flex justify-around text-center">
-                        <div>
-                            <p className="text-sm text-muted-foreground">12:00</p>
-                            <Sun className="h-6 w-6 text-yellow-500 mx-auto my-1"/>
-                            <p className="font-bold">28°</p>
-                        </div>
-                         <div>
-                            <p className="text-sm text-muted-foreground">15:00</p>
-                            <Sun className="h-6 w-6 text-yellow-500 mx-auto my-1"/>
-                            <p className="font-bold">30°</p>
-                        </div>
-                         <div>
-                            <p className="text-sm text-muted-foreground">18:00</p>
-                            <Sun className="h-6 w-6 text-yellow-500 mx-auto my-1"/>
-                            <p className="font-bold">27°</p>
-                        </div>
-                         <div>
-                            <p className="text-sm text-muted-foreground">21:00</p>
-                            <Sun className="h-6 w-6 text-yellow-500 mx-auto my-1"/>
-                            <p className="font-bold">24°</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-green-100 dark:bg-green-900/50 border border-green-200 dark:border-green-800 rounded-lg p-3">
-                    <h4 className="font-semibold text-green-800 dark:text-green-300 flex items-center gap-2"><CheckCircle className="h-5 w-5" /> Golf Conditions</h4>
-                    <p className="text-sm text-green-700 dark:text-green-400 mt-1">Excellent conditions for a round of golf!</p>
-                </div>
-                
-                 <p className="text-xs text-muted-foreground text-center">Updated 5 minutes ago</p>
-
-            </CardContent>
-        </Card>
-    )
-}
 
 
 export default function CourseDetailPage() {
@@ -224,7 +134,24 @@ export default function CourseDetailPage() {
                                 <div className="my-8">
                                     <h2 className="font-headline text-3xl font-semibold text-primary mb-4">Location</h2>
                                     <div className="aspect-video w-full rounded-lg overflow-hidden">
-                                        <LazyCourseMap lat={course.latLng.lat} lng={course.latLng.lng} name={course.name} />
+                                        <LazyTRMapWithSuspense 
+                            center={[course.latLng.lat, course.latLng.lng]}
+                            zoom={15}
+                            markers={[{
+                                id: course.id,
+                                name: course.name,
+                                lat: course.latLng.lat,
+                                lng: course.latLng.lng,
+                                description: course.description,
+                                imageUrl: course.images?.[0],
+                                priceFromUSD: course.priceFromUSD,
+                                url: `/courses/${course.id}`
+                            }]}
+                            height="400px"
+                            showUserLocation={true}
+                            cluster={false}
+                            fitToMarkers={false}
+                        />
                                     </div>
                                 </div>
                             )}
@@ -271,8 +198,8 @@ export default function CourseDetailPage() {
                                 </CardContent>
                             </Card>
                             
-                            <WeatherPlaceholder />
-                             <LazyTeeTimePicker 
+                            <LazyWeatherWithSuspense />
+                             <LazyTeeTimePickerWithSuspense 
                                 courseId={course.id} 
                                 basePrice={course.basePrice} 
                                 teeTimeInterval={course.teeTimeInterval}

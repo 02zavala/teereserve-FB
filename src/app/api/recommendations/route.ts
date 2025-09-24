@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { recommendGolfCourses } from '@/ai/flows/recommend-golf-courses';
+import { getCourses } from '@/lib/data';
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,23 +7,30 @@ export async function POST(request: NextRequest) {
     
     const { userId, courseId, date, numPlayers, location } = body;
     
-    const recommendationInput = {
-      userId: userId || 'anonymous-user',
-      courseId,
-      date,
-      numPlayers,
-      location: location || 'Los Cabos'
-    };
+    // Get available courses
+    const availableCourses = await getCourses({});
     
-    const result = await recommendGolfCourses(recommendationInput);
+    // Filter out the current course if provided
+    const filteredCourses = availableCourses.filter(course => course.id !== courseId);
+    
+    // Take up to 3 courses for recommendations
+    const recommendedCourses = filteredCourses.slice(0, 3).map(course => ({
+      courseId: course.id,
+      name: course.name,
+      description: course.description.substring(0, 150) + '...',
+      price: course.basePrice || 0,
+      imageUrl: course.imageUrls?.[0] || '/images/fallback.svg',
+      tags: ['Popular Choice', 'Great Value'],
+      location: course.location || 'Los Cabos'
+    }));
     
     return NextResponse.json({
       success: true,
-      recommendations: result.recommendations || []
+      recommendations: recommendedCourses
     });
     
   } catch (error) {
-    console.error('Error getting AI recommendations:', error);
+    console.error('Error getting recommendations:', error);
     return NextResponse.json(
       { 
         success: false, 
@@ -39,23 +46,32 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   
   try {
-    const recommendationInput = {
-      userId: searchParams.get('userId') || 'anonymous-user',
-      courseId: searchParams.get('courseId') || undefined,
-      date: searchParams.get('date') || undefined,
-      numPlayers: searchParams.get('numPlayers') ? parseInt(searchParams.get('numPlayers')!) : undefined,
-      location: searchParams.get('location') || 'Los Cabos'
-    };
+    const courseId = searchParams.get('courseId') || undefined;
     
-    const result = await recommendGolfCourses(recommendationInput);
+    // Get available courses
+    const availableCourses = await getCourses({});
+    
+    // Filter out the current course if provided
+    const filteredCourses = availableCourses.filter(course => course.id !== courseId);
+    
+    // Take up to 3 courses for recommendations
+    const recommendedCourses = filteredCourses.slice(0, 3).map(course => ({
+      courseId: course.id,
+      name: course.name,
+      description: course.description.substring(0, 150) + '...',
+      price: course.basePrice || 0,
+      imageUrl: course.imageUrls?.[0] || '/images/fallback.svg',
+      tags: ['Popular Choice', 'Great Value'],
+      location: course.location || 'Los Cabos'
+    }));
     
     return NextResponse.json({
       success: true,
-      recommendations: result.recommendations || []
+      recommendations: recommendedCourses
     });
     
   } catch (error) {
-    console.error('Error getting AI recommendations:', error);
+    console.error('Error getting recommendations:', error);
     return NextResponse.json(
       { 
         success: false, 

@@ -23,7 +23,7 @@ interface HeroSectionClientProps {
 
 export function HeroSectionClient({ dictionary, lang, heroImages }: HeroSectionClientProps) {
   return (
-    <section className="relative h-[80vh] min-h-[600px] flex items-center justify-center overflow-hidden">
+    <section className="relative h-[60vh] min-h-[400px] lg:h-[70vh] lg:min-h-[500px] flex items-center justify-center overflow-hidden">
       {/* Background Image Carousel */}
       <Carousel
         className="absolute inset-0 z-0"
@@ -56,50 +56,50 @@ export function HeroSectionClient({ dictionary, lang, heroImages }: HeroSectionC
       </Carousel>
 
         {/* Overlay */}
-      <div className="absolute inset-0 bg-black/50 z-10" />
+      <div className="absolute inset-0 bg-black/30 z-10" />
 
       {/* Content */}
-      <div className="relative z-20 text-center text-white max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="font-headline text-4xl md:text-6xl font-bold tracking-tight mb-6">
+      <div className="relative z-20 text-center text-white max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 backdrop-blur-sm bg-black/20 rounded-lg py-8">
+        <h1 className="font-headline text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 lg:mb-6">
           {dictionary.title} <span className="text-primary">{dictionary.titleHighlight}</span>
         </h1>
 
-        <p className="text-lg md:text-xl mb-8 text-white/90 dark:text-primary/90 max-w-3xl mx-auto">
+        <p className="text-base md:text-lg lg:text-xl mb-6 lg:mb-8 text-white/90 dark:text-primary/90 max-w-3xl mx-auto">
           {dictionary.subtitle}
         </p>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 max-w-2xl mx-auto">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-6 lg:mb-8 max-w-2xl mx-auto">
           <div className="text-center">
-            <div className="text-3xl font-bold text-primary mb-1">{dictionary.stats.courses.value}</div>
-            <div className="text-sm text-primary-foreground/80">{dictionary.stats.courses.label}</div>
+            <div className="text-2xl md:text-3xl font-bold text-primary mb-1">{dictionary.stats.courses.value}</div>
+            <div className="text-xs md:text-sm text-primary-foreground/80">{dictionary.stats.courses.label}</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-primary mb-1">{dictionary.stats.golfers.value}</div>
-            <div className="text-sm text-primary-foreground/80">{dictionary.stats.golfers.label}</div>
+            <div className="text-2xl md:text-3xl font-bold text-primary mb-1">{dictionary.stats.golfers.value}</div>
+            <div className="text-xs md:text-sm text-primary-foreground/80">{dictionary.stats.golfers.label}</div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-primary mb-1">{dictionary.stats.rating.value}</div>
-            <div className="text-sm text-primary-foreground/80 flex items-center justify-center gap-1">
+            <div className="text-2xl md:text-3xl font-bold text-primary mb-1">{dictionary.stats.rating.value}</div>
+            <div className="text-xs md:text-sm text-primary-foreground/80 flex items-center justify-center gap-1">
               <Star className="h-3 w-3 fill-current" />
               {dictionary.stats.rating.label}
             </div>
           </div>
           <div className="text-center">
-            <div className="text-3xl font-bold text-primary mb-1">{dictionary.stats.support.value}</div>
-            <div className="text-sm text-primary-foreground/80">{dictionary.stats.support.label}</div>
+            <div className="text-2xl md:text-3xl font-bold text-primary mb-1">{dictionary.stats.support.value}</div>
+            <div className="text-xs md:text-sm text-primary-foreground/80">{dictionary.stats.support.label}</div>
           </div>
         </div>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center mb-8 lg:mb-12">
           <Button
             size="lg"
-            className="text-lg px-8 py-4 h-auto"
+            className="text-base md:text-lg px-6 md:px-8 py-3 md:py-4 h-auto w-full sm:w-auto"
             asChild
           >
             <Link href={`/${lang}/courses`}>
-              <Calendar className="mr-2 h-5 w-5" />
+              <Calendar className="mr-2 h-4 w-4 md:h-5 md:w-5" />
               {dictionary.bookButton}
             </Link>
           </Button>
@@ -107,11 +107,11 @@ export function HeroSectionClient({ dictionary, lang, heroImages }: HeroSectionC
           <Button
             size="lg"
             variant="outline"
-            className="border-white text-white hover:bg-white/10 text-lg px-8 py-4 h-auto"
+            className="border-white text-white hover:bg-white/10 text-base md:text-lg px-6 md:px-8 py-3 md:py-4 h-auto w-full sm:w-auto"
             asChild
           >
-            <Link href={`/${lang}/courses`}>
-              <MapPin className="mr-2 h-5 w-5" />
+            <Link href={`/${lang}/mapa`}>
+              <MapPin className="mr-2 h-4 w-4 md:h-5 md:w-5" />
               {dictionary.exploreButton}
             </Link>
           </Button>

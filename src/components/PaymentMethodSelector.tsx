@@ -9,7 +9,7 @@ import { CreditCard, Shield, Zap, AlertTriangle, Wifi, WifiOff } from 'lucide-re
 import Image from 'next/image';
 import { fallbackService } from '@/lib/fallback-service';
 
-export type PaymentMethod = 'stripe' | 'paypal' | 'bank_transfer' | 'cash';
+export type PaymentMethod = 'stripe' | 'paypal';
 
 interface PaymentMethodSelectorProps {
   selectedMethod: PaymentMethod;
@@ -64,9 +64,6 @@ export function PaymentMethodSelector({
           return stripeAvailable && isOnline;
         case 'paypal':
           return paypalAvailable && isOnline;
-        case 'bank_transfer':
-        case 'cash':
-          return true; // These are always available
         default:
           return false;
       }
@@ -78,10 +75,6 @@ export function PaymentMethodSelector({
         onMethodChange('stripe');
       } else if (paypalAvailable && isOnline) {
         onMethodChange('paypal');
-      } else if (isOnline) {
-        onMethodChange('bank_transfer');
-      } else {
-        onMethodChange('cash');
       }
     }
   }, [selectedMethod, stripeAvailable, paypalAvailable, isOnline, onMethodChange]);
@@ -275,8 +268,8 @@ export function PaymentMethodSelector({
                     <AlertTriangle className="h-4 w-4" />
                     <span>
                       {!isOnline 
-                        ? "Sin conexión a internet. Usa transferencia bancaria o pago en efectivo."
-                        : "Servicio PayPal temporalmente no disponible. Usa métodos alternativos."
+                        ? "Sin conexión a internet. Usa tarjeta de crédito/débito."
+                        : "Servicio PayPal temporalmente no disponible. Usa tarjeta de crédito/débito."
                       }
                     </span>
                   </div>
@@ -286,105 +279,7 @@ export function PaymentMethodSelector({
           </Label>
         </div>
 
-        {/* Bank Transfer Payment Method */}
-        <div className="relative">
-          <RadioGroupItem 
-            value="bank_transfer" 
-            id="bank_transfer" 
-            className="peer sr-only" 
-          />
-          <Label 
-            htmlFor="bank_transfer" 
-            className="cursor-pointer"
-          >
-            <Card className="peer-checked:ring-2 peer-checked:ring-primary peer-checked:border-primary transition-all hover:shadow-md">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-100 rounded-lg">
-                      <svg className="h-5 w-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                        <line x1="2" y1="7" x2="22" y2="7"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">Transferencia Bancaria</CardTitle>
-                      <p className="text-sm text-muted-foreground">Pago directo desde tu banco</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      <Shield className="h-3 w-3 mr-1" />
-                      Seguro
-                    </Badge>
-                    <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
-                      24-48h
-                    </Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Shield className="h-4 w-4" />
-                  <span>Sin comisiones adicionales • Confirmación manual • Ideal para montos grandes</span>
-                </div>
-                <div className="bg-blue-50 p-2 rounded mt-2 text-xs text-blue-700">
-                  <strong>Instrucciones:</strong> Recibirás los datos bancarios por email para realizar la transferencia
-                </div>
-              </CardContent>
-            </Card>
-          </Label>
-        </div>
 
-        {/* Cash Payment Method */}
-        <div className="relative">
-          <RadioGroupItem 
-            value="cash" 
-            id="cash" 
-            className="peer sr-only" 
-          />
-          <Label 
-            htmlFor="cash" 
-            className="cursor-pointer"
-          >
-            <Card className="peer-checked:ring-2 peer-checked:ring-primary peer-checked:border-primary transition-all hover:shadow-md">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-100 rounded-lg">
-                      <svg className="h-5 w-5 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="12" y1="1" x2="12" y2="23"/>
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">Pago en Efectivo</CardTitle>
-                      <p className="text-sm text-muted-foreground">Pago en el club de golf</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      <Shield className="h-3 w-3 mr-1" />
-                      Presencial
-                    </Badge>
-                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                      Sin comisión
-                    </Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Shield className="h-4 w-4" />
-                  <span>Pago directo en recepción • Sin comisiones • Confirmación inmediata</span>
-                </div>
-                <div className="bg-green-50 p-2 rounded mt-2 text-xs text-green-700">
-                  <strong>Importante:</strong> Debes presentarte 15 minutos antes de tu tee time para confirmar el pago
-                </div>
-              </CardContent>
-            </Card>
-          </Label>
-        </div>
       </RadioGroup>
       
       {/* Security Notice */}

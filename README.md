@@ -134,7 +134,7 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 STRIPE_SECRET_KEY=sk_test_...
 
 # Google Cloud Configuration
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_maps_api_key
+# Note: Google Maps has been replaced with Leaflet + OpenStreetMap (no API key needed)
 NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your_recaptcha_site_key
 RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key
 

@@ -48,9 +48,20 @@ export function WhyChooseUs({ dictionary }: WhyChooseUsProps) {
     ];
 
     return (
-        <section className="py-16 lg:py-24 bg-muted/50 dark:bg-muted/20">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
+        <section className="py-16 lg:py-24 relative overflow-hidden">
+          {/* Hero Background Image */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat -z-10"
+            style={{
+              backgroundImage: 'url(/hero-2.jpg)',
+              backgroundAttachment: 'fixed'
+            }}
+          />
+          {/* Overlay for better text readability */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm -z-10" />
+          
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div className="text-center mb-12 bg-background/80 backdrop-blur-md rounded-lg p-8">
               <h2 className="font-headline text-3xl font-bold text-primary md:text-4xl mb-4">
                 {dictionary.title}
               </h2>
@@ -65,7 +76,7 @@ export function WhyChooseUs({ dictionary }: WhyChooseUsProps) {
                 return (
                   <div
                     key={index}
-                    className="text-center group hover:transform hover:-translate-y-1 transition-all duration-300"
+                    className="text-center group hover:transform hover:-translate-y-1 transition-all duration-300 bg-card/90 backdrop-blur-md rounded-lg p-6"
                   >
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4 group-hover:scale-110 transition-transform duration-300">
                       <IconComponent className="h-8 w-8 text-primary-foreground" />
@@ -81,7 +92,7 @@ export function WhyChooseUs({ dictionary }: WhyChooseUsProps) {
               })}
             </div>
     
-            <div className="mt-16 border-t border-primary/20 pt-12">
+            <div className="mt-16 border-t border-primary/20 pt-12 bg-card/80 backdrop-blur-md rounded-lg p-8">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
                 {stats.map((stat, index) => (
                     <div key={index}>

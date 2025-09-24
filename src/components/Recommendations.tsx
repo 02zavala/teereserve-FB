@@ -41,6 +41,9 @@ export function Recommendations({ courseId, userId, dictionary, lang }: Recommen
       setLoading(true);
       setError(null);
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
         const response = await fetch('/api/recommendations', {
           method: 'POST',
           headers: {
@@ -51,7 +54,14 @@ export function Recommendations({ courseId, userId, dictionary, lang }: Recommen
             courseId: courseId,
             location: 'Los Cabos',
           }),
+          signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         
         const result = await response.json();
         
@@ -61,14 +71,23 @@ export function Recommendations({ courseId, userId, dictionary, lang }: Recommen
           throw new Error(result.error || 'Failed to get recommendations');
         }
       } catch (err) {
-        console.error("Failed to get AI recommendations:", err);
-        setError("Could not load recommendations at this time.");
+        if (err instanceof Error && err.name === 'AbortError') {
+          console.warn("Recommendations request timed out");
+          setError("Recommendations are taking too long to load.");
+        } else {
+          console.error("Failed to get AI recommendations:", err);
+          setError("Could not load recommendations at this time.");
+        }
+        // Set empty recommendations to prevent further errors
+        setRecommendations([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRecommendations();
+    // Add a small delay to prevent immediate API calls
+    const timeoutId = setTimeout(fetchRecommendations, 1000);
+    return () => clearTimeout(timeoutId);
   }, [courseId, userId]);
   
 

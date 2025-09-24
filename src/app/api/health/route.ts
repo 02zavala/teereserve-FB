@@ -158,7 +158,6 @@ async function checkExternalServices() {
     const checks = await Promise.allSettled([
       checkStripe(),
       checkEmailService(),
-      checkGoogleMaps(),
     ]);
 
     const results = checks.map(check => 
@@ -174,7 +173,6 @@ async function checkExternalServices() {
       services: {
         stripe: results[0],
         email: results[1],
-        maps: results[2],
       },
       lastChecked: new Date().toISOString(),
     };
@@ -272,53 +270,7 @@ async function checkEmailService() {
   }
 }
 
-async function checkGoogleMaps() {
-  try {
-    const isConfigured = !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    
-    if (!isConfigured) {
-      return {
-        status: 'warning' as const,
-        configured: false,
-        message: 'Google Maps not configured - using static maps fallback',
-      };
-    }
 
-    // Test Google Maps API connectivity
-    try {
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=test&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`,
-        {
-          method: 'GET',
-          signal: AbortSignal.timeout(5000), // 5 second timeout
-        }
-      );
-
-      const data = await response.json();
-      const isHealthy = response.ok && data.status !== 'REQUEST_DENIED';
-
-      return {
-        status: isHealthy ? 'healthy' as const : 'warning' as const,
-        configured: true,
-        connectivity: response.ok,
-        apiStatus: data.status,
-        message: !isHealthy ? 'Google Maps API issues - using fallback UI' : undefined,
-      };
-    } catch (connectError) {
-      return {
-        status: 'warning' as const,
-        configured: true,
-        connectivity: false,
-        error: 'Google Maps API unreachable - using static fallback',
-      };
-    }
-  } catch (error) {
-    return {
-      status: 'error' as const,
-      error: 'Google Maps check failed',
-    };
-  }
-}
 
 // HEAD method for simple health checks
 export async function HEAD() {

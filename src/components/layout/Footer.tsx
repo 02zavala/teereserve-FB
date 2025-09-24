@@ -109,14 +109,6 @@ export function Footer({ dictionary, lang }: FooterProps) {
                   {dictionary.footer.contact}
                 </Link>
               </li>
-              <li>
-                <Link 
-                  href="/api/status" 
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  {dictionary.footer.apiStatus}
-                </Link>
-              </li>
             </ul>
           </div>
 

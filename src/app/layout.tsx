@@ -1,6 +1,7 @@
 
 import type { Metadata, Viewport } from 'next'
 import { Playfair_Display, PT_Sans } from 'next/font/google'
+import Script from 'next/script'
 import './globals.css'
 import { cn } from '@/lib/utils'
 import { ClientLayout } from '@/components/layout/ClientLayout'
@@ -44,6 +45,8 @@ export default async function RootLayout({
   params,
 }: RootLayoutProps) {
   const { lang } = await params;
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+  
   return (
     <html lang={lang} suppressHydrationWarning>
       <body
@@ -53,6 +56,42 @@ export default async function RootLayout({
           fontBody.variable
         )}
       >
+        {/* Google Analytics */}
+        {gaId && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+              strategy="afterInteractive"
+              onError={(e) => {
+                // Degradar error a info si es por AdBlock
+                if (e.message?.includes('blocked') || e.message?.includes('network')) {
+                  console.info('Google Analytics blocked by ad blocker or network filter - this is normal');
+                } else {
+                  console.error('Google Analytics script error:', e);
+                }
+              }}
+            />
+            <Script
+              id="google-analytics"
+              strategy="afterInteractive"
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${gaId}', {
+                    page_title: document.title,
+                    page_location: window.location.href,
+                  });
+                `,
+              }}
+              onError={(e) => {
+                console.info('Google Analytics configuration blocked or failed - continuing normally');
+              }}
+            />
+          </>
+        )}
+        
         <ClientLayout lang={lang}>
             {children}
         </ClientLayout>

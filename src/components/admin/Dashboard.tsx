@@ -9,6 +9,7 @@ import type { Booking } from "@/types";
 import { format } from "date-fns";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
+import { HealthCheck } from '@/components/monitoring/HealthCheck';
 
 const RevenueChart = dynamic(() => import('@/components/admin/RevenueChart').then(mod => ({ default: mod.RevenueChart })), { ssr: false });
 const HoleDistributionChart = dynamic(() => import('@/components/admin/HoleDistributionChart').then(mod => ({ default: mod.HoleDistributionChart })), { ssr: false });
@@ -281,6 +282,21 @@ export function Dashboard() {
                                 View all bookings →
                             </Link>
                         </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* System Health Status */}
+            <div className="mt-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>System Status</CardTitle>
+                        <CardDescription>
+                            API and services health monitoring
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <HealthCheck showDetails={true} />
                     </CardContent>
                 </Card>
             </div>

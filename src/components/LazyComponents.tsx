@@ -90,8 +90,8 @@ function ReviewSectionSkeleton() {
   );
 }
 
-// CourseMap Loading Skeleton
-function CourseMapSkeleton() {
+// TRMap Loading Skeleton
+function TRMapSkeleton() {
   return (
     <Card>
       <CardHeader>
@@ -173,63 +173,139 @@ export function createLazyComponent<T extends Record<string, any>>(
   };
 }
 
-// Lazy loaded components
-export const LazyTeeTimePicker = createLazyComponent(
-  () => import('./TeeTimePicker'),
-  TeeTimePickerSkeleton,
-  'TeeTimePicker'
-);
+// Direct lazy imports without custom wrapper to avoid webpack issues
+export const LazyTeeTimePicker = lazy(() => import('./TeeTimePicker'));
+export const LazyReviewSection = lazy(() => import('./ReviewSection'));
+// TRMap is already wrapped with Next.js dynamic(), so we use lazy import
+export const LazyTRMap = lazy(() => import('./map/TRMap'));
+export const LazyWeather = lazy(() => import('./weather/Weather'));
+export const LazyPricingCalendar = lazy(() => import('./admin/PricingCalendar').then(module => ({ default: module.PricingCalendar })));
+export const LazyCheckoutForm = lazy(() => import('./CheckoutForm'));
+export const LazyRecommendations = lazy(() => import('./Recommendations'));
+export const LazyFeaturedReviews = lazy(() => import('./home/FeaturedReviews'));
+export const LazyScorecardManager = lazy(() => import('./ScorecardManager'));
+export const LazyGamificationSection = lazy(() => import('./GamificationSection'));
+export const LazyMyReviews = lazy(() => import('./MyReviews'));
 
-export const LazyReviewSection = createLazyComponent(
-  () => import('./ReviewSection'),
-  ReviewSectionSkeleton,
-  'ReviewSection'
-);
+// Wrapper components with Suspense for better error handling
+export function LazyTeeTimePickerWithSuspense(props: any) {
+  return (
+    <Suspense fallback={<TeeTimePickerSkeleton />}>
+      <LazyTeeTimePicker {...props} />
+    </Suspense>
+  );
+}
 
-export const LazyCourseMap = createLazyComponent(
-  () => import('./CourseMap'),
-  CourseMapSkeleton,
-  'CourseMap'
-);
+export function LazyTRMapWithSuspense(props: any) {
+  return (
+    <Suspense fallback={<TRMapSkeleton />}>
+      <LazyTRMap {...props} />
+    </Suspense>
+  );
+}
 
-export const LazyPricingCalendar = createLazyComponent(
-  () => import('./admin/PricingCalendar').then(module => ({ default: module.PricingCalendar })),
-  PricingCalendarSkeleton,
-  'PricingCalendar'
-);
+export function LazyReviewSectionWithSuspense(props: any) {
+  return (
+    <Suspense fallback={<ReviewSectionSkeleton />}>
+      <LazyReviewSection {...props} />
+    </Suspense>
+  );
+}
 
-export const LazyCheckoutForm = createLazyComponent(
-  () => import('./CheckoutForm'),
-  undefined,
-  'CheckoutForm'
-);
+export function LazyPricingCalendarWithSuspense(props: any) {
+  return (
+    <Suspense fallback={<PricingCalendarSkeleton />}>
+      <LazyPricingCalendar {...props} />
+    </Suspense>
+  );
+}
 
-export const LazyRecommendations = createLazyComponent(
-  () => import('./Recommendations'),
-  undefined,
-  'Recommendations'
-);
+export function LazyFeaturedReviewsWithSuspense(props: any) {
+  return (
+    <Suspense fallback={<ReviewSectionSkeleton />}>
+      <LazyFeaturedReviews {...props} />
+    </Suspense>
+  );
+}
 
-export const LazyFeaturedReviews = createLazyComponent(
-  () => import('./home/FeaturedReviews'),
-  undefined,
-  'FeaturedReviews'
-);
+export function LazyRecommendationsWithSuspense(props: any) {
+  return (
+    <Suspense fallback={<RecommendationSkeleton />}>
+      <LazyRecommendations {...props} />
+    </Suspense>
+  );
+}
 
-export const LazyScorecardManager = createLazyComponent(
-  () => import('./ScorecardManager'),
-  undefined,
-  'ScorecardManager'
-);
+export function LazyWeatherWithSuspense(props: any) {
+  return (
+    <Suspense fallback={<WeatherSkeleton />}>
+      <LazyWeather {...props} />
+    </Suspense>
+  );
+}
 
-export const LazyGamificationSection = createLazyComponent(
-  () => import('./GamificationSection'),
-  undefined,
-  'GamificationSection'
-);
+// Skeleton for weather
+function WeatherSkeleton() {
+  return (
+    <div className="bg-white rounded-lg shadow-sm border p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Skeleton className="h-5 w-5" />
+        <Skeleton className="h-6 w-16" />
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-8 w-8 rounded" />
+            <div>
+              <Skeleton className="h-8 w-16 mb-1" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          </div>
+          <Skeleton className="h-4 w-16" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Skeleton className="h-4 w-4" />
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-8" />
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-6 w-20" />
+        </div>
+        <div>
+          <Skeleton className="h-4 w-24 mb-2" />
+          <div className="grid grid-cols-4 gap-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="text-center">
+                <Skeleton className="h-3 w-8 mb-1 mx-auto" />
+                <Skeleton className="h-6 w-6 mb-1 mx-auto" />
+                <Skeleton className="h-4 w-6 mx-auto" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-export const LazyMyReviews = createLazyComponent(
-  () => import('./MyReviews'),
-  undefined,
-  'MyReviews'
-);
+// Skeleton for recommendations
+function RecommendationSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+      {[...Array(3)].map((_, i) => (
+         <div key={i} className="flex flex-col space-y-3">
+         <Skeleton className="h-[225px] w-full rounded-xl" />
+         <div className="space-y-2">
+           <Skeleton className="h-4 w-[250px]" />
+           <Skeleton className="h-4 w-[200px]" />
+         </div>
+       </div>
+      ))}
+    </div>
+  );
+}

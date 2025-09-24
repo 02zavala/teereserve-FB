@@ -18,11 +18,31 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     // Install resource error handlers
     installResourceErrorHandlers(Logger);
     
-    // Clean service workers in development
+    // Clean service workers in development with proper error handling
     if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(registrations => 
-        registrations.forEach(registration => registration.unregister())
-      );
+      // Wait for document to be ready
+      const cleanServiceWorkers = async () => {
+        try {
+          if (document.readyState === 'loading') {
+            await new Promise(resolve => {
+              document.addEventListener('DOMContentLoaded', resolve, { once: true });
+            });
+          }
+          
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(
+            registrations.map(registration => 
+              registration.unregister().catch(err => 
+                console.warn('Failed to unregister service worker:', err)
+              )
+            )
+          );
+        } catch (error) {
+          console.warn('Error cleaning service workers:', error);
+        }
+      };
+      
+      cleanServiceWorkers();
     }
   }, []);
 

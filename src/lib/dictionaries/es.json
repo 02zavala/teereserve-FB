@@ -3,6 +3,7 @@
     "header": {
         "home": "Inicio",
         "findCourse": "Buscar Campo",
+        "map": "Mapa",
         "about": "Sobre Nosotros",
         "contact": "Contacto",
         "recommendations": "Recomendaciones IA",
@@ -18,7 +19,6 @@
         "support": "Soporte",
         "helpCenter": "Centro de Ayuda",
         "contact": "Contacto",
-        "apiStatus": "Estado del API",
         "contactTitle": "Contacto",
         "followUs": "Síguenos",
         "allRightsReserved": "Todos los derechos reservados.",

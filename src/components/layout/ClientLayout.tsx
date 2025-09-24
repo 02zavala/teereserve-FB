@@ -27,9 +27,36 @@ export function ClientLayout({ children, lang }: ClientLayoutProps) {
   useEffect(() => {
     initializeErrorHandling();
     
-    // Initialize Google Analytics 4
+    // Initialize Google Analytics 4 with error handling
     if (typeof window !== 'undefined') {
-      initGA4();
+      try {
+        // Verificar conectividad antes de inicializar
+        if (!navigator.onLine) {
+          console.log('📴 GA4: Saltando inicialización (sin conexión)');
+          return;
+        }
+        
+        // Usar setTimeout para evitar bloqueos en el render
+        const timeoutId = setTimeout(() => {
+          try {
+            initGA4();
+          } catch (error: any) {
+            // Manejar errores específicos de GA4
+            if (error?.message?.includes('Failed to fetch') || 
+                error?.message?.includes('fetch') ||
+                error?.name === 'TypeError' ||
+                error?.message?.includes('network')) {
+              console.log('📴 GA4: Inicialización fallida silenciosamente (modo offline)');
+              return;
+            }
+            console.warn('⚠️ GA4: Error de inicialización:', error);
+          }
+        }, 200);
+
+        return () => clearTimeout(timeoutId);
+      } catch (error: any) {
+        console.log('📴 GA4: Error en configuración inicial (modo offline)');
+      }
     }
   }, []);
 

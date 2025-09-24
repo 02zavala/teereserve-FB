@@ -102,6 +102,34 @@ export async function POST(request: NextRequest) {
     // Delete the draft
     await draftDoc.ref.delete();
 
+    // Send admin alerts for confirmed booking
+    try {
+      const { sendAdminBookingAlert } = await import('@/lib/admin-alerts-service');
+      
+      const adminAlertData = {
+        bookingId: bookingId,
+        courseName: draftData.courseName || 'Unknown Course',
+        customerName: draftData.guest ? `${draftData.guest.firstName} ${draftData.guest.lastName}` : 'Unknown Customer',
+        customerEmail: draftData.guest?.email || 'unknown@email.com',
+        customerPhone: draftData.guest?.phone,
+        date: draftData.date,
+        time: draftData.teeTime,
+        players: draftData.players,
+        totalAmount: draftData.amount,
+        currency: draftData.currency || 'EUR',
+        paymentMethod: 'stripe',
+        transactionId: paymentIntentId,
+        bookingUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://teereserve.golf'}/booking/${bookingId}`,
+        createdAt: new Date()
+      };
+
+      await sendAdminBookingAlert(adminAlertData);
+      console.log(`Admin alerts sent for confirmed guest booking: ${bookingId}`);
+    } catch (adminAlertError) {
+      console.error(`Guest booking ${bookingId} created, but admin alerts failed:`, adminAlertError);
+      // Don't throw error to user, as booking was successful. Log for monitoring.
+    }
+
     // Get the language from the draft data for redirect
     const lang = draftData.lang || 'es';
     const redirectUrl = `/${lang}/book/success?booking_id=${bookingId}&payment_intent=${paymentIntentId}`;

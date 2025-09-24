@@ -5,7 +5,7 @@
 
 export interface PaymentMethod {
   id: string;
-  type: 'stripe' | 'paypal' | 'bank_transfer' | 'cash';
+  type: 'stripe' | 'paypal';
   last4?: string;
   brand?: string;
   expiryMonth?: number;
@@ -13,14 +13,6 @@ export interface PaymentMethod {
   isDefault: boolean;
   customerId: string;
   createdAt: Date;
-  // Campos específicos para métodos personalizados
-  bankDetails?: {
-    accountNumber: string;
-    routingNumber: string;
-    bankName: string;
-    accountHolder: string;
-  };
-  cashInstructions?: string;
 }
 
 export interface PaymentIntent {

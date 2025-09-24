@@ -14,6 +14,14 @@ export function installResourceErrorHandlers(logger: { error: (m: string, meta?:
       (t as HTMLImageElement).src || 
       (t as HTMLLinkElement).href || '(unknown)';
 
+    // Skip logging for Google Analytics and similar external resources
+    if (url.includes('googletagmanager.com') || 
+        url.includes('google-analytics.com') ||
+        url.includes('gtag/js') ||
+        url.includes('stats.g.doubleclick.net')) {
+      return; // Don't log these as they're often blocked by ad blockers
+    }
+
     // Apply fallback for images
     if (tag === 'img') {
       const img = t as HTMLImageElement;
@@ -29,11 +37,13 @@ export function installResourceErrorHandlers(logger: { error: (m: string, meta?:
       }
     }
 
-    // Log useful information without crashing
-    logger.error('Resource loading failed', {
-      tag,
-      url,
-      dataset: { ...((t as any).dataset || {}) }
-    });
+    // Use a more direct logging approach to avoid console interceptors
+    // Only log if it's a critical resource (not external analytics)
+    if (url.includes(window.location.origin) || !url.startsWith('http')) {
+      // Use setTimeout to avoid potential interceptor conflicts
+      setTimeout(() => {
+        console.warn(`[ResourceHandler] Failed to load ${tag}: ${url}`);
+      }, 0);
+    }
   }, true);
 }

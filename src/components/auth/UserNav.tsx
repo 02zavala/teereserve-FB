@@ -42,6 +42,7 @@ export function UserNav() {
     }
   };
 
+  // Prevent hydration mismatch by not rendering until auth state is determined
   if (loading) {
     return (
       <div className="flex items-center gap-2">

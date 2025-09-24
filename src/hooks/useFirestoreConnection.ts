@@ -88,7 +88,7 @@ export const useFirestoreConnection = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Manejar errores específicos de Firestore sin interceptar console.error globalmente
+    // Manejar errores específicos de Firestore de forma silenciosa
     const handleFirestoreError = (error: any) => {
       const message = error?.message || String(error);
       
@@ -96,8 +96,9 @@ export const useFirestoreConnection = () => {
       if (message.includes('Could not reach Cloud Firestore backend') ||
           message.includes('Fetching auth token failed') ||
           message.includes('auth/network-request-failed') ||
-          message.includes('Failed to get document because the client is offline')) {
-        
+          message.includes('Failed to get document because the client is offline') ||
+          message.includes('net::ERR_ABORTED') ||
+          message.includes('ERR_ABORTED')) {
         setState(prev => ({
           ...prev,
           isConnected: false,
@@ -105,11 +106,27 @@ export const useFirestoreConnection = () => {
           errorMessage: 'Operando en modo offline',
         }));
         
-        console.warn('🔄 Firestore offline:', message);
+        // Solo log en desarrollo para debugging
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('🔄 Firestore offline mode activated');
+        }
         return true; // Indica que el error fue manejado
       }
       
       return false; // Indica que el error no fue manejado
+    };
+
+    // Interceptar errores de XMLHttpRequest para Firestore
+    const originalXHRSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function(...args) {
+      this.addEventListener('error', (event) => {
+        if (this.responseURL && this.responseURL.includes('firestore.googleapis.com')) {
+          // Suprimir errores de red de Firestore
+          event.stopPropagation();
+          event.preventDefault();
+        }
+      });
+      return originalXHRSend.apply(this, args);
     };
 
     // Exponer el manejador de errores para que otros hooks puedan usarlo
@@ -119,7 +136,8 @@ export const useFirestoreConnection = () => {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      console.error = originalConsoleError;
+      XMLHttpRequest.prototype.send = originalXHRSend;
+      delete (window as any).__firestoreErrorHandler;
     };
   }, []);
 

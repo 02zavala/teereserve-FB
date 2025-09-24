@@ -117,7 +117,101 @@ if (isConfigValid) {
         }
         
         realtimeDb = getDatabase(app);
-        auth = getAuth(app);
+        
+        // Configurar Auth con manejo mejorado de errores
+        try {
+            auth = getAuth(app);
+            
+            // Configurar manejo de errores específicos para Google APIs
+            if (typeof window !== 'undefined') {
+                // Función para verificar conectividad a Google APIs
+                const checkGoogleApisConnectivity = async (): Promise<boolean> => {
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos timeout
+                        
+                        const response = await fetch('https://apis.google.com/js/api.js', {
+                            method: 'HEAD',
+                            signal: controller.signal,
+                            cache: 'no-cache'
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        return response.ok;
+                    } catch (error) {
+                        console.log('🔐 Google APIs no disponibles:', error instanceof Error ? error.message : 'Unknown error');
+                        return false;
+                    }
+                };
+                
+                // Verificar conectividad antes de inicializar Google APIs
+                const handleAuthErrors = async () => {
+                    const isGoogleApisAvailable = await checkGoogleApisConnectivity();
+                    
+                    if (!isGoogleApisAvailable) {
+                        console.log('🔐 Auth: Google APIs no disponibles - modo offline');
+                        return;
+                    }
+                    
+                    // Interceptar errores de Google APIs con retry
+                    const originalFetch = window.fetch;
+                    window.fetch = async (...args) => {
+                        try {
+                            return await originalFetch(...args);
+                        } catch (error: any) {
+                            // Manejar errores específicos de Google APIs
+                            if (args[0] && typeof args[0] === 'string' && 
+                                args[0].includes('apis.google.com')) {
+                                console.log('🔐 Google APIs fetch failed (retrying in offline mode)');
+                                
+                                // Intentar una vez más después de un breve delay
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                                
+                                try {
+                                    return await originalFetch(...args);
+                                } catch (retryError) {
+                                    console.log('🔐 Google APIs retry failed - operating in offline mode');
+                                    throw new Error('Network unavailable for Google APIs');
+                                }
+                            }
+                            throw error;
+                        }
+                    };
+                };
+                
+                // Solo aplicar interceptores si estamos online
+                if (navigator.onLine) {
+                    handleAuthErrors().catch(error => {
+                        console.log('🔐 Auth error handling setup failed:', error.message);
+                    });
+                }
+                
+                // Manejar cambios de conectividad para Auth
+                const handleAuthOnline = async () => {
+                    console.log('🔐 Auth: Conectividad restaurada');
+                    
+                    // Esperar un poco para que la red se estabilice
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    try {
+                        await handleAuthErrors();
+                    } catch (error) {
+                        console.log('🔐 Auth: Error al restaurar conectividad:', error instanceof Error ? error.message : 'Unknown error');
+                    }
+                };
+                
+                const handleAuthOffline = () => {
+                    console.log('🔐 Auth: Modo offline - Google Sign-In deshabilitado');
+                };
+                
+                window.addEventListener('online', handleAuthOnline);
+                window.addEventListener('offline', handleAuthOffline);
+            }
+        } catch (authError) {
+            console.error('Error initializing Firebase Auth:', authError);
+            auth = null;
+        }
+        
         storage = getStorage(app);
         
         // Log de conexión para debugging

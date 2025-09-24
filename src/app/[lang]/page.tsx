@@ -5,8 +5,7 @@ import * as React from 'react';
 import { CourseSearchForm } from '@/components/CourseSearchForm'
 import { getCourses } from '@/lib/data'
 import { CourseCard } from '@/components/CourseCard'
-import { LazyRecommendations, LazyFeaturedReviews } from '@/components/LazyComponents'
-import { Suspense } from 'react'
+import { LazyRecommendationsWithSuspense, LazyFeaturedReviewsWithSuspense } from '@/components/LazyComponents'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getDictionary } from '@/lib/get-dictionary'
 import { Locale } from '@/i18n-config'
@@ -101,11 +100,16 @@ export default async function Home({ params: paramsProp }: { params: Promise<{ l
       
       <HeroSection dictionary={dictionary.heroSection} lang={lang} />
 
-      <div className="relative bg-background z-10">
-          <div className="absolute left-1/2 z-20 w-full max-w-6xl -translate-x-1/2 -translate-y-1/2 px-4">
+      <div className="relative bg-background/80 backdrop-blur-md z-10">
+          {/* Desktop: Absolute positioning with overlap */}
+          <div className="hidden lg:block absolute left-1/2 z-20 w-full max-w-6xl -translate-x-1/2 -translate-y-1/2 px-4">
             <CourseSearchForm dictionary={dictionary.courseSearch} />
           </div>
-          <div className="h-24"></div>
+          {/* Mobile: Normal flow without overlap */}
+          <div className="lg:hidden container mx-auto px-4 py-8">
+            <CourseSearchForm dictionary={dictionary.courseSearch} />
+          </div>
+          <div className="h-24 hidden lg:block"></div>
       </div>
 
       {/* Secciones dinámicas del CMS */}
@@ -151,9 +155,7 @@ export default async function Home({ params: paramsProp }: { params: Promise<{ l
             <h2 className="font-headline text-3xl font-bold text-primary md:text-4xl">{dictionary.home.featuredReviewsTitle}</h2>
             <p className="mt-2 text-lg text-muted-foreground">{dictionary.home.featuredReviewsSubtitle}</p>
           </div>
-          <Suspense fallback={<ReviewsSkeleton />}>
-            <LazyFeaturedReviews dictionary={dictionary} lang={lang} />
-          </Suspense>
+          <LazyFeaturedReviewsWithSuspense dictionary={dictionary} lang={lang} />
         </div>
       </section>
       
@@ -163,43 +165,9 @@ export default async function Home({ params: paramsProp }: { params: Promise<{ l
              <h2 className="font-headline text-3xl font-bold text-primary md:text-4xl">{dictionary.home.recommendationsTitle}</h2>
              <p className="mt-2 text-lg text-muted-foreground">{dictionary.home.recommendationsSubtitle}</p>
            </div>
-           <Suspense fallback={<RecommendationSkeleton />}>
-             <LazyRecommendations dictionary={dictionary.courseCard} lang={lang} />
-           </Suspense>
+           <LazyRecommendationsWithSuspense dictionary={dictionary.courseCard} lang={lang} />
          </div>
        </section>
     </>
-  )
-}
-
-function RecommendationSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-      {[...Array(3)].map((_, i) => (
-         <div key={i} className="flex flex-col space-y-3">
-         <Skeleton className="h-[225px] w-full rounded-xl" />
-         <div className="space-y-2">
-           <Skeleton className="h-4 w-[250px]" />
-           <Skeleton className="h-4 w-[200px]" />
-         </div>
-       </div>
-      ))}
-    </div>
-  )
-}
-
-function ReviewsSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="flex flex-col space-y-3">
-          <Skeleton className="h-[200px] w-full rounded-xl" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-[200px]" />
-            <Skeleton className="h-4 w-[150px]" />
-          </div>
-        </div>
-      ))}
-    </div>
   )
 }

@@ -29,12 +29,7 @@ class FallbackService {
       fallbackEnabled: true
     });
 
-    this.setServiceConfig('google-maps', {
-      maxRetries: 2,
-      retryDelay: 1000,
-      healthCheckInterval: 30000, // 30 seconds
-      fallbackEnabled: true
-    });
+
 
     this.setServiceConfig('email', {
       maxRetries: 3,
@@ -173,9 +168,7 @@ class FallbackService {
         case 'stripe':
           isHealthy = await this.checkStripeHealth();
           break;
-        case 'google-maps':
-          isHealthy = await this.checkGoogleMapsHealth();
-          break;
+
         case 'email':
           isHealthy = await this.checkEmailHealth();
           break;
@@ -213,23 +206,7 @@ class FallbackService {
     }
   }
 
-  private async checkGoogleMapsHealth(): Promise<boolean> {
-    try {
-      if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return false;
 
-      const response = await fetch(
-        `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`,
-        {
-          method: 'HEAD',
-          signal: AbortSignal.timeout(5000)
-        }
-      );
-
-      return response.ok;
-    } catch {
-      return false;
-    }
-  }
 
   private async checkEmailHealth(): Promise<boolean> {
     try {
@@ -274,15 +251,11 @@ class FallbackService {
     switch (serviceName) {
       case 'stripe':
         return {
-          paymentMethods: ['bank_transfer', 'cash', 'check'],
-          message: 'Pagos con tarjeta temporalmente no disponibles. Puedes usar transferencia bancaria o pago en efectivo.'
+          paymentMethods: ['paypal'],
+          message: 'Pagos con tarjeta temporalmente no disponibles. Puedes usar PayPal.'
         };
       
-      case 'google-maps':
-        return {
-          alternatives: ['apple_maps', 'openstreetmap'],
-          message: 'Mapa no disponible. Puedes abrir la ubicación en tu aplicación de mapas preferida.'
-        };
+
       
       case 'email':
         return {

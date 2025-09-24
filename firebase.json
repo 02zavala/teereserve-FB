@@ -39,6 +39,10 @@
           {
             "key": "X-XSS-Protection",
             "value": "1; mode=block"
+          },
+          {
+            "key": "Content-Security-Policy-Report-Only",
+            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://js.stripe.com https://m.stripe.network https://*.firebaseapp.com https://*.googleapis.com; connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://stats.g.doubleclick.net https://api.stripe.com https://*.stripe.com https://*.firebaseapp.com https://*.googleapis.com https://*.openstreetmap.org https://nominatim.openstreetmap.org wss://*.firebaseio.com; img-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://*.stripe.com https://m.stripe.network https://*.openstreetmap.org https://*.tile.openstreetmap.org https://unpkg.com data: blob:; frame-src 'self' https://www.googletagmanager.com https://js.stripe.com https://hooks.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';"
           }
         ]
       },

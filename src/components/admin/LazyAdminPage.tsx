@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 
 // Lazy load admin components
-const LazyDashboard = lazy(() => import('@/components/admin/Dashboard').then(module => ({ default: module.Dashboard })));
+// Dashboard is already using dynamic() internally, so we import it directly
+export { Dashboard as LazyDashboard } from '@/components/admin/Dashboard';
 const LazyBackupManager = lazy(() => import('@/components/admin/BackupManager'));
 
 // Loading skeleton for admin pages

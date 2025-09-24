@@ -3,6 +3,7 @@
     "header": {
         "home": "Home",
         "findCourse": "Find a Course",
+        "map": "Map",
         "about": "About Us",
         "contact": "Contact",
         "recommendations": "AI Recommendations",
@@ -18,7 +19,6 @@
         "support": "Support",
         "helpCenter": "Help Center",
         "contact": "Contact",
-        "apiStatus": "API Status",
         "contactTitle": "Contact",
         "followUs": "Follow Us",
         "allRightsReserved": "All rights reserved.",

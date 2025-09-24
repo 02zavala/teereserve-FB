@@ -35,7 +35,7 @@ import PayPalButton from '@/components/PayPalButton';
 import PaymentMethodSelector, { PaymentMethod } from '@/components/PaymentMethodSelector';
 import PaymentTermsCheckbox from '@/components/PaymentTermsCheckbox';
 import { useCardValidation } from '@/hooks/useCardValidation';
-import CustomPaymentHandler from '@/components/CustomPaymentHandler';
+
 import { fallbackService, withFallback } from '@/lib/fallback-service';
 
 
@@ -376,7 +376,7 @@ export default function CheckoutForm() {
             online: navigator.onLine,
             errorType: error.name,
             errorMessage: error.message,
-            fallbacksAvailable: ['bank_transfer', 'cash']
+            fallbacksAvailable: ['stripe']
         });
     };
 
@@ -412,21 +412,27 @@ export default function CheckoutForm() {
         setErrorMessage(null);
 
         const result = await handleAsyncError(async () => {
-            // Handle custom payment methods (bank transfer and cash)
-            if (selectedPaymentType === 'bank_transfer' || selectedPaymentType === 'cash') {
+            // Handle Stripe payment method
+            if (selectedPaymentType === 'stripe') {
+                if (!stripe || !elements) {
+                    throw new Error('Stripe no está disponible. Por favor recarga la página.');
+                }
+
+                const { error: submitError } = await elements.submit();
+                if (submitError) {
+                    throw new Error(submitError.message || 'Error al procesar el pago');
+                }
+
                 try {
-                    const response = await fetchWithAbort('/api/custom-payments', {
+                    // Create payment intent
+                    const response = await fetchWithAbort('/api/create-payment-intent', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            paymentMethod: selectedPaymentType,
-                            bookingId: `booking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                            amount: priceDetails.total,
-                            customerId: user?.uid || 'guest',
-                            customerEmail: user?.email || guestInfo.email,
-                            customerName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
+                            amount: Math.round(priceDetails.total * 100), // Convert to cents
+                            currency: 'usd',
                             courseId,
                             courseName: course.name,
                             date,
@@ -436,30 +442,150 @@ export default function CheckoutForm() {
                             teeTimeId,
                             comments: comments || '',
                             specialRequests: specialRequests || '',
-                            couponCode: appliedCoupon?.code || ''
+                            couponCode: appliedCoupon?.code || '',
+                            customerEmail: user?.email || guestInfo.email,
+                            customerName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
+                            savePaymentMethod: savePaymentMethod
                         }),
                     });
 
                     if (!response.ok) {
-                        throw new Error('Failed to process custom payment');
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Error al crear la intención de pago');
                     }
 
-                    const responseData = await response.json();
-                    
-                    if (responseData.success) {
-                        const successUrl = new URL(`${window.location.origin}/${lang}/book/success`);
-                        searchParams?.forEach((value, key) => successUrl.searchParams.append(key, value));
-                        successUrl.searchParams.append('paymentMethod', selectedPaymentType);
-                        successUrl.searchParams.append('paymentStatus', responseData.status);
-                        go(successUrl.toString());
+                    const { client_secret } = await response.json();
+
+                    // Confirm payment
+                    const { error, paymentIntent } = await stripe.confirmPayment({
+                        elements,
+                        clientSecret: client_secret,
+                        redirect: 'if_required',
+                        confirmParams: {
+                            return_url: `${window.location.origin}/${lang}/book/success`,
+                        },
+                    });
+
+                    if (error) {
+                        let errorMessage = 'Error en el pago. Por favor inténtalo de nuevo.';
+                        
+                        if (error.type === 'card_error') {
+                            if (error.code === 'card_declined') {
+                                errorMessage = 'Tu tarjeta fue rechazada. Por favor verifica los datos o usa otra tarjeta.';
+                            } else if (error.code === 'insufficient_funds') {
+                                errorMessage = 'Fondos insuficientes en tu tarjeta.';
+                            } else if (error.code === 'expired_card') {
+                                errorMessage = 'Tu tarjeta ha expirado. Por favor usa otra tarjeta.';
+                            } else if (error.code === 'incorrect_cvc') {
+                                errorMessage = 'El código de seguridad (CVC) es incorrecto.';
+                            } else if (error.code === 'processing_error') {
+                                errorMessage = 'Error al procesar el pago. Por favor inténtalo de nuevo.';
+                            } else {
+                                errorMessage = error.message || errorMessage;
+                            }
+                        } else if (error.type === 'validation_error') {
+                            errorMessage = 'Por favor verifica que todos los datos de tu tarjeta sean correctos.';
+                        } else if (error.type === 'api_connection_error') {
+                            errorMessage = 'Error de conexión. Por favor verifica tu internet e inténtalo de nuevo.';
+                        } else if (error.type === 'rate_limit_error') {
+                            errorMessage = 'Demasiados intentos. Por favor espera un momento e inténtalo de nuevo.';
+                        } else if (error.type === 'authentication_error') {
+                            errorMessage = 'Error de autenticación. Por favor recarga la página e inténtalo de nuevo.';
+                        } else {
+                            errorMessage = 'Error temporal del sistema de pagos. Por favor inténtalo de nuevo en unos minutos o usa otro método de pago.';
+                        }
+                        
+                        // Log detailed error info for debugging
+                        console.warn('Stripe Payment Error:', {
+                            type: error.type,
+                            code: error.code,
+                            message: error.message,
+                            online: navigator.onLine,
+                            fallbacksAvailable: ['paypal']
+                        });
+                        
+                        throw new Error(errorMessage);
+                    }
+
+                    if (paymentIntent && paymentIntent.status === 'succeeded') {
+                        // Save payment method if requested with $1 validation charge
+                        if (savePaymentMethod && paymentIntent.payment_method) {
+                            try {
+                                // First validate the card with $1 charge
+                                const validationResult = await validateCard(paymentIntent.payment_method as string);
+                                
+                                if (validationResult.success) {
+                                    // Save the payment method after successful validation
+                                    await fetch('/api/save-payment-method', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({
+                                            paymentMethodId: paymentIntent.payment_method,
+                                            customerId: user?.uid || 'guest',
+                                        }),
+                                    });
+                                }
+                            } catch (error) {
+                                console.warn('Failed to save payment method:', error);
+                                // Don't fail the entire payment if saving fails
+                            }
+                        }
+
+                        // Create booking with successful payment
+                        const bookingData = {
+                            userId: user?.uid || 'guest',
+                            userName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
+                            userEmail: user?.email || guestInfo.email,
+                            userPhone: guestInfo.phone || '',
+                            courseId,
+                            courseName: course.name,
+                            date,
+                            time,
+                            players: parseInt(players),
+                            holes: holes ? parseInt(holes) : 18,
+                            totalPrice: priceDetails.total,
+                            status: 'confirmed',
+                            teeTimeId,
+                            comments: comments || '',
+                            specialRequests: specialRequests || '',
+                            paymentIntentId: paymentIntent.id,
+                            paymentMethod: 'stripe',
+                            paymentStatus: 'completed',
+                            couponCode: appliedCoupon?.code || ''
+                        };
+
+                        console.log('Creating booking with data:', bookingData);
+                        console.log('Language:', lang);
+                        
+                        try {
+                            const bookingId = await createBooking(bookingData, lang);
+                            console.log('Booking created successfully, bookingId:', bookingId);
+                            
+                            if (bookingId) {
+                                const successUrl = new URL(`${window.location.origin}/${lang}/book/success`);
+                                searchParams?.forEach((value, key) => successUrl.searchParams.append(key, value));
+                                successUrl.searchParams.append('paymentMethod', selectedPaymentType);
+                                successUrl.searchParams.append('paymentStatus', 'completed');
+                                successUrl.searchParams.append('bookingId', bookingId);
+                                go(successUrl.toString());
+                                return;
+                            } else {
+                                console.error('createBooking returned null or undefined:', bookingId);
+                                throw new Error('Error creating booking - no booking ID returned');
+                            }
+                        } catch (createBookingError) {
+                            console.error('Error in createBooking function:', createBookingError);
+                            throw new Error(`Error creating booking: ${createBookingError.message}`);
+                        }
                     } else {
-                        setErrorMessage(responseData.error || "Error processing custom payment");
+                        throw new Error('Payment was not completed successfully');
                     }
                 } catch (error) {
-                    console.error('Error processing custom payment:', error);
-                    setErrorMessage('Error processing payment. Please try again.');
+                    console.error('Error processing Stripe payment:', error);
+                    throw error;
                 }
-                return;
             }
 
             if (paymentMode === 'saved' && selectedPaymentMethod) {
@@ -586,7 +712,7 @@ export default function CheckoutForm() {
                             code: error.code,
                             message: error.message,
                             online: navigator.onLine,
-                            fallbacksAvailable: ['bank_transfer', 'cash', 'paypal']
+                            fallbacksAvailable: ['paypal']
                         });
                         
                         throw new Error(errorMessage);
@@ -1037,16 +1163,7 @@ export default function CheckoutForm() {
                             </div>
                         )}
 
-                        {/* Custom Payment Methods */}
-                        {(selectedPaymentType === 'bank_transfer' || selectedPaymentType === 'cash') && (
-                            <CustomPaymentHandler
-                                paymentMethod={selectedPaymentType}
-                                amount={priceDetails.total}
-                                bookingId={`booking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`}
-                                onPaymentConfirmed={handleSubmit}
-                                onCancel={() => setShowPaymentForm(false)}
-                            />
-                        )}
+
                     </CardContent>
                 </Card>
             )}

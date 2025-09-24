@@ -5,7 +5,7 @@ import Image from "next/image"; // ✅ NUEVO: usamos next/image para el logo
 import { Menu, Sparkles, GanttChartSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { UserNav } from "@/components/auth/UserNav";
+import { UserNavWrapper } from "@/components/auth/UserNavWrapper";
 import type { Locale } from "@/i18n-config";
 import { ThemeToggle } from "./ThemeToggle";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -86,7 +86,7 @@ export function Header({ dictionary, lang }: HeaderProps) {
           <div className="flex items-center gap-2">
             <LanguageSwitcher dictionary={dictionary.languageSwitcher} lang={lang} />
             <ThemeToggle dictionary={dictionary.themeToggle} />
-            <UserNav />
+            <UserNavWrapper />
           </div>
         </div>
 
@@ -134,7 +134,7 @@ export function Header({ dictionary, lang }: HeaderProps) {
                 <div className="flex items-center gap-2">
                   <LanguageSwitcher dictionary={dictionary.languageSwitcher} lang={lang} />
                   <ThemeToggle dictionary={dictionary.themeToggle} />
-                  <UserNav />
+                  <UserNavWrapper />
                 </div>
               </div>
             </SheetContent>
