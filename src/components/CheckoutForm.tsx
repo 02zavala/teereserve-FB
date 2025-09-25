@@ -20,6 +20,7 @@ import { useErrorHandler, commonValidators } from '@/hooks/useErrorHandler';
 import { ValidationError } from '@/lib/error-handling';
 import { createBooking } from '@/lib/data';
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
+import { StripeError } from '@stripe/stripe-js';
 import { Locale } from '@/i18n-config';
 import { Skeleton } from './ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -34,6 +35,7 @@ import PayPalButton from '@/components/PayPalButton';
 import PaymentMethodSelector, { PaymentMethod } from '@/components/PaymentMethodSelector';
 import PaymentTermsCheckbox from '@/components/PaymentTermsCheckbox';
 import { useCardValidation } from '@/hooks/useCardValidation';
+import { handleStripeError } from '@/lib/payments/stripe-error-handler';
 
 import { fallbackService, withFallback } from '@/lib/fallback-service';
 
@@ -59,6 +61,8 @@ export default function CheckoutForm() {
     const [formattedDate, setFormattedDate] = useState<string | null>(null);
     const [showPaymentForm, setShowPaymentForm] = useState(false);
     const [isClient, setIsClient] = useState(false);
+    const [availableFallbacks, setAvailableFallbacks] = useState<('paypal' | 'link')[]>([]);
+    const [showRetryNewCard, setShowRetryNewCard] = useState(false);
     
     const [couponCode, setCouponCode] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
@@ -409,6 +413,8 @@ export default function CheckoutForm() {
 
         setIsProcessing(true);
         setErrorMessage(null);
+        setAvailableFallbacks([]);
+        setShowRetryNewCard(false);
 
         const result = await handleAsyncError(async () => {
             // Handle Stripe payment method
@@ -466,44 +472,13 @@ export default function CheckoutForm() {
                     });
 
                     if (error) {
-                        let errorMessage = 'Error en el pago. Por favor inténtalo de nuevo.';
-                        
-                        if (error.type === 'card_error') {
-                            if (error.code === 'card_declined') {
-                                errorMessage = 'Tu tarjeta fue rechazada. Por favor verifica los datos o usa otra tarjeta.';
-                            } else if (error.code === 'insufficient_funds') {
-                                errorMessage = 'Fondos insuficientes en tu tarjeta.';
-                            } else if (error.code === 'expired_card') {
-                                errorMessage = 'Tu tarjeta ha expirado. Por favor usa otra tarjeta.';
-                            } else if (error.code === 'incorrect_cvc') {
-                                errorMessage = 'El código de seguridad (CVC) es incorrecto.';
-                            } else if (error.code === 'processing_error') {
-                                errorMessage = 'Error al procesar el pago. Por favor inténtalo de nuevo.';
-                            } else {
-                                errorMessage = error.message || errorMessage;
-                            }
-                        } else if (error.type === 'validation_error') {
-                            errorMessage = 'Por favor verifica que todos los datos de tu tarjeta sean correctos.';
-                        } else if (error.type === 'api_connection_error') {
-                            errorMessage = 'Error de conexión. Por favor verifica tu internet e inténtalo de nuevo.';
-                        } else if (error.type === 'rate_limit_error') {
-                            errorMessage = 'Demasiados intentos. Por favor espera un momento e inténtalo de nuevo.';
-                        } else if (error.type === 'authentication_error') {
-                            errorMessage = 'Error de autenticación. Por favor recarga la página e inténtalo de nuevo.';
-                        } else {
-                            errorMessage = 'Error temporal del sistema de pagos. Por favor inténtalo de nuevo en unos minutos o usa otro método de pago.';
-                        }
-                        
-                        // Log detailed error info for debugging
-                        console.warn('Stripe Payment Error:', {
-                            type: error.type,
-                            code: error.code,
-                            message: error.message,
-                            online: navigator.onLine,
-                            fallbacksAvailable: ['paypal']
-                        });
-                        
-                        throw new Error(errorMessage);
+                        const { userMessage, fallbacksAvailable, showRetryWithNewCard } = handleStripeError(error as StripeError);
+                        setErrorMessage(userMessage);
+                        setAvailableFallbacks(fallbacksAvailable);
+                        setShowRetryNewCard(showRetryWithNewCard);
+                        // No relanzamos el error para que el usuario pueda interactuar con los fallbacks
+                        setIsProcessing(false); // Detener el spinner
+                        return; // Detener la ejecución de handleSubmit
                     }
 
                     if (paymentIntent && paymentIntent.status === 'succeeded') {
@@ -685,36 +660,13 @@ export default function CheckoutForm() {
                     });
 
                     if (error) {
-                        // Enhanced error handling for Stripe payments
-                        const isNetworkError = !navigator.onLine || 
-                                              error.code === 'network_error' ||
-                                              error.type === 'api_connection_error' ||
-                                              error.message?.includes('network') ||
-                                              error.message?.includes('timeout');
-                        
-                        const isCardError = error.type === 'card_error';
-                        const isApiError = error.type === 'api_error';
-                        
-                        let errorMessage = error.message || "An unexpected error occurred during payment.";
-                        
-                        if (isNetworkError) {
-                            errorMessage = 'Error de conexión con el procesador de pagos. Verifica tu conexión a internet o prueba con otro método de pago (transferencia bancaria o efectivo).';
-                        } else if (isCardError) {
-                            errorMessage = `Error con la tarjeta: ${error.message}. Prueba con otra tarjeta o usa un método de pago alternativo.`;
-                        } else if (isApiError) {
-                            errorMessage = 'Error temporal del sistema de pagos. Por favor inténtalo de nuevo en unos minutos o usa otro método de pago.';
-                        }
-                        
-                        // Log detailed error info for debugging
-                        console.warn('Stripe Payment Error:', {
-                            type: error.type,
-                            code: error.code,
-                            message: error.message,
-                            online: navigator.onLine,
-                            fallbacksAvailable: ['paypal']
-                        });
-                        
-                        throw new Error(errorMessage);
+                        const { userMessage, fallbacksAvailable, showRetryWithNewCard } = handleStripeError(error as StripeError);
+                        setErrorMessage(userMessage);
+                        setAvailableFallbacks(fallbacksAvailable);
+                        setShowRetryNewCard(showRetryWithNewCard);
+                        // No relanzamos el error, permitimos al usuario ver las opciones
+                        // En este caso, el `withFallback` no se activará, pero el usuario ve el error.
+                        throw new Error(userMessage); // Lanzamos para que withFallback lo capture
                     }
 
                     if (paymentIntent && paymentIntent.status === 'succeeded') {
@@ -1054,6 +1006,35 @@ export default function CheckoutForm() {
                         {errorMessage && (
                             <div className="text-destructive text-sm font-medium p-3 bg-destructive/10 rounded-md border border-destructive/20">
                                 {errorMessage}
+                            </div>
+                        )}
+
+                        {/* Fallback & Retry UI */}
+                        {(availableFallbacks.length > 0 || showRetryNewCard) && (
+                            <div className="flex flex-col sm:flex-row gap-3 mt-4 p-4 bg-muted/50 rounded-lg">
+                                {showRetryNewCard && (
+                                     <Button
+                                         variant="outline"
+                                         onClick={() => {
+                                             elements?.getElement('payment')?.clear();
+                                             setErrorMessage(null);
+                                             setShowRetryNewCard(false);
+                                             setAvailableFallbacks([]);
+                                         }}
+                                     >
+                                         Usar otra tarjeta
+                                     </Button>
+                                )}
+                                {availableFallbacks.includes('paypal') && (
+                                    <Button variant="secondary" onClick={() => setSelectedPaymentType('paypal')}>
+                                        Pagar con PayPal
+                                    </Button>
+                                )}
+                                {availableFallbacks.includes('link') && (
+                                     <Button variant="secondary" onClick={() => { /* Lógica para Link si es necesaria */ }}>
+                                         Pagar con Link
+                                     </Button>
+                                )}
                             </div>
                         )}
 

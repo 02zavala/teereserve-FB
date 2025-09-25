@@ -720,6 +720,36 @@ function generateConfirmationNumber(): string {
     return result;
 }
 
+// *** Payment Failure Logging ***
+
+interface FailedPaymentLog {
+    paymentIntentId: string;
+    amount: number;
+    currency: string;
+    errorCode?: string;
+    errorDeclineCode?: string;
+    errorMessage?: string;
+    createdAt: any; // serverTimestamp
+}
+
+export async function logFailedPayment(data: Omit<FailedPaymentLog, 'createdAt'>): Promise<void> {
+    if (!db) {
+        console.warn("Firestore not available. Skipping failed payment logging.");
+        return;
+    }
+    try {
+        const failedPaymentsCol = collection(db, 'failed_payments');
+        await addDoc(failedPaymentsCol, {
+            ...data,
+            createdAt: serverTimestamp()
+        });
+        console.log(`Logged failed payment: ${data.paymentIntentId}`);
+    } catch (error) {
+        console.error("Error logging failed payment:", error);
+        // No relanzar el error para no interrumpir el flujo del webhook
+    }
+}
+
 export async function createBooking(bookingData: BookingInput, lang: Locale): Promise<string> {
     if (!db) throw new Error("Firestore is not initialized.");
     const dbInstance = db; // Create a non-null reference
