@@ -1,5 +1,4 @@
 import { StripeError } from '@stripe/stripe-js';
-import { Sentry } from '@/lib/sentry'; // Asumiendo que Sentry está configurado así
 
 // --- Tipos ---
 
@@ -94,14 +93,6 @@ export const handleStripeError = (error: StripeError): HandledError => {
     // No incluir `message` por defecto para evitar filtrar PII accidentalmente.
     // Se puede añadir explícitamente si se confirma que es seguro.
   };
-
-  // Enviar a Sentry si está configurado
-  if (Sentry) {
-    Sentry.captureMessage(`Stripe Payment Error: ${code || type}`, {
-      level: 'warning',
-      extra: logPayload,
-    });
-  }
 
   // Loguear en consola para depuración
   console.warn('Stripe Payment Error:', logPayload);
