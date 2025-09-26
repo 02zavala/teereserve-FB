@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { enableNetwork, disableNetwork } from 'firebase/firestore';
 
@@ -17,17 +17,16 @@ export const useFirestoreConnection = () => {
     errorMessage: null,
   });
 
+  // Ref para evitar llamadas duplicadas
+  const isProcessingRef = useRef(false);
+
   useEffect(() => {
-    if (!db) {
-      setState(prev => ({
-        ...prev,
-        hasError: true,
-        errorMessage: 'Firestore no está inicializado'
-      }));
-      return;
-    }
+    if (!db || typeof window === 'undefined') return;
 
     const handleOnline = async () => {
+      if (isProcessingRef.current) return;
+      isProcessingRef.current = true;
+      
       try {
         await enableNetwork(db);
         setState(prev => ({
@@ -39,18 +38,35 @@ export const useFirestoreConnection = () => {
         }));
         console.log('🌐 Firestore: Conectividad restaurada');
       } catch (error: any) {
-        console.warn('Error al habilitar red en Firestore:', error);
-        setState(prev => ({
-          ...prev,
-          isOnline: true,
-          isConnected: false,
-          hasError: true,
-          errorMessage: error.message,
-        }));
+        // Ignorar errores de "Target ID already exists" ya que indican que la red ya está habilitada
+        if (error.code === 'already-exists' || error.message?.includes('Target ID already exists')) {
+          console.log('🌐 Firestore: Red ya habilitada');
+          setState(prev => ({
+            ...prev,
+            isOnline: true,
+            isConnected: true,
+            hasError: false,
+            errorMessage: null,
+          }));
+        } else {
+          console.warn('Error al habilitar red en Firestore:', error);
+          setState(prev => ({
+            ...prev,
+            isOnline: true,
+            isConnected: false,
+            hasError: true,
+            errorMessage: error.message,
+          }));
+        }
+      } finally {
+        isProcessingRef.current = false;
       }
     };
 
     const handleOffline = async () => {
+      if (isProcessingRef.current) return;
+      isProcessingRef.current = true;
+      
       try {
         await disableNetwork(db);
         setState(prev => ({
@@ -70,6 +86,8 @@ export const useFirestoreConnection = () => {
           hasError: true,
           errorMessage: error.message,
         }));
+      } finally {
+        isProcessingRef.current = false;
       }
     };
 
@@ -142,7 +160,8 @@ export const useFirestoreConnection = () => {
   }, []);
 
   const reconnect = async () => {
-    if (db && navigator.onLine) {
+    if (db && navigator.onLine && !isProcessingRef.current) {
+      isProcessingRef.current = true;
       try {
         await enableNetwork(db);
         setState(prev => ({
@@ -153,12 +172,25 @@ export const useFirestoreConnection = () => {
         }));
         console.log('🔄 Firestore: Reconectando...');
       } catch (error: any) {
-        console.warn('Error al reconectar Firestore:', error);
-        setState(prev => ({
-          ...prev,
-          hasError: true,
-          errorMessage: error.message,
-        }));
+        // Ignorar errores de "Target ID already exists" ya que indican que la red ya está habilitada
+        if (error.code === 'already-exists' || error.message?.includes('Target ID already exists')) {
+          console.log('🔄 Firestore: Ya conectado');
+          setState(prev => ({
+            ...prev,
+            isConnected: true,
+            hasError: false,
+            errorMessage: null,
+          }));
+        } else {
+          console.warn('Error al reconectar Firestore:', error);
+          setState(prev => ({
+            ...prev,
+            hasError: true,
+            errorMessage: error.message,
+          }));
+        }
+      } finally {
+        isProcessingRef.current = false;
       }
     }
   };

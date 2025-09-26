@@ -16,8 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
+import { Card, CardContent } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/context/AuthContext"
 import { useErrorHandler, commonValidators } from "@/hooks/useErrorHandler"
@@ -28,7 +27,7 @@ import { sendWebhook } from "@/lib/webhooks"
 import { FirebaseError } from "firebase/app"
 import { Loader2 } from "lucide-react"
 import { handleError, translateFirebaseError } from "@/lib/error-handling"
-import { detectAuthMethods, handleEmailAlreadyInUse, getFriendlyErrorMessage } from "@/lib/auth-utils"
+import { detectAuthMethods, handleEmailAlreadyInUse } from "@/lib/auth-utils"
 
 
 const formSchema = z.object({
@@ -41,7 +40,7 @@ const formSchema = z.object({
 
 export function SignUpForm() {
     const { toast } = useToast()
-    const { signup, googleSignIn } = useAuth()
+    const { signup } = useAuth()
     const { handleAsyncError } = useErrorHandler()
     const { triggerOnboarding } = useTriggerOnboarding()
     const router = useRouter()
@@ -186,52 +185,7 @@ export function SignUpForm() {
     });
   }
 
-  function handleGoogleSignIn() {
-    handleAsyncError(async () => {
-      console.log('Starting Google sign-up...');
-      
-      await googleSignIn();
-      console.log('Google sign-up successful');
-      
-      toast({
-        title: "¡Bienvenido a TeeReserve!",
-        description: "Tu cuenta ha sido creada exitosamente.",
-      });
-      
-      // Activar el onboarding para nuevos usuarios
-      triggerOnboarding();
-      
-      router.push(`/${lang}/profile`);
-      router.refresh();
-    }, {
-      onError: async (error: any) => {
-        if (error.code === 'auth/account-exists-with-different-credential') {
-          toast({
-            title: "Cuenta existente",
-            description: "Ya tienes una cuenta con este email. Inicia sesión con tu contraseña.",
-            variant: "destructive",
-          });
-          
-          setTimeout(() => {
-            router.push(`/${lang}/login`);
-          }, 2000);
-          
-          return; // No relanzar el error
-        }
-        
-        // Para otros errores, usar el mensaje amigable
-        const friendlyMessage = getFriendlyErrorMessage(error.code);
-        
-        toast({
-          title: "Error en el registro",
-          description: friendlyMessage,
-          variant: "destructive",
-        });
-        
-        throw error; // Relanzar para que useErrorHandler lo maneje
-      }
-    });
-  }
+
 
   return (
     <Card>
@@ -297,15 +251,6 @@ export function SignUpForm() {
           </form>
         </Form>
       </CardContent>
-       <CardFooter className="flex flex-col gap-4">
-        <div className="relative w-full">
-            <Separator />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">OR SIGN UP WITH</span>
-        </div>
-        <div className="grid grid-cols-1 gap-4 w-full">
-            <Button variant="outline" onClick={handleGoogleSignIn}>Google</Button>
-        </div>
-      </CardFooter>
     </Card>
   )
 }

@@ -18,8 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
+import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/context/AuthContext"
@@ -28,7 +27,6 @@ import { ValidationError } from "@/lib/error-handling"
 import { FirebaseError } from "firebase/app"
 import { Loader2 } from "lucide-react"
 import { handleError, translateFirebaseError } from "@/lib/error-handling"
-import { getFriendlyErrorMessage } from "@/lib/auth-utils"
 
 const formSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email." }).max(254, { message: "Email is too long." }),
@@ -37,7 +35,7 @@ const formSchema = z.object({
 
 export function LoginForm() {
   const { toast } = useToast()
-  const { login, googleSignIn, resetPassword } = useAuth()
+  const { login, sendPasswordResetEmail } = useAuth()
   const { handleAsyncError } = useErrorHandler()
   const router = useRouter()
   const pathname = usePathname()
@@ -93,34 +91,7 @@ export function LoginForm() {
     });
   }
 
-  function handleGoogleSignIn() {
-    handleAsyncError(async () => {
-      console.log('Starting Google sign-in...');
-      
-      await googleSignIn();
-      console.log('Google sign-in successful');
-      
-      toast({
-        title: "¡Bienvenido a TeeReserve!",
-        description: "Has iniciado sesión correctamente.",
-      });
-      
-      go(`/${lang}/profile`);
-    }, {
-      onError: async (error: any) => {
-        // Usar mensajes de error amigables
-        const friendlyMessage = getFriendlyErrorMessage(error.code);
-        
-        toast({
-          title: "Error al iniciar sesión",
-          description: friendlyMessage,
-          variant: "destructive",
-        });
-        
-        throw error; // Relanzar para que useErrorHandler lo maneje
-      }
-    });
-  }
+
 
   function handlePasswordReset() {
     handleAsyncError(async () => {
@@ -232,15 +203,6 @@ export function LoginForm() {
           </form>
         </Form>
       </CardContent>
-      <CardFooter className="flex flex-col gap-4">
-        <div className="relative w-full">
-            <Separator />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">OR CONTINUE WITH</span>
-        </div>
-        <div className="grid grid-cols-1 gap-4 w-full">
-            <Button variant="outline" onClick={handleGoogleSignIn}>Google</Button>
-        </div>
-      </CardFooter>
     </Card>
   )
 }

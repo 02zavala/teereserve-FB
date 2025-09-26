@@ -67,36 +67,8 @@ if (isConfigValid) {
                 },
             });
             
-            // Configurar manejo de conectividad
-            if (typeof window !== 'undefined') {
-                // Manejar cambios de conectividad
-                const handleOnline = async () => {
-                    try {
-                        await enableNetwork(db!);
-                        console.log('🌐 Firestore: Conectividad restaurada');
-                    } catch (error) {
-                        console.warn('Error al habilitar red en Firestore:', error);
-                    }
-                };
-                
-                const handleOffline = async () => {
-                    try {
-                        await disableNetwork(db!);
-                        console.log('📴 Firestore: Modo offline activado');
-                    } catch (error) {
-                        console.warn('Error al deshabilitar red en Firestore:', error);
-                    }
-                };
-                
-                // Escuchar cambios de conectividad
-                window.addEventListener('online', handleOnline);
-                window.addEventListener('offline', handleOffline);
-                
-                // Verificar estado inicial
-                if (!navigator.onLine) {
-                    handleOffline();
-                }
-            }
+            // Nota: El manejo de conectividad se realiza a través del hook useFirestoreConnection
+            // para evitar conflictos y el error "Target ID already exists"
             
         } catch (error: any) {
             // Si ya está inicializado, usar la instancia existente

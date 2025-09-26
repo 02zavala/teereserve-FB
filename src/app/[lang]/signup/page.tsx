@@ -2,7 +2,15 @@
 import { SignUpForm } from "@/components/auth/SignUpForm";
 import Link from "next/link";
 
-export default function SignUpPage() {
+interface SignUpPageProps {
+    params: {
+        lang: string;
+    };
+}
+
+export default function SignUpPage({ params }: SignUpPageProps) {
+    const { lang } = params;
+    
     return (
         <div className="container mx-auto flex min-h-[80vh] items-center justify-center">
             <div className="w-full max-w-md">
@@ -10,7 +18,7 @@ export default function SignUpPage() {
                     <h1 className="text-3xl font-bold font-headline text-primary">Create an Account</h1>
                     <p className="text-muted-foreground">
                         Already have an account?{" "}
-                        <Link href="/login" className="text-primary hover:underline">
+                        <Link href={`/${lang}/login`} className="text-primary hover:underline">
                             Log In
                         </Link>
                     </p>
