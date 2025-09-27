@@ -52,16 +52,15 @@ export async function POST(req: NextRequest) {
       console.log(`✅ Webhook: PaymentIntent ${pi_success.id} exitoso.`);
       
       // Persistir datos de moneda final y FX
-      const metadata = pi_success.metadata;
-      if (metadata.bookingId) {
+      if (pi_success.metadata.bookingId) {
         await logSuccessfulPayment({
           paymentIntentId: pi_success.id,
-          bookingId: metadata.bookingId,
+          bookingId: pi_success.metadata.bookingId,
           final_currency: pi_success.currency.toUpperCase(),
           amount_received: pi_success.amount,
-          fxRate: parseFloat(metadata.fxRate || '1.0'),
-          currencyAttempt: metadata.currencyAttempt || 'usd',
-          priceUsd: parseFloat(metadata.priceUsd || '0')
+          fxRate: parseFloat(pi_success.metadata.fxRate || '1.0'),
+          currencyAttempt: pi_success.metadata.currencyAttempt || 'usd',
+          priceUsd: parseFloat(pi_success.metadata.priceUsd || '0')
         });
       }
       break;
