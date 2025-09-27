@@ -13,18 +13,28 @@ export function useStableNavigation() {
   const navigationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const go = useCallback((href: string, { replace = false } = {}) => {
-    if (pendingNavigationRef.current === href) return;
+    console.log('🔄 [useStableNavigation] go() llamado con href:', href, 'replace:', replace);
+    
+    if (pendingNavigationRef.current === href) {
+      console.log('⚠️ [useStableNavigation] Navegación duplicada detectada, ignorando:', href);
+      return;
+    }
 
     pendingNavigationRef.current = href;
+    console.log('✅ [useStableNavigation] Navegación registrada como pendiente');
 
     if (navigationTimeoutRef.current) clearTimeout(navigationTimeoutRef.current);
     navigationTimeoutRef.current = setTimeout(() => {
       pendingNavigationRef.current = null;
       navigationTimeoutRef.current = null;
+      console.log('🧹 [useStableNavigation] Timeout de navegación limpiado');
     }, 2000);
 
+    console.log('🚀 [useStableNavigation] Iniciando startTransition...');
     startTransition(() => {
+      console.log('📍 [useStableNavigation] Ejecutando navegación:', replace ? 'replace' : 'push', href);
       replace ? router.replace(href) : router.push(href);
+      console.log('✅ [useStableNavigation] Navegación ejecutada');
     });
   }, [router]);
 

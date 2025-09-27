@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import Stripe from 'stripe';
 import { stripe } from '@/lib/stripe'; // Asumiendo que hay un cliente de Stripe inicializado
-import { logFailedPayment } from '@/lib/data';
+import { logFailedPayment, logSuccessfulPayment } from '@/lib/data';
 
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       console.log(`🔔 Webhook: PaymentIntent ${paymentIntent.id} falló.`);
 
-      const { id, amount, currency, last_payment_error } = paymentIntent;
+      const { id, amount, currency, last_payment_error, metadata } = paymentIntent;
 
       await logFailedPayment({
         paymentIntentId: id,
@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
         errorCode: last_payment_error?.code,
         errorDeclineCode: last_payment_error?.decline_code,
         errorMessage: last_payment_error?.message,
+        bookingId: metadata.bookingId,
+        fxRate: parseFloat(metadata.fxRate || '1.0'),
+        currencyAttempt: metadata.currencyAttempt || 'usd',
+        priceUsd: parseFloat(metadata.priceUsd || '0')
       });
 
       break;
@@ -46,8 +50,20 @@ export async function POST(req: NextRequest) {
     case 'payment_intent.succeeded':
       const pi_success = event.data.object as Stripe.PaymentIntent;
       console.log(`✅ Webhook: PaymentIntent ${pi_success.id} exitoso.`);
-      // Aquí se podría añadir lógica adicional para la confirmación de pago,
-      // como actualizar el estado de una reserva si no se hizo en el cliente.
+      
+      // Persistir datos de moneda final y FX
+      const metadata = pi_success.metadata;
+      if (metadata.bookingId) {
+        await logSuccessfulPayment({
+          paymentIntentId: pi_success.id,
+          bookingId: metadata.bookingId,
+          final_currency: pi_success.currency.toUpperCase(),
+          amount_received: pi_success.amount,
+          fxRate: parseFloat(metadata.fxRate || '1.0'),
+          currencyAttempt: metadata.currencyAttempt || 'usd',
+          priceUsd: parseFloat(metadata.priceUsd || '0')
+        });
+      }
       break;
 
     default:

@@ -729,6 +729,21 @@ interface FailedPaymentLog {
     errorCode?: string;
     errorDeclineCode?: string;
     errorMessage?: string;
+    bookingId?: string;
+    fxRate?: number;
+    currencyAttempt?: string;
+    priceUsd?: number;
+    createdAt: any; // serverTimestamp
+}
+
+interface SuccessfulPaymentLog {
+    paymentIntentId: string;
+    bookingId: string;
+    final_currency: string;
+    amount_received: number;
+    fxRate: number;
+    currencyAttempt: string;
+    priceUsd: number;
     createdAt: any; // serverTimestamp
 }
 
@@ -746,6 +761,24 @@ export async function logFailedPayment(data: Omit<FailedPaymentLog, 'createdAt'>
         console.log(`Logged failed payment: ${data.paymentIntentId}`);
     } catch (error) {
         console.error("Error logging failed payment:", error);
+        // No relanzar el error para no interrumpir el flujo del webhook
+    }
+}
+
+export async function logSuccessfulPayment(data: Omit<SuccessfulPaymentLog, 'createdAt'>): Promise<void> {
+    if (!db) {
+        console.warn("Firestore not available. Skipping successful payment logging.");
+        return;
+    }
+    try {
+        const successfulPaymentsCol = collection(db, 'successful_payments');
+        await addDoc(successfulPaymentsCol, {
+            ...data,
+            createdAt: serverTimestamp()
+        });
+        console.log(`Logged successful payment: ${data.paymentIntentId} for booking: ${data.bookingId}`);
+    } catch (error) {
+        console.error("Error logging successful payment:", error);
         // No relanzar el error para no interrumpir el flujo del webhook
     }
 }

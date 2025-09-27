@@ -8,6 +8,7 @@ import { Sparkles, MapPin, Star, TrendingUp, RefreshCw, AlertTriangle } from 'lu
 import Image from 'next/image';
 import Link from 'next/link';
 import { getDictionary } from '@/lib/get-dictionary';
+import { getCourses } from '@/lib/data';
 import { Locale } from '@/i18n-config';
 
 
@@ -23,28 +24,63 @@ export default async function AIRecommendationsPage({ params: paramsProp }: Reco
   let error: string | null = null;
 
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/recommendations`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        userId: 'anonymous-user-dynamic',
-        location: 'Los Cabos',
-        numPlayers: 2,
-      }),
-    });
+    // Get available courses directly instead of using fetch
+    const availableCourses = await getCourses({});
     
-    const result = await response.json();
-    
-    if (result.success) {
-      recommendations = result.recommendations || [];
+    if (!availableCourses || availableCourses.length === 0) {
+      // Fallback recommendations if no courses are available
+      recommendations = [
+        {
+          courseId: 'fallback-1',
+          name: 'Premium Golf Experience',
+          description: 'Discover amazing golf courses in Los Cabos with world-class facilities and stunning ocean views...',
+          price: 150,
+          imageUrl: '/images/fallback.svg',
+          tags: ['Featured', 'Ocean View'],
+          location: 'Los Cabos',
+          reason: 'Recommended based on popular choices in your area.'
+        },
+        {
+          courseId: 'fallback-2',
+          name: 'Championship Course',
+          description: 'Experience championship-level golf with professional-grade facilities and expert course design...',
+          price: 200,
+          imageUrl: '/images/fallback.svg',
+          tags: ['Championship', 'Professional'],
+          location: 'Los Cabos',
+          reason: 'Perfect for players seeking a challenging and rewarding experience.'
+        }
+      ];
     } else {
-      throw new Error(result.error || 'Failed to get recommendations');
+      // Take up to 3 courses for recommendations
+      recommendations = availableCourses.slice(0, 3).map(course => ({
+        courseId: course.id,
+        name: course.name,
+        description: course.description ? course.description.substring(0, 150) + '...' : 'Discover this amazing golf course with excellent facilities.',
+        price: course.basePrice || 150,
+        imageUrl: course.imageUrls?.[0] || '/images/fallback.svg',
+        tags: ['Popular Choice', 'Great Value'],
+        location: course.location || 'Los Cabos',
+        reason: `Perfect for your preferences with excellent facilities and great value pricing.`
+      }));
     }
   } catch (err) {
-    console.error("Failed to fetch AI recommendations:", err);
+    console.error("Failed to get recommendations:", err);
     error = t.error.message;
+    
+    // Provide fallback recommendations even on error
+    recommendations = [
+      {
+        courseId: 'error-fallback-1',
+        name: 'Golf Course Experience',
+        description: 'Explore premium golf courses with exceptional service and beautiful landscapes...',
+        price: 150,
+        imageUrl: '/images/fallback.svg',
+        tags: ['Recommended', 'Quality'],
+        location: 'Los Cabos',
+        reason: 'Recommended based on general preferences.'
+      }
+    ];
   }
 
   if (error) {

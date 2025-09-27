@@ -76,6 +76,7 @@ export default function CheckoutForm() {
     const { paymentMethods, processPaymentWithSavedMethod } = usePaymentMethods();
     const { validateCard, isValidating } = useCardValidation();
     const [isPaymentElementReady, setIsPaymentElementReady] = useState(false);
+    const [showFxNote, setShowFxNote] = useState(false);
     
     // Guest user form fields
     const [guestInfo, setGuestInfo] = useState({
@@ -322,6 +323,7 @@ export default function CheckoutForm() {
         setErrorMessage(null);
 
         const result = await withFallback('paypal', async () => {
+            console.log('🔄 [PayPal] Iniciando creación de reserva...');
             const bookingId = await createBooking({
                 userId: user?.uid || 'guest',
                 userName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
@@ -341,11 +343,21 @@ export default function CheckoutForm() {
                 couponCode: appliedCoupon?.code || ''
             }, lang);
             
+            console.log('✅ [PayPal] Reserva creada exitosamente. BookingId:', bookingId);
+            
+            // Show FX note if payment was processed in MXN
+            setShowFxNote(true);
+                             
             const successUrl = new URL(`${window.location.origin}/${lang}/book/success`);
-                    searchParams?.forEach((value, key) => successUrl.searchParams.append(key, value));
-                    successUrl.searchParams.append('bookingId', bookingId);
-                    go(successUrl.toString());
-                    return { success: true };
+            searchParams?.forEach((value, key) => successUrl.searchParams.append(key, value));
+            successUrl.searchParams.append('bookingId', bookingId);
+            
+            console.log('🔗 [PayPal] URL de éxito construida:', successUrl.toString());
+            console.log('🚀 [PayPal] Iniciando redirección...');
+            
+            go(successUrl.toString());
+            console.log('✅ [PayPal] Redirección ejecutada');
+            return { success: true };
         });
 
         if (!result.success) {
@@ -534,8 +546,9 @@ export default function CheckoutForm() {
                         console.log('Language:', lang);
                         
                         try {
+                            console.log('🔄 [Método Guardado] Iniciando creación de reserva...');
                             const bookingId = await createBooking(bookingData, lang);
-                            console.log('Booking created successfully, bookingId:', bookingId);
+                            console.log('✅ [Método Guardado] Reserva creada exitosamente. BookingId:', bookingId);
                             
                             if (bookingId) {
                                 const successUrl = new URL(`${window.location.origin}/${lang}/book/success`);
@@ -543,7 +556,12 @@ export default function CheckoutForm() {
                                 successUrl.searchParams.append('paymentMethod', selectedPaymentType);
                                 successUrl.searchParams.append('paymentStatus', 'completed');
                                 successUrl.searchParams.append('bookingId', bookingId);
+                                
+                                console.log('🔗 [Método Guardado] URL de éxito construida:', successUrl.toString());
+                                console.log('🚀 [Método Guardado] Iniciando redirección...');
+                                
                                 go(successUrl.toString());
+                                console.log('✅ [Método Guardado] Redirección ejecutada');
                                 return;
                             } else {
                                 console.error('createBooking returned null or undefined:', bookingId);
@@ -613,29 +631,18 @@ export default function CheckoutForm() {
                         throw new Error("Price quote not available. Please refresh and try again.");
                     }
 
-                    const response = await fetchWithAbort('/api/checkout/create-intent', {
+                    // Generate a unique booking ID for this payment attempt
+                    const tempBookingId = `booking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    
+                    const response = await fetchWithAbort('/api/create-or-retry-payment-intent', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            courseId,
-                            date,
-                            time,
-                            players: parseInt(players),
-                            holes: parseInt(holes || '18'),
-                            currency: currentQuote.currency,
-                            tax_rate: currentQuote.tax_rate,
-                            subtotal_cents: currentQuote.subtotal_cents,
-                            discount_cents: currentQuote.discount_cents,
-                            tax_cents: currentQuote.tax_cents,
-                            total_cents: currentQuote.total_cents,
-                            quote_hash: currentQuote.quote_hash,
-                            expires_at: currentQuote.expires_at,
-                            promoCode: appliedCoupon?.code,
-                            guestEmail: user?.email || guestInfo.email,
-                            guestName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
-                            setup_future_usage: savePaymentMethod ? 'off_session' : undefined,
+                            amountUsd: currentQuote.total_cents / 100,
+                            bookingId: tempBookingId,
+                            customerId: user?.uid,
                         }),
                     });
                     
@@ -644,12 +651,13 @@ export default function CheckoutForm() {
                     }
                     
                     const responseData = await response.json();
-                    const clientSecret = responseData.client_secret || responseData.clientSecret;
+                    const { clientSecret, currency, wasRetried } = responseData;
                     
                     if (!clientSecret) {
                         throw new Error("Failed to initialize payment. Please try again.");
                     }
 
+                    // First payment attempt
                     const { error, paymentIntent } = await stripe.confirmPayment({
                         elements,
                         clientSecret,
@@ -658,6 +666,102 @@ export default function CheckoutForm() {
                         },
                         redirect: 'if_required',
                     });
+
+                    // If first attempt failed and we have a retry with MXN
+                    if (error && wasRetried && currency === 'mxn') {
+                        console.log('First payment failed, retrying with MXN...');
+                        
+                        // Second payment attempt with MXN clientSecret
+                        const { error: retryError, paymentIntent: retryPaymentIntent } = await stripe.confirmPayment({
+                            elements,
+                            clientSecret,
+                            confirmParams: {
+                                return_url: `${window.location.origin}/${lang}/book/success`,
+                            },
+                            redirect: 'if_required',
+                        });
+
+                        if (retryError) {
+                            const { userMessage, fallbacksAvailable, showRetryWithNewCard } = handleStripeError(retryError as StripeError);
+                            setErrorMessage(userMessage);
+                            setAvailableFallbacks(fallbacksAvailable);
+                            setShowRetryNewCard(showRetryWithNewCard);
+                            throw new Error(userMessage);
+                        }
+
+                        // Use the retry payment intent for the rest of the flow
+                        if (retryPaymentIntent && retryPaymentIntent.status === 'succeeded') {
+                            // Continue with retryPaymentIntent instead of paymentIntent
+                            const finalPaymentIntent = retryPaymentIntent;
+                            
+                            // Save payment method if requested with $1 validation charge
+                            if (savePaymentMethod && finalPaymentIntent.payment_method) {
+                                try {
+                                    // First validate the card with $1 charge
+                                    const validationResult = await validateCard(finalPaymentIntent.payment_method as string);
+                                    
+                                    if (validationResult.success && validationResult.validated) {
+                                        // Save the payment method after successful validation
+                                        await fetch('/api/payment-methods', {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({
+                                                paymentMethodId: finalPaymentIntent.payment_method,
+                                            }),
+                                        });
+                                        
+                                        toast({
+                                            title: "Tarjeta guardada exitosamente",
+                                            description: "Tu tarjeta ha sido validada y guardada para futuros pagos.",
+                                        });
+                                    } else {
+                                        console.warn('Card validation failed, not saving payment method:', validationResult.error);
+                                        toast({
+                                            title: "Advertencia",
+                                            description: "El pago fue exitoso pero no se pudo validar la tarjeta para guardarla.",
+                                            variant: "destructive"
+                                        });
+                                    }
+                                } catch (saveError) {
+                                    console.error('Error validating/saving payment method:', saveError);
+                                    toast({
+                                        title: "Advertencia",
+                                        description: "El pago fue exitoso pero no se pudo guardar la tarjeta.",
+                                        variant: "destructive"
+                                    });
+                                }
+                            }
+
+                            const bookingId = await createBooking({
+                                userId: user?.uid || 'guest',
+                                userName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
+                                userEmail: user?.email || guestInfo.email,
+                                userPhone: guestInfo.phone || '',
+                                courseId,
+                                courseName: course.name,
+                                date,
+                                time,
+                                players: parseInt(players),
+                                holes: holes ? parseInt(holes) : 18,
+                                totalPrice: currentQuote ? currentQuote.total_cents / 100 : priceDetails.total,
+                                status: 'confirmed',
+                                teeTimeId,
+                                comments: comments || '',
+                                specialRequests: specialRequests || '',
+                                couponCode: appliedCoupon?.code || ''
+                            }, lang);
+                            
+                            const successUrl = new URL(`${window.location.origin}/${lang}/book/success`);
+                            searchParams?.forEach((value, key) => successUrl.searchParams.append(key, value));
+                            successUrl.searchParams.append('bookingId', bookingId);
+                            go(successUrl.toString());
+                            return { success: true };
+                        }
+                        
+                        throw new Error("Retry payment was not successful");
+                    }
 
                     if (error) {
                         const { userMessage, fallbacksAvailable, showRetryWithNewCard } = handleStripeError(error as StripeError);
@@ -710,6 +814,7 @@ export default function CheckoutForm() {
                             }
                         }
 
+                        console.log('🔄 Iniciando creación de reserva...');
                         const bookingId = await createBooking({
                             userId: user?.uid || 'guest',
                             userName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
@@ -729,10 +834,23 @@ export default function CheckoutForm() {
                             couponCode: appliedCoupon?.code || ''
                         }, lang);
                         
+                        console.log('✅ Reserva creada exitosamente. BookingId:', bookingId);
+                        
                         const successUrl = new URL(`${window.location.origin}/${lang}/book/success`);
                         searchParams?.forEach((value, key) => successUrl.searchParams.append(key, value));
                         successUrl.searchParams.append('bookingId', bookingId);
+                        
+                        console.log('🔗 URL de éxito construida:', successUrl.toString());
+                        console.log('🚀 Iniciando redirección...');
+                        
+                        // Activar nota FX si corresponde
+                        if (paymentIntent.currency === 'mxn') {
+                            console.log('💱 Activando nota FX para pago en MXN');
+                            setShowFxNote(true);
+                        }
+                        
                         go(successUrl.toString());
+                        console.log('✅ Redirección ejecutada');
                         return { success: true };
                     }
 
@@ -843,11 +961,20 @@ export default function CheckoutForm() {
                              </div>
                          )}
                     </CardContent>
-                    <CardFooter className="bg-card flex justify-between items-center p-6 border-t">
-                        <span className="text-lg">Total Price:</span>
-                        <span className="text-2xl font-bold text-primary">
-                            {currentQuote ? `${(currentQuote.total_cents / 100).toFixed(2)} USD` : `${priceDetails.total.toFixed(2)} USD`}
-                        </span>
+                    <CardFooter className="bg-card p-6 border-t">
+                        <div className="w-full">
+                            <div className="flex justify-between items-center">
+                                <span className="text-lg">Total Price:</span>
+                                <span className="text-2xl font-bold text-primary">
+                                    {currentQuote ? `${(currentQuote.total_cents / 100).toFixed(2)} USD` : `${priceDetails.total.toFixed(2)} USD`}
+                                </span>
+                            </div>
+                            {showFxNote && process.env.NEXT_PUBLIC_SHOW_FX_NOTE === 'true' && (
+                                <div className="mt-2 text-sm text-muted-foreground italic">
+                                    Pago procesado en MXN equivalente a tu tarifa en USD.
+                                </div>
+                            )}
+                        </div>
                     </CardFooter>
                 </Card>
 

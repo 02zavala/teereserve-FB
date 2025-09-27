@@ -59,6 +59,7 @@ export function CourseSearchForm({ dictionary }: CourseSearchFormProps) {
     const [locations, setLocations] = useState<string[]>([]);
     const [isGroupBooking, setIsGroupBooking] = useState(false);
     const [isClient, setIsClient] = useState(false);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     
     useEffect(() => {
         setIsClient(true);
@@ -111,6 +112,11 @@ export function CourseSearchForm({ dictionary }: CourseSearchFormProps) {
         form.setValue('players', value);
     }
 
+    const handleDateSelect = (date: Date | undefined) => {
+        form.setValue('date', date);
+        setIsCalendarOpen(false); // Cerrar el popover automáticamente
+    }
+
     return (
         <Card className="bg-card/90 backdrop-blur-sm border-border/60 shadow-lg">
             <CardContent className="p-4 md:p-6">
@@ -148,7 +154,7 @@ export function CourseSearchForm({ dictionary }: CourseSearchFormProps) {
                                         <FormLabel className="flex items-center text-xs text-muted-foreground">
                                             <CalendarIcon className="mr-1 h-3 w-3" /> {dictionary.date}
                                         </FormLabel>
-                                        <Popover>
+                                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                                             <PopoverTrigger asChild>
                                             <FormControl>
                                                 <Button
@@ -171,7 +177,7 @@ export function CourseSearchForm({ dictionary }: CourseSearchFormProps) {
                                                 <Calendar
                                                     mode="single"
                                                     selected={field.value}
-                                                    onSelect={field.onChange}
+                                                    onSelect={handleDateSelect}
                                                     disabled={(date) =>
                                                     date < new Date(new Date().setHours(0,0,0,0)) || isGroupBooking
                                                     }

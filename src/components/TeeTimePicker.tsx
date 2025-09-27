@@ -52,6 +52,7 @@ export function TeeTimePicker({ courseId, basePrice, teeTimeInterval, operatingH
     const [selectedTeeTime, setSelectedTeeTime] = useState<TeeTime | null>(null);
     const [comments, setComments] = useState("");
     const [isGroupBooking, setIsGroupBooking] = useState(false);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const router = useRouter();
     const { user } = useAuth();
 
@@ -86,6 +87,11 @@ export function TeeTimePicker({ courseId, basePrice, teeTimeInterval, operatingH
             setIsGroupBooking(false);
             setPlayers(parseInt(value));
         }
+    }
+
+    const handleDateSelect = (selectedDate: Date | undefined) => {
+        setDate(selectedDate);
+        setIsCalendarOpen(false); // Cerrar el calendario automáticamente
     }
     
     const availableTimes = teeTimes.filter(t => {
@@ -154,7 +160,7 @@ export function TeeTimePicker({ courseId, basePrice, teeTimeInterval, operatingH
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-muted-foreground flex items-center"><CalendarIcon className="mr-2 h-4 w-4" /> Date</label>
-                            <Popover>
+                            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                                 <PopoverTrigger asChild>
                                     <Button
                                     variant={"outline"}
@@ -171,7 +177,7 @@ export function TeeTimePicker({ courseId, basePrice, teeTimeInterval, operatingH
                                     <Calendar
                                         mode="single"
                                         selected={date}
-                                        onSelect={(d) => d && setDate(d)}
+                                        onSelect={handleDateSelect}
                                         initialFocus
                                         disabled={(d) => d < new Date(new Date().setHours(0,0,0,0))}
                                         locale={dateLocales[lang]}

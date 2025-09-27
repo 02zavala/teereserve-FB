@@ -43,6 +43,7 @@ export function BookingPageClient({ dictionary, lang, courseId }: BookingPageCli
   const [course, setCourse] = useState<GolfCourse | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingCourse, setLoadingCourse] = useState(!!courseId);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [form, setForm] = useState<BookingForm>({
     courseId: courseId || '',
     date: undefined,
@@ -116,6 +117,11 @@ export function BookingPageClient({ dictionary, lang, courseId }: BookingPageCli
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDateSelect = (selectedDate: Date | undefined) => {
+    setForm(prev => ({ ...prev, date: selectedDate }));
+    setIsCalendarOpen(false); // Cerrar el calendario automáticamente
   };
 
   if (!user) {
@@ -208,7 +214,7 @@ export function BookingPageClient({ dictionary, lang, courseId }: BookingPageCli
 
                     <div>
                       <Label>{dictionary.booking?.selectDate || 'Select Date'} *</Label>
-                      <Popover>
+                      <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
@@ -229,7 +235,7 @@ export function BookingPageClient({ dictionary, lang, courseId }: BookingPageCli
                           <Calendar
                             mode="single"
                             selected={form.date}
-                            onSelect={(date) => setForm(prev => ({ ...prev, date }))}
+                            onSelect={handleDateSelect}
                             disabled={(date) => date < new Date()}
                             initialFocus
                             locale={dateLocale}
