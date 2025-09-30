@@ -28,13 +28,17 @@ export async function POST(req: NextRequest) {
   switch (event.type) {
     case 'payment_intent.payment_failed':
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
-      console.log(`🔔 Webhook: PaymentIntent ${paymentIntent.id} falló.`);
+      
+      // Convertir centavos a dólares para logging
+      const amountInDollars = (paymentIntent.amount / 100).toFixed(2);
+      console.log(`🔔 Webhook: PaymentIntent ${paymentIntent.id} falló. Monto: $${amountInDollars} ${paymentIntent.currency.toUpperCase()}`);
 
       const { id, amount, currency, last_payment_error, metadata } = paymentIntent;
 
       await logFailedPayment({
         paymentIntentId: id,
-        amount,
+        amount, // Guardar en centavos (valor original de Stripe)
+        amountInDollars: parseFloat(amountInDollars), // Guardar también en dólares
         currency,
         errorCode: last_payment_error?.code,
         errorDeclineCode: last_payment_error?.decline_code,
@@ -49,7 +53,10 @@ export async function POST(req: NextRequest) {
 
     case 'payment_intent.succeeded':
       const pi_success = event.data.object as Stripe.PaymentIntent;
-      console.log(`✅ Webhook: PaymentIntent ${pi_success.id} exitoso.`);
+      
+      // Convertir centavos a dólares para logging
+      const successAmountInDollars = (pi_success.amount / 100).toFixed(2);
+      console.log(`✅ Webhook: PaymentIntent ${pi_success.id} exitoso. Monto: $${successAmountInDollars} ${pi_success.currency.toUpperCase()}`);
       
       // Persistir datos de moneda final y FX
       if (pi_success.metadata.bookingId) {
@@ -57,7 +64,8 @@ export async function POST(req: NextRequest) {
           paymentIntentId: pi_success.id,
           bookingId: pi_success.metadata.bookingId,
           final_currency: pi_success.currency.toUpperCase(),
-          amount_received: pi_success.amount,
+          amount_received: pi_success.amount, // Guardar en centavos (valor original de Stripe)
+          amountInDollars: parseFloat(successAmountInDollars), // Guardar también en dólares
           fxRate: parseFloat(pi_success.metadata.fxRate || '1.0'),
           currencyAttempt: pi_success.metadata.currencyAttempt || 'usd',
           priceUsd: parseFloat(pi_success.metadata.priceUsd || '0')

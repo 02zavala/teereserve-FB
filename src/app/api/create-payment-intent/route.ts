@@ -5,17 +5,31 @@ export async function POST(request: NextRequest) {
   try {
     const { amount, currency = 'usd', setup_future_usage } = await request.json();
 
-    if (!amount || amount <= 0) {
+    // Validar que amount sea un número válido
+    if (!amount || typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
       return NextResponse.json(
-        { error: 'Valid amount is required' },
+        { error: 'Valid positive amount is required' },
         { status: 400 }
       );
     }
 
+    // Convertir de dólares a centavos correctamente
+    const amountInCents = Math.round(amount * 100);
+    
+    // Validar que el resultado no sea negativo o NaN después de la conversión
+    if (isNaN(amountInCents) || amountInCents <= 0) {
+      return NextResponse.json(
+        { error: 'Invalid amount after conversion to cents' },
+        { status: 400 }
+      );
+    }
+
+    console.log(`💰 Creating PaymentIntent: $${amount.toFixed(2)} USD (${amountInCents} cents)`);
+
     // Use the existing Genkit flow to create the payment intent
     const result = await createPaymentIntent({
-      amount: Math.round(amount), // Ensure it's an integer
-      currency,
+      amount: amountInCents, // Enviar en centavos a Stripe
+      currency: 'usd', // Forzar USD aunque la cuenta sea de México
       setup_future_usage,
     });
 

@@ -724,7 +724,8 @@ function generateConfirmationNumber(): string {
 
 interface FailedPaymentLog {
     paymentIntentId: string;
-    amount: number;
+    amount: number; // Monto en centavos (valor original de Stripe)
+    amountInDollars?: number; // Monto en dólares para facilitar lectura
     currency: string;
     errorCode?: string;
     errorDeclineCode?: string;
@@ -740,7 +741,8 @@ interface SuccessfulPaymentLog {
     paymentIntentId: string;
     bookingId: string;
     final_currency: string;
-    amount_received: number;
+    amount_received: number; // Monto en centavos (valor original de Stripe)
+    amountInDollars?: number; // Monto en dólares para facilitar lectura
     fxRate: number;
     currencyAttempt: string;
     priceUsd: number;
