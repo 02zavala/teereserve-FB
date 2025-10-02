@@ -24,7 +24,7 @@ if (typeof window !== 'undefined' && app) {
     console.error('❌ Error inicializando Firebase Analytics:', error);
     logger.error('Failed to initialize Firebase Analytics', error as Error, 'analytics', {
       fallbackAvailable: true,
-      networkStatus: navigator.onLine ? 'online' : 'offline'
+      networkStatus: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline'
     });
   }
 }
@@ -36,7 +36,7 @@ const handleTrackingError = (eventName: string, error: unknown, data?: any) => {
     error: errorMessage,
     eventData: data,
     analyticsAvailable: !!analytics,
-    networkStatus: navigator.onLine ? 'online' : 'offline',
+    networkStatus: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline',
     fallbackLogging: true
   });
   
@@ -311,7 +311,7 @@ export const initGA4 = () => {
       }
 
       // Verificar conectividad antes de cargar
-      if (!navigator.onLine) {
+      if (typeof window !== 'undefined' && !navigator.onLine) {
         const offlineError = 'Cannot initialize GA4: device is offline';
         ga4Error = offlineError;
         logger.warn(offlineError, 'analytics', {
@@ -340,7 +340,7 @@ export const initGA4 = () => {
         logger.warn(timeoutError, 'analytics', {
           timeout: '10s',
           fallbackAvailable: true,
-          networkStatus: navigator.onLine ? 'online' : 'offline'
+          networkStatus: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline'
         });
         script.remove();
       }, 10000); // 10 segundos timeout
@@ -382,7 +382,7 @@ export const initGA4 = () => {
         ga4Error = errorMessage;
         console.warn('⚠️ Error cargando Google Analytics - La aplicación continuará funcionando normalmente:', error);
         logger.error(errorMessage, new Error(errorMessage), 'analytics', {
-          networkStatus: navigator.onLine ? 'online' : 'offline',
+          networkStatus: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline',
           fallbackAvailable: true,
           scriptSrc: script.src
         });
@@ -409,7 +409,7 @@ export const initGA4 = () => {
       console.warn('⚠️ Error inicializando Google Analytics - La aplicación continuará funcionando normalmente:', error);
       logger.error('Failed to initialize Google Analytics', error as Error, 'analytics', {
         fallbackAvailable: true,
-        networkStatus: navigator.onLine ? 'online' : 'offline'
+        networkStatus: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline'
       });
     }
   } else {

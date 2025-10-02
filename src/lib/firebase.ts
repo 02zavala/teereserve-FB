@@ -166,7 +166,7 @@ if (isConfigValid) {
                 };
                 
                 // Solo aplicar interceptores si estamos online
-                if (navigator.onLine) {
+                if (typeof window !== 'undefined' && navigator.onLine) {
                     handleAuthErrors().catch(error => {
                         console.log('🔐 Auth error handling setup failed:', error.message);
                     });
@@ -210,7 +210,7 @@ if (isConfigValid) {
                 if (yes) {
                     try {
                         // En desarrollo, deshabilitar Analytics si hay problemas de red
-                        if (process.env.NODE_ENV === 'development' && !navigator.onLine) {
+                        if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && !navigator.onLine) {
                             console.warn('Firebase Analytics disabled in development (offline)');
                             return null;
                         }

@@ -380,13 +380,13 @@ export const getCourseById = async (id: string): Promise<GolfCourse | undefined>
                 console.warn(`Firestore unavailable when fetching course ${id}. Falling back to static data.`, {
                     code: error.code,
                     message: error.message,
-                    connectivity: navigator.onLine ? 'online' : 'offline'
+                    connectivity: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline'
                 });
             } else if (error.code === 'network-request-failed' || error.message?.includes('offline')) {
                 console.warn(`Network error fetching course ${id}. Falling back to static data.`, {
                     code: error.code,
                     message: error.message,
-                    connectivity: navigator.onLine ? 'online' : 'offline'
+                    connectivity: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline'
                 });
             } else if (error.code !== 'not-found' && !(error.message && error.message.includes("NOT_FOUND"))) {
                 console.error(`Firestore error fetching course ${id}. Falling back to static data.`, error);
@@ -2347,4 +2347,255 @@ function generateTicketCode(): string {
         result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
+}
+
+// *** NUEVO: Conteo de visitas y registro de IPs ***
+
+// Interface para el conteo de visitas
+interface VisitLog {
+    id?: string;
+    timestamp: any; // serverTimestamp
+    userAgent?: string;
+    referer?: string;
+    page: string; // página visitada (ej: 'homepage', 'course-detail', etc.)
+    sessionId?: string; // para evitar contar múltiples visitas de la misma sesión
+    ipAddress?: string; // IP del visitante (opcional por privacidad)
+}
+
+// Interface para métricas de visitas agregadas
+interface VisitMetrics {
+    id?: string;
+    date: string; // formato YYYY-MM-DD
+    totalVisits: number;
+    uniqueVisits: number; // basado en sessionId
+    pageViews: { [page: string]: number };
+    lastUpdated: any; // serverTimestamp
+}
+
+// Interface para registro de IPs de usuarios
+interface UserIPLog {
+    id?: string;
+    userId: string;
+    ipAddress: string;
+    timestamp: any; // serverTimestamp
+    action: 'login' | 'register' | 'guest_booking'; // tipo de acción que generó el registro
+    userAgent?: string;
+    location?: string; // ciudad/país si se puede determinar
+}
+
+// NUEVO: Función para registrar una visita
+export async function logVisit(visitData: Omit<VisitLog, 'timestamp'>): Promise<void> {
+    if (!db) {
+        console.warn("Firestore not available. Skipping visit logging.");
+        return;
+    }
+    
+    try {
+        const visitsCol = collection(db, 'visits');
+        await addDoc(visitsCol, {
+            ...visitData,
+            timestamp: serverTimestamp()
+        });
+        
+        // Actualizar métricas diarias
+        await updateDailyVisitMetrics(visitData.page, visitData.sessionId);
+        
+        console.log(`Visit logged for page: ${visitData.page}`);
+    } catch (error) {
+        console.error("Error logging visit:", error);
+        // No relanzar el error para no interrumpir el flujo de la aplicación
+    }
+}
+
+// NUEVO: Función para actualizar métricas diarias
+async function updateDailyVisitMetrics(page: string, sessionId?: string): Promise<void> {
+    if (!db) return;
+    
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const metricsRef = doc(db, 'visitMetrics', today);
+    
+    try {
+        await runTransaction(db, async (transaction) => {
+            const metricsDoc = await transaction.get(metricsRef);
+            
+            if (metricsDoc.exists()) {
+                const data = metricsDoc.data() as VisitMetrics;
+                const updates: any = {
+                    totalVisits: increment(1),
+                    lastUpdated: serverTimestamp()
+                };
+                
+                // Actualizar conteo por página
+                const pageKey = `pageViews.${page}`;
+                updates[pageKey] = increment(1);
+                
+                transaction.update(metricsRef, updates);
+            } else {
+                // Crear nuevo documento de métricas
+                const newMetrics: Omit<VisitMetrics, 'id'> = {
+                    date: today,
+                    totalVisits: 1,
+                    uniqueVisits: sessionId ? 1 : 0,
+                    pageViews: { [page]: 1 },
+                    lastUpdated: serverTimestamp()
+                };
+                transaction.set(metricsRef, newMetrics);
+            }
+        });
+    } catch (error) {
+        console.error("Error updating daily visit metrics:", error);
+    }
+}
+
+// NUEVO: Función para registrar IP de usuario
+export async function logUserIP(ipData: Omit<UserIPLog, 'timestamp'>): Promise<void> {
+    if (!db) {
+        console.warn("Firestore not available. Skipping IP logging.");
+        return;
+    }
+    
+    try {
+        const userIPsCol = collection(db, 'userIPs');
+        await addDoc(userIPsCol, {
+            ...ipData,
+            timestamp: serverTimestamp()
+        });
+        
+        console.log(`IP logged for user: ${ipData.userId}, action: ${ipData.action}`);
+    } catch (error) {
+        console.error("Error logging user IP:", error);
+        // No relanzar el error para no interrumpir el flujo de autenticación
+    }
+}
+
+// NUEVO: Función para obtener métricas de visitas para el admin
+export async function getVisitMetrics(days: number = 7): Promise<VisitMetrics[]> {
+    if (!db) throw new Error("Firestore is not initialized.");
+    
+    const metricsRef = collection(db, 'visitMetrics');
+    const endDate = new Date();
+    const startDate = subDays(endDate, days - 1);
+    
+    const q = query(
+        metricsRef,
+        where('date', '>=', format(startDate, 'yyyy-MM-dd')),
+        where('date', '<=', format(endDate, 'yyyy-MM-dd')),
+        orderBy('date', 'desc')
+    );
+    
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    })) as VisitMetrics[];
+}
+
+// NUEVO: Función para obtener IPs de usuarios para el admin
+export async function getUserIPs(limit: number = 50): Promise<UserIPLog[]> {
+    if (!db) throw new Error("Firestore is not initialized.");
+    
+    const userIPsRef = collection(db, 'userIPs');
+    const q = query(
+        userIPsRef,
+        orderBy('timestamp', 'desc'),
+        limit(limit)
+    );
+    
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    })) as UserIPLog[];
+}
+
+// NUEVO: Función para obtener estadísticas de visitas del día actual
+export async function getTodayVisitStats(): Promise<{ totalVisits: number; uniqueVisits: number; topPages: Array<{ page: string; visits: number }> }> {
+    if (!db) throw new Error("Firestore is not initialized.");
+    
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const metricsRef = doc(db, 'visitMetrics', today);
+    
+    try {
+        const metricsDoc = await getDoc(metricsRef);
+        
+        if (metricsDoc.exists()) {
+            const data = metricsDoc.data() as VisitMetrics;
+            const topPages = Object.entries(data.pageViews || {})
+                .map(([page, visits]) => ({ page, visits }))
+                .sort((a, b) => b.visits - a.visits)
+                .slice(0, 5);
+            
+            return {
+                totalVisits: data.totalVisits || 0,
+                uniqueVisits: data.uniqueVisits || 0,
+                topPages
+            };
+        }
+        
+        return { totalVisits: 0, uniqueVisits: 0, topPages: [] };
+    } catch (error) {
+        console.error("Error getting today's visit stats:", error);
+        return { totalVisits: 0, uniqueVisits: 0, topPages: [] };
+    }
+}
+
+// Admin functions for deleting reviews and comments
+export async function deleteReview(courseId: string, reviewId: string): Promise<void> {
+    if (!db) throw new Error('Database not initialized');
+    
+    const reviewRef = doc(db, 'courses', courseId, 'reviews', reviewId);
+    
+    // Use a transaction to ensure data consistency
+    await runTransaction(db, async (transaction) => {
+        const reviewDoc = await transaction.get(reviewRef);
+        
+        if (!reviewDoc.exists()) {
+            throw new Error('Review not found');
+        }
+        
+        // Delete all subcollections (likes and comments)
+        const likesRef = collection(reviewRef, 'likes');
+        const commentsRef = collection(reviewRef, 'comments');
+        
+        // Get all likes and comments to delete them
+        const likesSnapshot = await getDocs(likesRef);
+        const commentsSnapshot = await getDocs(commentsRef);
+        
+        // Delete all likes
+        likesSnapshot.forEach((likeDoc) => {
+            transaction.delete(likeDoc.ref);
+        });
+        
+        // Delete all comments
+        commentsSnapshot.forEach((commentDoc) => {
+            transaction.delete(commentDoc.ref);
+        });
+        
+        // Finally, delete the review document
+        transaction.delete(reviewRef);
+    });
+}
+
+export async function deleteReviewComment(courseId: string, reviewId: string, commentId: string): Promise<void> {
+    if (!db) throw new Error('Database not initialized');
+    
+    const reviewRef = doc(db, 'courses', courseId, 'reviews', reviewId);
+    const commentRef = doc(reviewRef, 'comments', commentId);
+    
+    // Use a transaction to ensure data consistency
+    await runTransaction(db, async (transaction) => {
+        const commentDoc = await transaction.get(commentRef);
+        
+        if (!commentDoc.exists()) {
+            throw new Error('Comment not found');
+        }
+        
+        // Delete the comment
+        transaction.delete(commentRef);
+        
+        // Update the comments count on the review
+        transaction.update(reviewRef, {
+            commentsCount: increment(-1)
+        });
+    });
 }

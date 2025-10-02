@@ -5,6 +5,7 @@ import './globals.css'
 import { cn } from '@/lib/utils'
 import { ClientLayout } from '@/components/layout/ClientLayout'
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics'
+import { VisitTracker } from '@/components/analytics/VisitTracker' // NUEVO: Importar tracker de visitas
 import type { Locale } from '@/i18n-config'
 
 const fontHeadline = Playfair_Display({
@@ -58,6 +59,9 @@ export default async function RootLayout({
       >
         {/* Google Analytics */}
         {gaId && <GoogleAnalytics gaId={gaId} />}
+        
+        {/* Visit Tracking - NUEVO */}
+        <VisitTracker enabled={true} debounceMs={1000} />
         
         <ClientLayout lang={lang}>
             {children}

@@ -10,9 +10,9 @@ import { format } from "date-fns";
 import Link from "next/link";
 import dynamic from 'next/dynamic';
 import { HealthCheck } from '@/components/monitoring/HealthCheck';
+import { VisitMetrics } from '@/components/admin/VisitMetrics'; // NUEVO: Importar componente de métricas
 
 const RevenueChart = dynamic(() => import('@/components/admin/RevenueChart').then(mod => ({ default: mod.RevenueChart })), { ssr: false });
-const HoleDistributionChart = dynamic(() => import('@/components/admin/HoleDistributionChart').then(mod => ({ default: mod.HoleDistributionChart })), { ssr: false });
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePathname } from "next/navigation";
@@ -219,8 +219,8 @@ export function Dashboard() {
                 </Card>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mt-6">
-                <Card className="col-span-4">
+            <div className="mt-6">
+                <Card>
                     <CardHeader>
                         <CardTitle>Revenue Overview</CardTitle>
                         <CardDescription>
@@ -229,17 +229,6 @@ export function Dashboard() {
                     </CardHeader>
                     <CardContent className="pl-2">
                         <RevenueChart data={revenueData} />
-                    </CardContent>
-                </Card>
-                <Card className="col-span-3">
-                    <CardHeader>
-                        <CardTitle>Hole Distribution</CardTitle>
-                        <CardDescription>
-                            Bookings by hole count
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <HoleDistributionChart data={stats.holeStats} />
                     </CardContent>
                 </Card>
             </div>
@@ -282,6 +271,21 @@ export function Dashboard() {
                                 View all bookings →
                             </Link>
                         </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Visit Metrics Section */}
+            <div className="mt-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Visit Analytics</CardTitle>
+                        <CardDescription>
+                            Website traffic and user activity metrics
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <VisitMetrics />
                     </CardContent>
                 </Card>
             </div>

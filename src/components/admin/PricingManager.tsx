@@ -123,14 +123,20 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
     try {
       // Set auth token if user is available
       if (user) {
-        const token = await user.getIdToken();
-        pricingEngine.setAuthToken(token);
-        
-        // Try to load from Firestore first
-        const loaded = await pricingEngine.loadPricingData(courseId);
-        if (!loaded) {
-          console.warn('Failed to load from Firestore, using default data');
+        try {
+          const token = await user.getIdToken();
+          pricingEngine.setAuthToken(token);
+          
+          // Try to load from Firestore first
+          const loaded = await pricingEngine.loadPricingData(courseId);
+          if (!loaded) {
+            console.warn('Failed to load from Firestore, using default data');
+          }
+        } catch (authError) {
+          console.warn('Authentication error, using default pricing data:', authError);
         }
+      } else {
+        console.warn('No user authenticated, using default pricing data');
       }
       
       // Load data into state (either from Firestore or default)
@@ -140,11 +146,14 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
       setSpecialOverrides(pricingEngine.getSpecialOverrides(courseId));
     } catch (error) {
       console.error('Error loading pricing data:', error);
-      toast({
-        title: 'Error',
-        description: 'Error al cargar los datos de precios',
-        variant: 'destructive'
-      });
+      // Don't show toast for authentication errors in development
+      if (process.env.NODE_ENV === 'production') {
+        toast({
+          title: 'Error',
+          description: 'Error al cargar los datos de precios',
+          variant: 'destructive'
+        });
+      }
     } finally {
       setIsLoading(false);
     }

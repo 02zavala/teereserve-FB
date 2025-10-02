@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Fragment } from 'react';
+import React, { useState, Fragment } from 'react';
 import { MoreHorizontal, Edit, X, Calendar, CheckCircle, Clock, AlertTriangle, FileText, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +19,7 @@ import { CancellationDialog } from './CancellationDialog';
 import { RescheduleDialog } from './RescheduleDialog';
 import { PaymentManagementDialog } from './PaymentManagementDialog';
 import { AuditHistoryDialog } from './AuditHistoryDialog';
+import { CheckinDialog } from '@/components/booking/CheckinDialog';
 import type { CancellationRequest, RefundCalculation } from '@/lib/cancellation-policies';
 
 interface BookingActionsMenuProps {
@@ -40,6 +41,7 @@ export function BookingActionsMenu({
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showAuditDialog, setShowAuditDialog] = useState(false);
+  const [showCheckinDialog, setShowCheckinDialog] = useState(false);
 
   const handleStatusChange = async (newStatus: BookingStatus, reason?: string) => {
     if (!onStatusChange) return;
@@ -189,10 +191,16 @@ export function BookingActionsMenu({
           )}
           
           {canTransitionTo(booking.status, 'checked_in') && (
-            <DropdownMenuItem onClick={() => handleStatusChange('checked_in')}>
-              <Clock className="mr-2 h-4 w-4 text-blue-600" />
-              Marcar Check-in
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem onClick={() => handleStatusChange('checked_in')}>
+                <Clock className="mr-2 h-4 w-4 text-blue-600" />
+                Marcar Check-in Manual
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowCheckinDialog(true)}>
+                <MapPin className="mr-2 h-4 w-4 text-green-600" />
+                Check-in por Geolocalización
+              </DropdownMenuItem>
+            </>
           )}
           
           {canTransitionTo(booking.status, 'completed') && (
@@ -294,6 +302,18 @@ export function BookingActionsMenu({
         open={showAuditDialog}
         onOpenChange={setShowAuditDialog}
       />
-    </Fragment>
-  );
-}
+      
+      <CheckinDialog
+        booking={booking}
+        open={showCheckinDialog}
+        onOpenChange={setShowCheckinDialog}
+        onCheckinComplete={(updatedBooking) => {
+          if (onStatusChange) {
+            onStatusChange(booking.id, 'checked_in', 'Check-in verificado por geolocalización');
+          }
+          setShowCheckinDialog(false);
+        }}
+       />
+     </Fragment>
+   );
+ }

@@ -37,10 +37,15 @@ import {
   Shield,
   FileText,
   Calendar,
+  Send,
+  Loader2,
+  MapPin,
+  Camera,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { ValidationError } from '@/lib/error-handling';
+import { evidenceSystem } from '@/lib/evidence-system';
 import {
   paymentManager,
   PaymentUtils,
@@ -72,6 +77,7 @@ export function PaymentManagementDialog({ booking, open, onOpenChange, onPayment
   const [refundReason, setRefundReason] = useState<RefundReason>('requested_by_customer');
   const [refundDescription, setRefundDescription] = useState('');
   const [disputeEvidence, setDisputeEvidence] = useState<Partial<DisputeEvidence>>({});
+  const [automaticEvidence, setAutomaticEvidence] = useState<DisputeEvidence | null>(null);
   const { handleAsyncError } = useErrorHandler();
 
   // Cargar datos cuando se abre el diálogo
@@ -85,13 +91,15 @@ export function PaymentManagementDialog({ booking, open, onOpenChange, onPayment
     setIsLoading(true);
     try {
       // Simular carga de datos de pago
-      const [summary, intent] = await Promise.all([
+      const [summary, intent, evidence] = await Promise.all([
         paymentManager.getPaymentSummary(booking.id),
         loadPaymentIntent(),
+        evidenceSystem.buildDisputeDocumentation(booking.id),
       ]);
       
       setPaymentSummary(summary);
       setPaymentIntent(intent);
+      setAutomaticEvidence(evidence);
       
       // Simular carga de reembolsos y disputas
       setRefunds([
@@ -330,15 +338,22 @@ export function PaymentManagementDialog({ booking, open, onOpenChange, onPayment
       return;
     }
     
+    // Merge manual evidence with automatic evidence
+    const finalEvidence = {
+      ...automaticEvidence,
+      ...disputeEvidence,
+      serviceDocumentation: disputeEvidence.serviceDocumentation || automaticEvidence?.serviceDocumentation || '',
+    };
+    
     // Validate required evidence fields
-    if (!disputeEvidence.serviceDocumentation || disputeEvidence.serviceDocumentation.trim().length < 10) {
+    if (!finalEvidence.serviceDocumentation || finalEvidence.serviceDocumentation.trim().length < 10) {
       throw new ValidationError('Dispute evidence must be at least 10 characters long.');
     }
     
     setIsLoading(true);
     
     const result = await handleAsyncError(async () => {
-      const updatedDispute = await paymentManager.respondToDispute(disputeId, disputeEvidence);
+      const updatedDispute = await paymentManager.respondToDispute(disputeId, finalEvidence);
       
       setDisputes(prev => prev.map(d => d.id === disputeId ? updatedDispute : d));
       setDisputeEvidence({});
@@ -355,15 +370,24 @@ export function PaymentManagementDialog({ booking, open, onOpenChange, onPayment
         console.error('Dispute response error:', {
           error,
           disputeId,
-          evidence: disputeEvidence,
-          bookingId: booking.id,
-          timestamp: new Date().toISOString()
-        });
-      }
+          evidence: finalEvidence,
+      bookingId: booking.id,
+      timestamp: new Date().toISOString()
     });
-    
-    setIsLoading(false);
-  };
+  }
+});
+
+setIsLoading(false);
+};
+
+const loadAutomaticEvidence = () => {
+  if (automaticEvidence && !disputeEvidence.serviceDocumentation) {
+    setDisputeEvidence(prev => ({
+      ...prev,
+      serviceDocumentation: automaticEvidence.serviceDocumentation || '',
+    }));
+  }
+};
 
   const getPaymentStatusIcon = (status: string) => {
     switch (status) {
@@ -727,6 +751,45 @@ export function PaymentManagementDialog({ booking, open, onOpenChange, onPayment
                         
                         {dispute.status === 'needs_response' && (
                           <div className="space-y-3">
+                            {automaticEvidence && (
+                              <Card className="bg-green-50 border-green-200">
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm flex items-center gap-2">
+                                    <Shield className="h-4 w-4 text-green-600" />
+                                    Evidencias Automáticas Disponibles
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 text-xs">
+                                  {automaticEvidence.checkinLocation && (
+                                    <div className="flex items-center gap-2">
+                                      <MapPin className="h-3 w-3 text-green-600" />
+                                      <span>Check-in verificado por geolocalización</span>
+                                    </div>
+                                  )}
+                                  {automaticEvidence.checkinPhoto && (
+                                    <div className="flex items-center gap-2">
+                                      <Camera className="h-3 w-3 text-green-600" />
+                                      <span>Fotografía de evidencia disponible</span>
+                                    </div>
+                                  )}
+                                  {automaticEvidence.deviceMetadata && (
+                                    <div className="flex items-center gap-2">
+                                      <Shield className="h-3 w-3 text-green-600" />
+                                      <span>Metadatos del dispositivo registrados</span>
+                                    </div>
+                                  )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={loadAutomaticEvidence}
+                                    className="mt-2"
+                                  >
+                                    Cargar Evidencias Automáticas
+                                  </Button>
+                                </CardContent>
+                              </Card>
+                            )}
+                            
                             <div className="space-y-2">
                               <Label>Evidencia de Servicio</Label>
                               <Textarea

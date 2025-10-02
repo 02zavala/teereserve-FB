@@ -827,7 +827,7 @@ export class PricingEngine {
   // Persistence methods
   async loadPricingData(courseId: string): Promise<boolean> {
     if (!this.authToken) {
-      console.warn('No auth token set for pricing engine');
+      console.warn('No auth token set for pricing engine, using default data');
       return false;
     }
 
@@ -841,7 +841,11 @@ export class PricingEngine {
       });
 
       if (!response.ok) {
-        console.error('Failed to load pricing data:', response.statusText);
+        if (response.status === 401) {
+          console.warn('Unauthorized access to pricing data, using default data');
+        } else {
+          console.error('Failed to load pricing data:', response.statusText);
+        }
         return false;
       }
 

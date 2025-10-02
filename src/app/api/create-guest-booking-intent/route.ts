@@ -1,10 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, db } from '@/lib/firebase-admin';
+import { logUserIP } from '@/lib/data'; // NUEVO: Importar función de logging IP
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia',
 });
+
+// NUEVO: Función para extraer IP del cliente
+function getClientIP(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  const realIP = request.headers.get('x-real-ip');
+  const cfConnectingIP = request.headers.get('cf-connecting-ip');
+  
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  if (realIP) {
+    return realIP;
+  }
+  if (cfConnectingIP) {
+    return cfConnectingIP;
+  }
+  
+  return 'unknown';
+}
 
 interface GuestBookingRequest {
   courseId: string;
@@ -104,6 +124,23 @@ export async function POST(request: NextRequest) {
         type: 'guest_booking',
       },
     });
+
+    // NUEVO: Registrar IP del usuario para guest booking
+    try {
+      const clientIP = getClientIP(request);
+      const userAgent = request.headers.get('user-agent') || 'unknown';
+      
+      await logUserIP({
+        userId: decodedToken.uid,
+        ipAddress: clientIP,
+        action: 'guest_booking',
+        userAgent,
+        location: 'unknown' // Geolocalización pendiente
+      });
+    } catch (ipError) {
+      console.error('Error logging IP for guest booking:', ipError);
+      // No fallar la operación principal por error de logging
+    }
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,

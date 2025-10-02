@@ -252,8 +252,8 @@ export const reportError = (
     severity,
     recoverable,
     timestamp: new Date().toISOString(),
-    userAgent: navigator.userAgent,
-    url: window.location.href
+    userAgent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
+    url: typeof window !== 'undefined' ? window.location.href : undefined
   };
 
   const message = customMessage || `${severity.toUpperCase()} error in ${context?.component || 'unknown component'}: ${error.message}`;

@@ -125,9 +125,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     return;
                 }
                 
+                if (!auth) {
+                    console.warn("Auth not available - skipping redirect result");
+                    return;
+                }
+                
                 const result = await getRedirectResult(auth);
                 if (result) {
                     await createUserInFirestore(result.user);
+                    // NUEVO: Registrar IP del usuario al hacer login con Google
+                    await logUserIPAction(result.user.uid, 'login');
                 }
             } catch (error: any) {
                 // Manejar errores específicos de Google APIs
@@ -221,9 +228,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, [user, fetchUserProfile]);
     
+    // NUEVO: Función para registrar IP del usuario
+    const logUserIPAction = async (userId: string, action: 'login' | 'register' | 'guest_booking') => {
+        try {
+            await fetch('/api/log-user-ip', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId,
+                    action
+                }),
+            });
+        } catch (error) {
+            console.error('Error logging user IP:', error);
+            // No relanzar el error para no interrumpir el flujo de autenticación
+        }
+    };
+
     const login = async (email: string, pass: string) => {
       if (!auth) throw new Error("Authentication is not available.");
-      return await signInWithEmailAndPassword(auth, email, pass);
+      const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+      
+      // NUEVO: Registrar IP del usuario al hacer login
+      if (userCredential.user) {
+          await logUserIPAction(userCredential.user.uid, 'login');
+      }
+      
+      return userCredential;
     };
 
     const signup = async (email: string, pass: string, displayName: string, handicap?: number) => {
@@ -236,6 +269,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await createUserInFirestore(userCredential.user, handicap);
         console.log('User created in Firestore, fetching profile...');
         await fetchUserProfile(userCredential.user);
+        
+        // NUEVO: Registrar IP del usuario al registrarse
+        await logUserIPAction(userCredential.user.uid, 'register');
+        
         console.log('Profile fetched successfully');
         return userCredential;
     };
