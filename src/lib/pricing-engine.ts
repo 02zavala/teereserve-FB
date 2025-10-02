@@ -796,7 +796,7 @@ export class PricingEngine {
   getMinimumPrice(courseId: string): number {
     const priceRules = this.priceRules.get(courseId) || [];
     const baseProduct = this.baseProducts.get(courseId);
-    const basePrice = baseProduct?.greenFeeBaseMxn || 295;
+    const basePrice = baseProduct?.greenFeeBaseUsd || 95;
     
     if (priceRules.length === 0) {
       return basePrice;
