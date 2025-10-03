@@ -38,7 +38,7 @@ export default function MapDemoPage({ params }: PageProps) {
     lat: course.lat,
     lng: course.lng,
     description: course.description,
-    priceFromUSD: course.priceFromUSD,
+    priceFromUSD: typeof course.basePrice === 'number' ? course.basePrice : course.priceFromUSD,
     url: course.url,
   }));
 

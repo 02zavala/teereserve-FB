@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { pricingEngine } from '@/lib/pricing-engine';
 
 interface VirtualListProps<T> {
   items: T[];
@@ -170,7 +169,7 @@ export function VirtualCourseList({
         <h3 className="font-semibold truncate">{course.name}</h3>
         <p className="text-sm text-muted-foreground truncate">{course.location}</p>
         <div className="flex items-center justify-between mt-1">
-          <span className="text-sm font-medium">${pricingEngine.getMinimumPrice(course.id)}</span>
+          <span className="text-sm font-medium">${typeof (course as any).basePrice === 'number' && !isNaN((course as any).basePrice) ? (course as any).basePrice : '—'}</span>
           <div className="flex items-center">
             <span className="text-sm text-muted-foreground">★</span>
             <span className="text-sm ml-1">{course.rating.toFixed(1)}</span>

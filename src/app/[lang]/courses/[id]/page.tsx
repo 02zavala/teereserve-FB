@@ -17,7 +17,6 @@ import { format } from "date-fns";
 import { dateLocales } from "@/lib/date-utils";
 import { BookingModal } from '@/components/BookingModal';
 import { useAuth } from '@/context/AuthContext';
-import { pricingEngine } from '@/lib/pricing-engine';
 
 
 
@@ -144,7 +143,7 @@ export default function CourseDetailPage() {
                                 lng: course.latLng.lng,
                                 description: course.description,
                                 imageUrl: course.images?.[0],
-                                priceFromUSD: course.priceFromUSD,
+                                priceFromUSD: typeof course.basePrice === 'number' ? course.basePrice : course.priceFromUSD,
                                 url: `/courses/${course.id}`
                             }]}
                             height="400px"
@@ -173,7 +172,7 @@ export default function CourseDetailPage() {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="text-center">
-                                        <p className="text-3xl font-bold text-primary">${course ? pricingEngine.getMinimumPrice(course.id) : 295}</p>
+                                        <p className="text-3xl font-bold text-primary">${course && typeof course.basePrice === 'number' && !isNaN(course.basePrice) ? course.basePrice : '—'}</p>
                                         <p className="text-sm text-muted-foreground">{dictionary.courseDetail?.perPlayer || 'per player'}</p>
                                     </div>
                                     <Button 

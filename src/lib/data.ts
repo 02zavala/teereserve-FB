@@ -567,7 +567,7 @@ const generateDefaultTeeTimes = (basePrice: number, course?: GolfCourse, date?: 
         const formattedTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
         const currentTimeDecimal = hour + (minute / 60);
         
-        const priceMultiplier = (hour < 9 || hour >= 15) ? 0.9 : 1.2;
+        const priceMultiplier = 1; // Dynamic pricing disabled — always use basePrice
         
         // Auto-block past times if it's today
         const status = isToday && currentTimeDecimal <= nowTimeDecimal ? 'blocked' : 'available';
@@ -575,7 +575,7 @@ const generateDefaultTeeTimes = (basePrice: number, course?: GolfCourse, date?: 
         times.push({
             time: formattedTime,
             status,
-            price: Math.round(basePrice * priceMultiplier),
+            price: Math.round(basePrice),
             maxPlayers: 4, // Máximo estándar de 4 jugadores por tee time
             bookedPlayers: 0, // Inicialmente sin jugadores reservados
             availableSpots: 4, // Todos los espacios disponibles inicialmente
@@ -671,6 +671,8 @@ export const getTeeTimesForCourse = async (courseId: string, date: Date, basePri
             teeTimesResult = newTimesWithIds;
         } else {
             teeTimesResult = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as TeeTime));
+            // Force basePrice for display — ignore stored price variants
+            teeTimesResult = teeTimesResult.map(t => ({ ...t, price: Math.round(basePrice) }));
         }
 
         // Filter for today's available times after fetching/creating
@@ -693,14 +695,25 @@ export const getTeeTimesForCourse = async (courseId: string, date: Date, basePri
 export const updateTeeTimesForCourse = async (courseId: string, date: Date, teeTimes: TeeTime[]): Promise<void> => {
     if (!db) throw new Error("Firestore is not initialized.");
     const teeTimesCol = collection(db, 'courses', courseId, 'teeTimes');
-    
+
     const batch = writeBatch(db);
     teeTimes.forEach(tt => {
         const docRef = doc(teeTimesCol, tt.id);
-        batch.update(docRef, {
+        const payload: any = {
+            // Always persist these core fields
+            date: tt.date || format(startOfDay(date), 'yyyy-MM-dd'),
+            time: tt.time,
             price: tt.price,
             status: tt.status,
-        });
+        };
+        // Persist optional fields when present (keeps booking logic consistent)
+        if (typeof tt.maxPlayers !== 'undefined') payload.maxPlayers = tt.maxPlayers;
+        if (typeof tt.bookedPlayers !== 'undefined') payload.bookedPlayers = tt.bookedPlayers;
+        if (typeof tt.availableSpots !== 'undefined') payload.availableSpots = tt.availableSpots;
+        if (typeof tt.bookingIds !== 'undefined') payload.bookingIds = tt.bookingIds;
+
+        // Use set with merge to upsert documents when they don't exist yet
+        batch.set(docRef, payload, { merge: true });
     });
 
     await batch.commit();

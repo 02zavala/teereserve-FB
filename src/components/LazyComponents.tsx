@@ -107,40 +107,6 @@ function TRMapSkeleton() {
   );
 }
 
-// PricingCalendar Loading Skeleton
-function PricingCalendarSkeleton() {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center space-x-2">
-          <DollarSign className="h-5 w-5 text-muted-foreground" />
-          <Skeleton className="h-6 w-32" />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Calendar header */}
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-8 w-8" />
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-8 w-8" />
-        </div>
-        
-        {/* Calendar grid */}
-        <div className="grid grid-cols-7 gap-1">
-          {[...Array(42)].map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
-          ))}
-        </div>
-        
-        {/* Price controls */}
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 // Generic loading component
 function ComponentLoading({ name }: { name: string }) {
@@ -179,7 +145,6 @@ export const LazyReviewSection = lazy(() => import('./ReviewSection'));
 // TRMap is already wrapped with Next.js dynamic(), so we use lazy import
 export const LazyTRMap = lazy(() => import('./map/TRMap'));
 export const LazyWeather = lazy(() => import('./weather/Weather'));
-export const LazyPricingCalendar = lazy(() => import('./admin/PricingCalendar').then(module => ({ default: module.PricingCalendar })));
 export const LazyCheckoutForm = lazy(() => import('./CheckoutForm'));
 export const LazyRecommendations = lazy(() => import('./Recommendations'));
 export const LazyFeaturedReviews = lazy(() => import('./home/FeaturedReviews'));
@@ -212,13 +177,6 @@ export function LazyReviewSectionWithSuspense(props: any) {
   );
 }
 
-export function LazyPricingCalendarWithSuspense(props: any) {
-  return (
-    <Suspense fallback={<PricingCalendarSkeleton />}>
-      <LazyPricingCalendar {...props} />
-    </Suspense>
-  );
-}
 
 export function LazyFeaturedReviewsWithSuspense(props: any) {
   return (

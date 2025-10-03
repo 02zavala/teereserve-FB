@@ -11,7 +11,7 @@ import { normalizeImageUrl } from '@/lib/normalize'
 import type { getDictionary } from '@/lib/get-dictionary'
 import type { Locale } from '@/i18n-config'
 import Link from 'next/link'
-import { pricingEngine } from '@/lib/pricing-engine'
+// Removed pricingEngine import — we only display basePrice publicly
 
 interface CourseCardProps {
   course: GolfCourse,
@@ -25,7 +25,8 @@ export function CourseCard({ course, dictionary, lang, asLink = false }: CourseC
     ? course.reviews.reduce((sum, review) => sum + review.rating, 0) / course.reviews.length 
     : 0;
 
-  const minPrice = pricingEngine.getMinimumPrice(course.id);
+  // Display basePrice only if present; otherwise, omit numeric price
+  const hasBasePrice = typeof course.basePrice === 'number' && !isNaN(course.basePrice);
 
   const content = (
     <Card className="flex flex-col overflow-hidden transition-transform duration-300 ease-in-out hover:scale-105 hover:shadow-lg">
@@ -56,7 +57,13 @@ export function CourseCard({ course, dictionary, lang, asLink = false }: CourseC
       </CardContent>
       <CardFooter className="flex items-center justify-between bg-card p-4">
         <div className="text-lg font-bold">
-            {dictionary.from} <span className="text-primary font-bold">${minPrice}</span>
+            {hasBasePrice ? (
+              <>
+                {dictionary.from} <span className="text-primary font-bold">${course.basePrice}</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">{dictionary.from} —</span>
+            )}
         </div>
         <Button>
           {dictionary.bookNow}

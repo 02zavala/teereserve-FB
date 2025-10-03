@@ -37,6 +37,15 @@ export default function TimeIntervalSettings({
   const [interval, setInterval] = useState(initialInterval);
   const [operatingHours, setOperatingHours] = useState(initialOperatingHours);
 
+  // Keep local state in sync if parent updates props after async load
+  useEffect(() => {
+    setInterval(initialInterval);
+  }, [initialInterval]);
+
+  useEffect(() => {
+    setOperatingHours(initialOperatingHours);
+  }, [initialOperatingHours]);
+
   useEffect(() => {
     onIntervalChange(interval);
   }, [interval, onIntervalChange]);

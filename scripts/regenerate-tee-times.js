@@ -19,7 +19,7 @@ function generateDefaultTeeTimes(basePrice = 295, course = null, date = null) {
             const formattedTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
             const currentTimeDecimal = hour + (minute / 60);
             
-            const priceMultiplier = (hour < 9 || hour >= 15) ? 0.9 : 1.2;
+            const priceMultiplier = 1; // Dynamic pricing disabled – always use basePrice
             
             // Auto-block past times if it's today
             const status = isToday && currentTimeDecimal <= nowTimeDecimal ? 'blocked' : 'available';
@@ -27,7 +27,7 @@ function generateDefaultTeeTimes(basePrice = 295, course = null, date = null) {
             times.push({
                 time: formattedTime,
                 status,
-                price: Math.round(basePrice * priceMultiplier),
+                price: Math.round(basePrice),
                 maxPlayers: 4,
                 bookedPlayers: 0,
                 availableSpots: 4,

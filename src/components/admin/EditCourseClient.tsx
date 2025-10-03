@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { CourseForm } from '@/components/admin/CourseForm';
 import { TeeTimeManager } from '@/components/admin/TeeTimeManager';
 import { PricingManager } from '@/components/admin/PricingManager';
-import { PricingCalendar } from '@/components/admin/PricingCalendar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { GolfCourse, Locale } from "@/types";
 
@@ -24,10 +23,9 @@ export function EditCourseClient({ course, lang }: EditCourseClientProps) {
             <CourseForm course={course} lang={lang} />
             
             <Tabs defaultValue="availability" className="border-t pt-8">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="availability">Availability</TabsTrigger>
                     <TabsTrigger value="pricing">Pricing Rules</TabsTrigger>
-                    <TabsTrigger value="calendar">Pricing Calendar</TabsTrigger>
                     <TabsTrigger value="settings">Settings</TabsTrigger>
                 </TabsList>
                 
@@ -39,9 +37,6 @@ export function EditCourseClient({ course, lang }: EditCourseClientProps) {
                     <PricingManager courseId={course.id} courseName={course.name} />
                 </TabsContent>
 
-                <TabsContent value="calendar" className="mt-6">
-                    <PricingCalendar courseId={course.id} courseName={course.name} />
-                </TabsContent>
                 
                 <TabsContent value="settings" className="mt-6">
                     {/* Future settings can go here, e.g. advanced rules */}

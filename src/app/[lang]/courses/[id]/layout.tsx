@@ -4,7 +4,6 @@ import { generateSEOMetadata, generateGolfCourseStructuredData } from '@/compone
 import type { Metadata } from 'next';
 import type { Locale } from '@/i18n-config';
 import { notFound } from 'next/navigation';
-import { pricingEngine } from '@/lib/pricing-engine';
 
 interface CourseLayoutProps {
   children: React.ReactNode;
@@ -28,15 +27,16 @@ export async function generateMetadata({ params: paramsProp }: { params: Promise
       });
     }
 
-    const minPrice = pricingEngine.getMinimumPrice(course.id);
-    
     const title = lang === 'es'
       ? `${course.name} - Reserva Golf en Los Cabos | TeeReserve`
       : `${course.name} - Golf Booking in Los Cabos | TeeReserve`;
       
+    const priceSegmentEs = typeof course.basePrice === 'number' && !isNaN(course.basePrice) ? ` Desde $${course.basePrice} USD.` : '';
+    const priceSegmentEn = typeof course.basePrice === 'number' && !isNaN(course.basePrice) ? ` Starting from $${course.basePrice} USD.` : '';
+    
     const description = lang === 'es'
-      ? `Reserva tu tee time en ${course.name}, ${course.location}. ${course.description} Desde $${minPrice} USD. Reserva ahora con TeeReserve Golf.`
-        : `Book your tee time at ${course.name}, ${course.location}. ${course.description} Starting from $${minPrice} USD. Book now with TeeReserve Golf.`;
+      ? `Reserva tu tee time en ${course.name}, ${course.location}. ${course.description}${priceSegmentEs} Reserva ahora con TeeReserve Golf.`
+        : `Book your tee time at ${course.name}, ${course.location}. ${course.description}${priceSegmentEn} Book now with TeeReserve Golf.`;
       
     const keywords = lang === 'es'
       ? `${course.name}, golf ${course.location}, reserva golf, tee time, campo golf Los Cabos, ${course.name} reservas`

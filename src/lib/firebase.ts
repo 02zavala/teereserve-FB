@@ -200,6 +200,28 @@ if (isConfigValid) {
         
         storage = getStorage(app);
         
+        // Enable Firebase Emulators in development when explicitly requested
+        const useEmulators = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 'true';
+        if (useEmulators) {
+            try {
+                if (db) {
+                    connectFirestoreEmulator(db, 'localhost', 8080);
+                }
+                if (auth) {
+                    connectAuthEmulator(auth, 'http://localhost:9099');
+                }
+                if (storage) {
+                    connectStorageEmulator(storage, 'localhost', 9199);
+                }
+                if (realtimeDb) {
+                    connectDatabaseEmulator(realtimeDb, 'localhost', 9000);
+                }
+                console.log('✅ Connected to Firebase emulators');
+            } catch (e) {
+                console.warn('Failed to connect to Firebase emulators:', e);
+            }
+        }
+        
         // Log de conexión para debugging
         if (typeof window !== 'undefined' && db) {
             console.log('Firestore initialized with stable transport');

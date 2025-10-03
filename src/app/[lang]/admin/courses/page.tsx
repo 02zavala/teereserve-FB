@@ -12,7 +12,6 @@ import { DeleteCourseButton } from "./DeleteCourseButton";
 import { ToggleCourseVisibilityButton } from "./ToggleCourseVisibilityButton";
 import { ToggleFeaturedButton } from "./ToggleFeaturedButton";
 import { Locale } from "@/i18n-config";
-import { pricingEngine } from "@/lib/pricing-engine";
 
 
 export default async function CoursesAdminPage({ params }: { params: Promise<{ lang: Locale }> }) {
@@ -73,7 +72,7 @@ export default async function CoursesAdminPage({ params }: { params: Promise<{ l
                                         </div>
                                     </TableCell>
                                     <TableCell>{course.location}</TableCell>
-                                    <TableCell className="hidden md:table-cell">${pricingEngine.getMinimumPrice(course.id)}</TableCell>
+                                    <TableCell className="hidden md:table-cell">${typeof course.basePrice === 'number' && !isNaN(course.basePrice) ? course.basePrice : '—'}</TableCell>
                                     <TableCell className="hidden lg:table-cell">
                                         <Badge variant={course.hidden ? "secondary" : "default"}>
                                             {course.hidden ? (
