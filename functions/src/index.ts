@@ -18,7 +18,23 @@ const stripe = new Stripe(functions.config().stripe.secret_key, {
 });
 
 // CORS configuration
-const corsHandler = cors({ origin: true });
+const allowedOrigins = [
+  'https://teereserve.golf',
+  'https://www.teereserve.golf',
+  process.env.NEXT_PUBLIC_BASE_URL,
+].filter(Boolean);
+const corsHandler = cors({
+  origin: function (origin: string, callback: (err: Error | null, allow?: boolean) => void) {
+    // Allow requests with no origin (mobile apps, server-to-server, curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
+  methods: ['POST', 'GET', 'OPTIONS'],
+  credentials: true,
+});
 
 /**
  * Creates a payment intent for guest bookings

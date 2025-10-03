@@ -1,4 +1,22 @@
 import { z } from 'zod';
+import sanitizeHtml from 'sanitize-html';
+
+// Opciones de sanitización HTML (permitir etiquetas y atributos seguros)
+const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: [
+    'b', 'i', 'em', 'strong', 'a', 'p', 'ul', 'ol', 'li', 'br', 'span', 'div'
+  ],
+  allowedAttributes: {
+    a: ['href', 'name', 'target', 'rel'],
+    span: ['class'],
+    div: ['class']
+  },
+  allowedSchemes: ['http', 'https', 'mailto'],
+  allowProtocolRelative: false,
+  transformTags: {
+    a: sanitizeHtml.simpleTransform('a', { rel: 'nofollow noopener noreferrer', target: '_blank' }, true),
+  }
+};
 
 // Función básica de sanitización sin dependencias externas
 const basicSanitize = (input: string): string => {
@@ -82,7 +100,12 @@ export const courseSchema = z.object({
 export class SecurityUtils {
   // Sanitizar HTML para prevenir XSS
   static sanitizeHtml(dirty: string): string {
-    return DOMPurify.sanitize(dirty);
+    try {
+      return sanitizeHtml(dirty, SANITIZE_OPTIONS);
+    } catch {
+      // Fallback mínimo si la librería falla
+      return DOMPurify.sanitize(dirty);
+    }
   }
 
   // Sanitizar texto plano

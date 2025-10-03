@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendContactEmail } from '@/ai/flows/send-contact-email';
 import { z } from 'zod';
+import { SecurityUtils } from '@/lib/security';
 
 // Schema for validating the request body
 const contactSchema = z.object({
@@ -56,7 +57,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid input', details: validation.error.flatten() }, { status: 400 });
     }
     
-    const { name, email, message, recaptchaToken } = validation.data;
+    // Sanitizar datos antes de procesar
+    const name = SecurityUtils.sanitizeText(validation.data.name);
+    const email = SecurityUtils.sanitizeEmail(validation.data.email);
+    const message = SecurityUtils.sanitizeHtml(validation.data.message);
+    const { recaptchaToken } = validation.data;
+
+    // Verificar contenido malicioso en el mensaje
+    if (SecurityUtils.detectMaliciousContent(message)) {
+      return NextResponse.json({ error: 'Malicious content detected' }, { status: 400 });
+    }
 
     // Verify reCAPTCHA token
     const isHuman = await verifyRecaptcha(recaptchaToken);
@@ -67,7 +77,12 @@ export async function POST(req: NextRequest) {
     const result = await sendContactEmail({ name, email, message });
 
     if (result.success) {
-      return NextResponse.json({ message: 'Message sent successfully!' }, { status: 200 });
+      const res = NextResponse.json({ message: 'Message sent successfully!' }, { status: 200 });
+      // Añadir headers de seguridad
+      res.headers.set('X-Content-Type-Options', 'nosniff');
+      res.headers.set('Referrer-Policy', 'no-referrer');
+      res.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+      return res;
     } else {
       // The flow should throw an error, but as a fallback:
       throw new Error(result.message || 'The email flow reported a failure.');

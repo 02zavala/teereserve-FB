@@ -1,8 +1,12 @@
 # See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
 #
-# To allow most search engines to crawl your site:
+# General crawl policy
 User-agent: *
 Disallow: /admin/
 Disallow: /api/
+Disallow: /api/*
+Disallow: /checkout/
+Disallow: /book/
+Crawl-delay: 10
 
 Sitemap: https://teereserve.golf/sitemap.xml
