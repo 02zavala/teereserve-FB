@@ -16,7 +16,7 @@ import { Calendar, Clock, DollarSign, Settings, Plus, Edit, Trash2, Calculator, 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
-import { PricingEngine } from '@/lib/pricing-engine';
+import { PricingEngine, pricingEngine } from '@/lib/pricing-engine';
 import { Season, TimeBand, PriceRule, PriceRuleType, PriceCalculationInput, PriceCalculationResult, SpecialOverride } from '@/types';
 import { format, parseISO } from 'date-fns';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
@@ -44,7 +44,8 @@ const getDayOfWeekNumber = (day: string): number => {
 
 export function PricingManager({ courseId, courseName }: PricingManagerProps) {
   const { user } = useAuth();
-  const pricingEngine = new PricingEngine();
+  // Usar instancia singleton para preservar authToken y datos entre renders
+  // const pricingEngine = new PricingEngine();
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [timeBands, setTimeBands] = useState<TimeBand[]>([]);
   const [priceRules, setPriceRules] = useState<PriceRule[]>([]);
@@ -116,7 +117,7 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
 
   useEffect(() => {
     loadData();
-  }, [courseId]);
+  }, [courseId, user]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -204,6 +205,17 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
 
       console.log('Guardando temporada:', seasonData);
 
+      // Asegurar autenticación y token antes de persistir
+      if (!user) {
+        throw new ValidationError('Debe iniciar sesión como administrador para guardar temporadas');
+      }
+      try {
+        const token = await user.getIdToken();
+        pricingEngine.setAuthToken(token);
+      } catch (e) {
+        throw new ValidationError('Error de autenticación. Intente nuevamente.');
+      }
+
       if (editingSeason) {
         await pricingEngine.updateSeasonWithPersistence(editingSeason.id, seasonData);
         toast({ title: 'Éxito', description: 'Temporada actualizada correctamente' });
@@ -263,6 +275,17 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
       };
 
       console.log('Guardando banda horaria:', timeBandData);
+
+      // Asegurar autenticación y token antes de persistir
+      if (!user) {
+        throw new ValidationError('Debe iniciar sesión como administrador para guardar bandas horarias');
+      }
+      try {
+        const token = await user.getIdToken();
+        pricingEngine.setAuthToken(token);
+      } catch (e) {
+        throw new ValidationError('Error de autenticación. Intente nuevamente.');
+      }
 
       if (editingTimeBand) {
         await pricingEngine.updateTimeBandWithPersistence(editingTimeBand.id, timeBandData);
@@ -405,6 +428,17 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
 
       console.log('Guardando regla de precio:', priceRuleData);
 
+      // Asegurar autenticación y token antes de persistir
+      if (!user) {
+        throw new ValidationError('Debe iniciar sesión como administrador para guardar reglas de precio');
+      }
+      try {
+        const token = await user.getIdToken();
+        pricingEngine.setAuthToken(token);
+      } catch (e) {
+        throw new ValidationError('Error de autenticación. Intente nuevamente.');
+      }
+
       if (editingPriceRule) {
         await pricingEngine.updatePriceRuleWithPersistence(editingPriceRule.id, priceRuleData);
         toast({ title: 'Éxito', description: 'Regla de precio actualizada correctamente' });
@@ -455,6 +489,20 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
   
   const handleQuickPricingSetup = () => {
     handleAsyncError(async () => {
+      // Asegurar autenticación y token para persistencia
+      if (!user) {
+        throw new ValidationError('Debe iniciar sesión como administrador para guardar precios');
+      }
+      try {
+        const token = await user.getIdToken();
+        pricingEngine.setAuthToken(token);
+        // Persistir el precio base del producto (greenFeeBaseUsd) antes de aplicar reglas rápidas
+        await pricingEngine.updateBaseProductWithPersistence(courseId, {
+          greenFeeBaseUsd: quickPricing.basePrice
+        });
+      } catch (e) {
+        throw new ValidationError('Error de autenticación. Intente nuevamente.');
+      }
       const { applicationType } = quickPricing;
       
       if (applicationType === 'timeBands') {
@@ -1384,6 +1432,19 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
                       onChange={(e) => setQuickPricing(prev => ({ ...prev, endDate: e.target.value }))}
                     />
                   </div>
+                </div>
+                {/* Precio base */}
+                <div>
+                  <Label htmlFor="base-price">Precio Base (USD)</Label>
+                  <Input
+                    id="base-price"
+                    type="number"
+                    value={quickPricing.basePrice}
+                    onChange={(e) => setQuickPricing(prev => ({ ...prev, basePrice: parseFloat(e.target.value) || 0 }))}
+                    min="0"
+                    step="0.01"
+                    placeholder="295"
+                  />
                 </div>
               </div>
               

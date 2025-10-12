@@ -1,8 +1,7 @@
 // NUEVO: API endpoint para obtener métricas de visitas (solo admin)
 import { NextRequest, NextResponse } from 'next/server';
 import { getVisitMetrics, getTodayVisitStats, getUserIPs } from '@/lib/data';
-import { auth } from '@/lib/firebase';
-import { getAuth } from 'firebase-admin/auth';
+import { verifyIdToken } from '@/lib/firebase-admin';
 
 // Función para verificar si el usuario es admin
 async function verifyAdminAccess(request: NextRequest): Promise<boolean> {
@@ -11,14 +10,9 @@ async function verifyAdminAccess(request: NextRequest): Promise<boolean> {
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return false;
         }
-        
-        const token = authHeader.substring(7);
-        
-        // Verificar el token con Firebase Admin (si está configurado)
-        // Por ahora, implementamos una verificación básica
-        // En producción, deberías usar Firebase Admin SDK para verificar el token
-        
-        return true; // Temporal - implementar verificación real
+        const token = authHeader.split('Bearer ')[1];
+        const decoded = await verifyIdToken(token);
+        return !!decoded.admin;
     } catch (error) {
         console.error('Error verifying admin access:', error);
         return false;
@@ -27,7 +21,6 @@ async function verifyAdminAccess(request: NextRequest): Promise<boolean> {
 
 export async function GET(request: NextRequest) {
     try {
-        // Verificar acceso de administrador
         const isAdmin = await verifyAdminAccess(request);
         if (!isAdmin) {
             return NextResponse.json(
@@ -44,7 +37,7 @@ export async function GET(request: NextRequest) {
         const visitMetrics = await getVisitMetrics(days);
         const todayStats = await getTodayVisitStats();
         
-        let userIPs = [];
+        let userIPs = [] as any[];
         if (includeIPs) {
             userIPs = await getUserIPs(50); // Últimas 50 IPs
         }
@@ -57,7 +50,7 @@ export async function GET(request: NextRequest) {
         const pageStats: { [page: string]: number } = {};
         visitMetrics.forEach(metric => {
             Object.entries(metric.pageViews || {}).forEach(([page, visits]) => {
-                pageStats[page] = (pageStats[page] || 0) + visits;
+                pageStats[page] = (pageStats[page] || 0) + (visits as number);
             });
         });
         
@@ -84,13 +77,11 @@ export async function GET(request: NextRequest) {
                 }
             }
         });
-        
     } catch (error) {
         console.error('Error fetching visit metrics:', error);
-        
         return NextResponse.json(
-            { 
-                success: false, 
+            {
+                success: false,
                 error: 'Failed to fetch visit metrics',
                 message: error instanceof Error ? error.message : 'Unknown error'
             },

@@ -77,6 +77,19 @@ export default function CheckoutForm() {
     const { validateCard, isValidating } = useCardValidation();
     const [isPaymentElementReady, setIsPaymentElementReady] = useState(false);
     const [showFxNote, setShowFxNote] = useState(false);
+
+    // Legacy price details for backward compatibility (moved up to avoid TDZ)
+    const [priceDetails, setPriceDetails] = useState({
+        subtotal: 0,
+        tax: 0,
+        total: 0,
+        discount: 0,
+    });
+
+    // Currency selection (display only; payments remain in USD)
+    const fxRateMXN = 20.00;
+    const [preferredCurrency, setPreferredCurrency] = useState<'USD' | 'MXN'>('USD');
+    const approxTotalMXN = useMemo(() => priceDetails.total * fxRateMXN, [priceDetails.total]);
     
     // Guest user form fields
     const [guestInfo, setGuestInfo] = useState({
@@ -94,13 +107,13 @@ export default function CheckoutForm() {
     const [isQuoteLoading, setIsQuoteLoading] = useState(false);
     const [quoteError, setQuoteError] = useState<string | null>(null);
     
-    // Legacy price details for backward compatibility
-    const [priceDetails, setPriceDetails] = useState({
-        subtotal: 0,
-        tax: 0,
-        total: 0,
-        discount: 0,
-    });
+    // Legacy price details for backward compatibility (already declared above)
+    // const [priceDetails, setPriceDetails] = useState({
+    //     subtotal: 0,
+    //     tax: 0,
+    //     total: 0,
+    //     discount: 0,
+    // });
 
     const courseId = searchParams?.get('courseId');
     const date = searchParams?.get('date');
@@ -1122,6 +1135,7 @@ export default function CheckoutForm() {
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-6">
+
                         {/* Payment Method Selector */}
                         <PaymentMethodSelector
                             selectedMethod={selectedPaymentType}
@@ -1236,7 +1250,7 @@ export default function CheckoutForm() {
                                                     "Cargando..."
                                                 ) : (isProcessing || isValidating) ? (
                                                     <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> 
-                                                    {isValidating ? 'Validando tarjeta...' : 'Procesando...'}</>
+                                                    {isValidating ? 'Validando tarjeta...' : 'Procesando...'}></>
                                                 ) : (
                                                     `Pagar ${priceDetails.total.toFixed(2)} USD y Confirmar`
                                                 )}

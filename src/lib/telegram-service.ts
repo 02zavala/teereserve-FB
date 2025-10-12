@@ -36,7 +36,7 @@ export interface AlertRecord {
   };
 }
 
-class TelegramService {
+export class TelegramService {
   private config: TelegramConfig;
 
   constructor() {
@@ -190,6 +190,41 @@ ${emoji} *Pago:* ${alert.paymentMethod.replace('_', ' ').toUpperCase()}
 📅 Enviado: ${new Date().toLocaleString('es-ES')}`;
 
     return await this.sendMessage(testMessage);
+  }
+
+  /**
+   * Envía un mensaje crudo a un chat específico
+   */
+  async sendMessageTo(chatId: string, message: string): Promise<boolean> {
+    if (!this.config.botToken || !this.config.enabled) {
+      logger.warn('Telegram service not configured (bot token or enabled false), skipping notification');
+      return false;
+    }
+
+    try {
+      const url = `https://api.telegram.org/bot${this.config.botToken}/sendMessage`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+          parse_mode: 'Markdown',
+          disable_web_page_preview: true
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Telegram API error: ${errorData.description || response.statusText}`);
+      }
+
+      logger.info('Telegram notification sent successfully to specific chat');
+      return true;
+    } catch (error) {
+      logger.error('Failed to send Telegram notification to specific chat:', error);
+      return false;
+    }
   }
 
   /**

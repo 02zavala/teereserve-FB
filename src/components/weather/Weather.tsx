@@ -13,7 +13,8 @@ import {
   Gauge, 
   Sun,
   RefreshCw,
-  MapPin
+  MapPin,
+  AlertTriangle
 } from 'lucide-react';
 
 interface WeatherProps {
@@ -31,14 +32,14 @@ export function Weather({ location, className }: WeatherProps) {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const fetchWeatherData = async () => {
+  const fetchWeatherData = async (force = false) => {
     try {
       setLoading(true);
       setError(null);
       
       const data = location 
-        ? await weatherService.getWeatherData(location)
-        : await weatherService.getLosCabosWeather();
+        ? await weatherService.getWeatherData(location, { force })
+        : await weatherService.getLosCabosWeather({ force });
       
       setWeatherData(data);
       setLastUpdated(new Date());
@@ -51,11 +52,13 @@ export function Weather({ location, className }: WeatherProps) {
   };
 
   useEffect(() => {
-    fetchWeatherData();
+    // Si cambia la ubicación, limpiar caché para evitar datos antiguos
+    weatherService.clearCache();
+    fetchWeatherData(true);
   }, [location]);
 
   const handleRefresh = () => {
-    fetchWeatherData();
+    fetchWeatherData(true);
   };
 
   if (loading) {
@@ -103,6 +106,9 @@ export function Weather({ location, className }: WeatherProps) {
                 <MapPin className="h-3 w-3" />
                 {location.name}
               </span>
+            )}
+            {weatherData?.isDemo && (
+              <Badge variant="outline" className="ml-2 text-xs">Demo</Badge>
             )}
           </CardTitle>
           <button
@@ -198,10 +204,43 @@ export function Weather({ location, className }: WeatherProps) {
                 <div className="text-sm font-medium">
                   {hour.temperature}°
                 </div>
+                {typeof hour.precipitationProbability === 'number' && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Prob. precipitación: {hour.precipitationProbability}%
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
+
+        {/* Alertas meteorológicas */}
+        {Array.isArray(weatherData.alerts) && weatherData.alerts.length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              Alertas meteorológicas
+            </h4>
+            <div className="space-y-2">
+              {weatherData.alerts.map((alert, idx) => (
+                <div key={idx} className="rounded border p-2">
+                  <div className="text-sm font-semibold">{alert.event}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(alert.start * 1000).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                    {' '}–{' '}
+                    {new Date(alert.end * 1000).toLocaleString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                    {alert.sender_name ? ` · ${alert.sender_name}` : ''}
+                  </div>
+                  {alert.description && (
+                    <div className="text-xs mt-1 text-muted-foreground whitespace-pre-line">
+                      {alert.description}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Última actualización */}
         {lastUpdated && (
@@ -248,26 +287,6 @@ function WeatherSkeleton({ className }: { className?: string }) {
               <Skeleton className="h-4 w-8" />
             </div>
           ))}
-        </div>
-
-        {/* UV Index skeleton */}
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-6 w-20" />
-        </div>
-
-        {/* Pronóstico skeleton */}
-        <div>
-          <Skeleton className="h-4 w-24 mb-2" />
-          <div className="grid grid-cols-4 gap-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="text-center">
-                <Skeleton className="h-3 w-8 mb-1 mx-auto" />
-                <Skeleton className="h-6 w-6 mb-1 mx-auto" />
-                <Skeleton className="h-4 w-6 mx-auto" />
-              </div>
-            ))}
-          </div>
         </div>
       </CardContent>
     </Card>

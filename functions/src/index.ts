@@ -7,7 +7,7 @@ const cors = require('cors');
 // Import Telegram services
 import { TelegramService } from '../lib/telegram-service';
 import { AlertRoleManager } from '../lib/alert-roles';
-import { TelegramMessageTemplates, BookingNotificationData, EventTicketNotificationData } from '../lib/telegram-templates';
+import { TelegramMessageTemplates, BookingNotificationData } from '../lib/telegram-templates';
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -27,10 +27,21 @@ const corsHandler = cors({
   origin: function (origin: string, callback: (err: Error | null, allow?: boolean) => void) {
     // Allow requests with no origin (mobile apps, server-to-server, curl)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(null, false);
+
+    const extraAllowlist = (process.env.CORS_ALLOWLIST || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const isAllowed =
+      allowedOrigins.includes(origin) ||
+      extraAllowlist.includes(origin) ||
+      /^https?:\/\/localhost(?::\d+)?$/i.test(origin) ||
+      /\.vercel\.app$/i.test(origin) ||
+      /\.web\.app$/i.test(origin) ||
+      /\.firebaseapp\.com$/i.test(origin);
+
+    return callback(null, isAllowed);
   },
   methods: ['POST', 'GET', 'OPTIONS'],
   credentials: true,
@@ -42,6 +53,13 @@ const corsHandler = cors({
 export const createGuestBookingIntent = functions.https.onRequest(async (req, res) => {
   return corsHandler(req, res, async () => {
     try {
+      // Bloquear scrapers por User-Agent
+      const ua = req.headers['user-agent'] as string | undefined;
+      if (isBotUA(ua)) {
+        res.status(403).send('Forbidden');
+        return;
+      }
+
       if (req.method !== 'POST') {
         res.status(405).json({ error: 'Method not allowed' });
         return;
@@ -419,3 +437,22 @@ async function findBookingByPaymentIntent(paymentIntentId: string): Promise<any>
 //     
 //     console.log(`Cleaned up ${expiredDrafts.size} expired booking drafts`);
 //   });
+
+/**
+ * Simple bot/scraper detection based on User-Agent
+ */
+const BOT_UA_PATTERNS = [
+  /bot/i,
+  /crawler/i,
+  /spider/i,
+  /scrape/i,
+  /curl/i,
+  /wget/i,
+  /python-requests/i,
+  /httpclient/i,
+  /axios/i,
+  /java/i,
+];
+function isBotUA(ua?: string): boolean {
+  return BOT_UA_PATTERNS.some((re) => re.test(ua || ''));
+}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase-admin';
+import { auth as adminAuth } from '@/lib/firebase-admin';
 import { 
   getCMSSections, 
   createCMSSection, 

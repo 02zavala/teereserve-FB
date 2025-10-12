@@ -197,7 +197,9 @@ export default function CourseDetailPage() {
                                 </CardContent>
                             </Card>
                             
-                            <LazyWeatherWithSuspense />
+                            <LazyWeatherWithSuspense 
+                              location={course.latLng ? { lat: course.latLng.lat, lng: course.latLng.lng, name: course.name } : undefined}
+                            />
                              <LazyTeeTimePickerWithSuspense 
                                 courseId={course.id} 
                                 basePrice={course.basePrice} 

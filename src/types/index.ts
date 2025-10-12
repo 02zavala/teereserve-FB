@@ -78,6 +78,7 @@ export interface TeeTime {
 export interface GolfCourseInput {
   name: string;
   location: string;
+  address?: string;
   description: string;
   rules: string;
   basePrice: number;
@@ -101,6 +102,11 @@ export interface GolfCourseInput {
     holes9?: { yards: number; par: number };
     holes18?: { yards: number; par: number };
     holes27?: { yards: number; par: number };
+  };
+  // New bilingual content support
+  translations?: {
+    es: { name: string; location: string; description: string; rules: string };
+    en: { name: string; location: string; description: string; rules: string };
   };
 }
 

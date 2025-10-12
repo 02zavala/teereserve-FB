@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
+import { useAuth } from "@/context/AuthContext";
+
 interface VisitMetrics {
   totalVisits: number;
   todayVisits: number;
@@ -26,17 +28,52 @@ export function VisitMetrics() {
   const [metrics, setMetrics] = useState<VisitMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, loading: authLoading } = useAuth();
+
+  // Helper para formatear timestamp (acepta Firestore Timestamp o fecha/ISO)
+  const formatTimestamp = (ts: any) => {
+    try {
+      const date = ts && typeof ts?.toDate === 'function' ? ts.toDate() : new Date(ts);
+      return date.toLocaleString();
+    } catch {
+      return '—';
+    }
+  };
 
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
+        // Esperar a que termine la carga de autenticación
+        if (authLoading) return;
+
         setLoading(true);
         setError(null);
         
+        if (!user) {
+          // Si no hay usuario, en producción muestra error claro
+          if (process.env.NODE_ENV === 'production') {
+            setError('Debes iniciar sesión como administrador para ver métricas');
+          } else {
+            // En desarrollo, usa datos mock para no bloquear el panel
+            setMetrics({
+              totalVisits: 0,
+              todayVisits: 0,
+              averageVisitsPerDay: 0,
+              topPages: [],
+              uniqueIPs: 0,
+              recentIPs: []
+            });
+          }
+          return;
+        }
+        
+        const token = await user.getIdToken();
+
         const response = await fetch('/api/admin/visit-metrics', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         });
 
@@ -55,17 +92,50 @@ export function VisitMetrics() {
                 recentIPs: []
               });
               return;
+            } else {
+              // En producción, mostrar error claro de autenticación
+              throw new Error('401 Unauthorized: inicia sesión como administrador para ver métricas');
             }
           }
           throw new Error(`Error: ${response.status}`);
         }
 
         const data = await response.json();
-        setMetrics(data.data || data);
-      } catch (err) {
+        const payload = data?.data ?? data;
+
+        const topPages = Array.isArray(payload?.aggregatedStats?.topPages)
+          ? payload.aggregatedStats.topPages.map((tp: any) => ({
+              page: tp?.page ?? 'Unknown',
+              visits: Number(tp?.visits ?? 0)
+            }))
+          : [];
+
+        const recentIPs = Array.isArray(payload?.userIPs)
+          ? payload.userIPs.map((ip: any) => ({
+              userId: ip?.userId ?? '',
+              ipAddress: ip?.ipAddress ?? '',
+              action: ip?.action ?? 'login',
+              timestamp: ip?.timestamp ?? null,
+              userAgent: ip?.userAgent ?? ''
+            }))
+          : [];
+
+        const uniqueIPs = recentIPs.length > 0
+          ? Array.from(new Set(recentIPs.map(ip => ip.ipAddress))).length
+          : 0;
+
+        setMetrics({
+          totalVisits: Number(payload?.aggregatedStats?.totalVisitsAllTime ?? 0),
+          todayVisits: Number(payload?.todayStats?.totalVisits ?? 0),
+          averageVisitsPerDay: Number(payload?.aggregatedStats?.avgVisitsPerDay ?? 0),
+          topPages,
+          uniqueIPs,
+          recentIPs
+        });
+      } catch (err: any) {
         console.error('Error fetching visit metrics:', err);
         // Only show error in production or for non-auth errors
-        if (process.env.NODE_ENV === 'production' || !err.message.includes('401')) {
+        if (process.env.NODE_ENV === 'production' || !String(err?.message || '').includes('401')) {
           setError(err instanceof Error ? err.message : 'Error loading metrics');
         } else {
           // Use mock data in development for auth errors
@@ -84,7 +154,7 @@ export function VisitMetrics() {
     };
 
     fetchMetrics();
-  }, []);
+  }, [user, authLoading]);
 
   if (loading) {
     return (
@@ -122,7 +192,7 @@ export function VisitMetrics() {
       <Card>
         <CardContent className="pt-6">
           <div className="text-center text-muted-foreground">
-            No visit metrics available
+            {user ? 'No visit metrics available' : 'Inicia sesión para ver métricas'}
           </div>
         </CardContent>
       </Card>
@@ -141,7 +211,7 @@ export function VisitMetrics() {
             <Eye className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalVisits.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{(metrics.totalVisits ?? 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               All time visits
             </p>
@@ -156,7 +226,7 @@ export function VisitMetrics() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.todayVisits.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{(metrics.todayVisits ?? 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               Visits today
             </p>
@@ -171,7 +241,7 @@ export function VisitMetrics() {
             <Globe className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.averageVisitsPerDay.toFixed(1)}</div>
+            <div className="text-2xl font-bold">{Number(metrics.averageVisitsPerDay ?? 0).toFixed(1)}</div>
             <p className="text-xs text-muted-foreground">
               Visits per day
             </p>
@@ -186,7 +256,7 @@ export function VisitMetrics() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.uniqueIPs.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{(metrics.uniqueIPs ?? 0).toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               Registered IPs
             </p>
@@ -259,7 +329,7 @@ export function VisitMetrics() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(ip.timestamp).toLocaleString()}
+                      {formatTimestamp(ip.timestamp)}
                     </TableCell>
                   </TableRow>
                 ))}

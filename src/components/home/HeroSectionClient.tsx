@@ -23,7 +23,7 @@ interface HeroSectionClientProps {
 
 export function HeroSectionClient({ dictionary, lang, heroImages }: HeroSectionClientProps) {
   return (
-    <section className="relative h-[60vh] min-h-[400px] lg:h-[70vh] lg:min-h-[500px] flex items-center justify-center overflow-hidden">
+    <section className="relative h-[50vh] min-h-[360px] lg:h-[60vh] lg:min-h-[450px] flex items-center justify-center overflow-hidden">
       {/* Background Image Carousel */}
       <Carousel
         className="absolute inset-0 z-0"
@@ -32,9 +32,9 @@ export function HeroSectionClient({ dictionary, lang, heroImages }: HeroSectionC
         }}
         plugins={[Autoplay({ delay: 9000, stopOnInteraction: false, stopOnMouseEnter: false, stopOnFocusIn: false })]}
       >
-        <CarouselContent className="-ml-0">
+        <CarouselContent className="-ml-0 h-full">
           {heroImages.map((src, index) => (
-            <CarouselItem key={index} className="pl-0">
+            <CarouselItem key={index} className="pl-0 relative h-full">
                <Image
                     src={src}
                     alt={`Hero background image ${index + 1}`}
@@ -53,13 +53,14 @@ export function HeroSectionClient({ dictionary, lang, heroImages }: HeroSectionC
                 <CarouselNext className="right-4 z-20" />
             </>
         )}
-      </Carousel>
+      </Carousel
+      >
 
         {/* Overlay */}
       <div className="absolute inset-0 bg-black/30 z-10" />
 
       {/* Content */}
-      <div className="relative z-20 text-center text-white max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 backdrop-blur-sm bg-black/20 rounded-lg py-8">
+      <div className="relative z-20 text-center text-white max-w-3xl mx-auto px-3 sm:px-5 lg:px-7 backdrop-blur-sm bg-black/15 rounded-lg py-7">
         <h1 className="font-headline text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-4 lg:mb-6">
           {dictionary.title} <span className="text-primary">{dictionary.titleHighlight}</span>
         </h1>

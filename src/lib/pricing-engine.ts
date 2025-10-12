@@ -418,6 +418,86 @@ export class PricingEngine {
       caddieFeeUsd: 500,
       updatedAt: new Date().toISOString()
     });
+
+    // Defaults for Riviera Cancún
+    const rivieraId = 'riviera-cancun-golf-resort';
+    this.baseProducts.set(rivieraId, {
+      id: 'base-riviera',
+      courseId: rivieraId,
+      greenFeeBaseUsd: 180,
+      updatedAt: new Date().toISOString()
+    });
+
+    // Bandas horarias específicas para Riviera Cancún
+    this.timeBands.set(rivieraId, [
+      {
+        id: 'riviera-early-band',
+        courseId: rivieraId,
+        label: 'Early',
+        startTime: '07:00',
+        endTime: '09:00',
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'riviera-prime-band',
+        courseId: rivieraId,
+        label: 'Prime',
+        startTime: '09:12',
+        endTime: '12:00',
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'riviera-twilight-band',
+        courseId: rivieraId,
+        label: 'Twilight',
+        startTime: '15:00',
+        endTime: '18:00',
+        active: true,
+        createdAt: new Date().toISOString()
+      }
+    ]);
+
+    // Reglas por banda: fijamos el precio cargado (180 USD) directamente por banda
+    this.priceRules.set(rivieraId, [
+      {
+        id: 'riviera-precios-early',
+        courseId: rivieraId,
+        name: 'PRECIOS Early',
+        description: 'Precio fijo base por banda',
+        timeBandId: 'riviera-early-band',
+        priceType: 'fixed',
+        priceValue: 180,
+        priority: 80,
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'riviera-precios-prime',
+        courseId: rivieraId,
+        name: 'PRECIOS Prime',
+        description: 'Precio fijo base por banda',
+        timeBandId: 'riviera-prime-band',
+        priceType: 'fixed',
+        priceValue: 180,
+        priority: 80,
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'riviera-precios-twilight',
+        courseId: rivieraId,
+        name: 'PRECIOS Twilight',
+        description: 'Precio fijo base por banda',
+        timeBandId: 'riviera-twilight-band',
+        priceType: 'fixed',
+        priceValue: 180,
+        priority: 80,
+        active: true,
+        createdAt: new Date().toISOString()
+      }
+    ]);
   }
 
   /**
@@ -878,7 +958,18 @@ export class PricingEngine {
       }
       
       if (baseProduct) {
-        this.baseProducts.set(courseId, baseProduct);
+        const mappedBaseProduct: BaseProduct = {
+          id: baseProduct.id || 'default',
+          courseId,
+          greenFeeBaseUsd: typeof baseProduct.greenFeeBaseUsd === 'number'
+            ? baseProduct.greenFeeBaseUsd
+            : (typeof baseProduct.basePrice === 'number' ? baseProduct.basePrice : 0),
+          cartFeeUsd: baseProduct.cartFeeUsd ?? undefined,
+          caddieFeeUsd: baseProduct.caddieFeeUsd ?? undefined,
+          insuranceFeeUsd: baseProduct.insuranceFeeUsd ?? undefined,
+          updatedAt: baseProduct.updatedAt || new Date().toISOString()
+        };
+        this.baseProducts.set(courseId, mappedBaseProduct);
       }
 
       // Invalidate cache for this course
@@ -900,13 +991,23 @@ export class PricingEngine {
     }
 
     try {
+      // Assemble payload including baseProduct mapped to server schema
+      const baseProduct = this.getBaseProduct(courseId);
       const pricingData = {
         courseId,
         seasons: this.getSeasons(courseId),
         timeBands: this.getTimeBands(courseId),
         priceRules: this.getPriceRules(courseId),
         specialOverrides: this.getSpecialOverrides(courseId),
-        baseProduct: this.getBaseProduct(courseId)
+        baseProduct: baseProduct ? {
+          id: baseProduct.id || 'default',
+          courseId,
+          name: 'Green Fee Base',
+          basePrice: baseProduct.greenFeeBaseUsd,
+          currency: 'USD',
+          active: true,
+          updatedAt: baseProduct.updatedAt || new Date().toISOString()
+        } : undefined
       };
 
       const response = await fetch('/api/admin/pricing/save', {
@@ -919,13 +1020,17 @@ export class PricingEngine {
       });
 
       if (!response.ok) {
-        console.error('Failed to save pricing data:', response.statusText);
+        let errorText = '';
+        try {
+          errorText = await response.text();
+        } catch {}
+        console.error('Failed to save pricing data:', response.status, response.statusText, errorText);
         return false;
       }
 
       const result = await response.json();
       if (!result.ok) {
-        console.error('API error saving pricing data:', result.error);
+        console.error('API error saving pricing data:', result.error, result.details ?? '');
         return false;
       }
 

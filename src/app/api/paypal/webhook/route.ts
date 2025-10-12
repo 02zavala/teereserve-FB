@@ -237,7 +237,7 @@ async function handleSuccessfulPayPalPayment(capture: any, orderId: string) {
       const alertRoleManager = new AlertRoleManager();
       
       // Get users who should receive booking alerts
-      const alertUsers = await alertRoleManager.getUsersForAlert('booking_confirmed');
+      const alertUsers = await alertRoleManager.getUsersForAlert('booking');
       
       if (alertUsers.length > 0) {
         const notificationData: BookingNotificationData = {
@@ -259,7 +259,7 @@ async function handleSuccessfulPayPalPayment(capture: any, orderId: string) {
         
         // Send notification to all configured users
         for (const user of alertUsers) {
-          await telegramService.sendBookingAlert(user.telegramChatId, message, notificationData);
+          await telegramService.sendMessageTo(user.telegramChatId, message);
         }
         
         logger.info(`Telegram notifications sent for successful PayPal payment: ${capture.id}`);
@@ -305,7 +305,7 @@ async function handleFailedPayPalPayment(capture: any, orderId: string, reason?:
         
         // Send notification to all configured users
         for (const user of alertUsers) {
-          await telegramService.sendPaymentFailedAlert(user.telegramChatId, message, notificationData);
+          await telegramService.sendMessageTo(user.telegramChatId, message);
         }
         
         logger.info(`Telegram notifications sent for failed PayPal payment: ${capture.id}`);

@@ -24,7 +24,7 @@ export interface UserAlertSettings {
   enabled: boolean;
 }
 
-class AlertRoleManager {
+export class AlertRoleManager {
   private defaultRoleConfigs: Record<UserRole, AlertType[]> = {
     SuperAdmin: ['booking', 'event_ticket', 'payment_failed', 'system_error'],
     CourseOwner: ['booking', 'event_ticket', 'payment_failed'],

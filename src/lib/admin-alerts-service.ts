@@ -76,21 +76,28 @@ class AdminAlertsService {
     // Enviar por Telegram
     if (this.config.telegram.enabled && this.config.telegram.chatId) {
       try {
-        const telegramData = {
-          bookingId: data.bookingId,
+        // Map to TelegramService BookingAlert shape
+        const paymentMethodRaw = (data.paymentMethod || '').toLowerCase().replace(/\s+/g, '_');
+        const paymentMethod = (['stripe', 'paypal', 'apple_pay', 'google_pay'].includes(paymentMethodRaw)
+          ? paymentMethodRaw
+          : 'paypal') as 'stripe' | 'paypal' | 'apple_pay' | 'google_pay';
+
+        const alert = {
+          type: 'booking' as const,
           courseName: data.courseName,
-          customerName: data.customerName,
-          customerEmail: data.customerEmail,
+          playerCount: data.players,
           date: data.date,
           time: data.time,
-          players: data.players,
-          totalAmount: data.totalAmount,
+          paymentMethod,
+          transactionId: data.transactionId || 'unknown',
+          amount: data.totalAmount,
           currency: data.currency,
-          paymentMethod: data.paymentMethod,
-          transactionId: data.transactionId
+          customerEmail: data.customerEmail,
+          customerName: data.customerName
         };
 
-        const success = await telegramService.sendBookingAlert(telegramData, this.config.telegram.chatId);
+        telegramService.updateConfig({ chatId: this.config.telegram.chatId });
+        const success = await telegramService.sendBookingAlert(alert);
         results.push({ channel: 'telegram', success });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';

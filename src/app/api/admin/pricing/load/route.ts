@@ -15,7 +15,8 @@ async function isAdmin(authHeader: string | null): Promise<boolean> {
     const userDoc = await db.collection('users').doc(decodedToken.uid).get();
     const userData = userDoc.data();
     
-    return userData?.role === 'admin';
+    const role = (userData?.role || '').toLowerCase();
+    return role === 'admin' || role === 'superadmin';
   } catch (error) {
     console.error('Error verifying admin status:', error);
     return false;

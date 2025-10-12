@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
+import { i18n } from '@/i18n-config';
 import { auth, db } from '@/lib/firebase-admin';
 import { z } from 'zod';
 
@@ -34,16 +36,21 @@ const priceRuleSchema = z.object({
   seasonId: z.string().optional(),
   timeBandId: z.string().optional(),
   dow: z.array(z.number()).optional(),
-  startDate: z.string().optional(),
-  endDate: z.string().optional(),
+  leadTimeMin: z.number().optional(),
+  leadTimeMax: z.number().optional(),
+  occupancyMin: z.number().optional(),
+  occupancyMax: z.number().optional(),
+  playersMin: z.number().optional(),
+  playersMax: z.number().optional(),
   priceType: z.enum(['fixed', 'delta', 'multiplier']),
   priceValue: z.number(),
   priority: z.number(),
   active: z.boolean(),
-  leadTimeMin: z.number().optional(),
-  occupancyMin: z.number().optional(),
-  playersMin: z.number().optional(),
-  playersMax: z.number().optional(),
+  effectiveFrom: z.string().optional(),
+  effectiveTo: z.string().optional(),
+  minPrice: z.number().optional(),
+  maxPrice: z.number().optional(),
+  roundTo: z.number().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional()
 });
@@ -51,10 +58,15 @@ const priceRuleSchema = z.object({
 const specialOverrideSchema = z.object({
   id: z.string(),
   courseId: z.string(),
-  date: z.string(),
-  timeBandId: z.string().optional(),
-  priceOverride: z.number(),
-  reason: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  startDate: z.string(),
+  endDate: z.string(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  overrideType: z.enum(['price', 'block']),
+  priceValue: z.number().optional(),
+  priority: z.number(),
   active: z.boolean(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional()
@@ -95,7 +107,8 @@ async function isAdmin(authHeader: string | null): Promise<boolean> {
     const userDoc = await db.collection('users').doc(decodedToken.uid).get();
     const userData = userDoc.data();
     
-    return userData?.role === 'admin';
+    const role = (userData?.role || '').toLowerCase();
+    return role === 'admin' || role === 'superadmin';
   } catch (error) {
     console.error('Error verifying admin status:', error);
     return false;
@@ -181,6 +194,15 @@ export async function POST(request: NextRequest) {
       };
       const baseProductRef = db.collection('pricing').doc(courseId).collection('baseProducts').doc('default');
       batch.set(baseProductRef, baseProductData, { merge: true });
+
+      // Propagate basePrice to public courses collection to ensure UI reflects latest pricing
+      try {
+        const resolvedBasePrice = baseProduct.basePrice;
+        const coursePublicRef = db.collection('courses').doc(courseId);
+        batch.set(coursePublicRef, { basePrice: resolvedBasePrice, updatedAt: timestamp }, { merge: true });
+      } catch (propErr) {
+        console.warn('Failed to propagate basePrice to courses collection:', propErr);
+      }
     }
     
     // Update course pricing metadata
@@ -190,9 +212,20 @@ export async function POST(request: NextRequest) {
       lastUpdated: timestamp,
       updatedBy: 'admin' // You could get this from the auth token
     }, { merge: true });
-    
+
     // Commit the batch
     await batch.commit();
+
+    // Trigger ISR revalidation for public pages depending on pricing
+    try {
+      for (const locale of i18n.locales) {
+        revalidatePath(`/${locale}`);
+        revalidatePath(`/${locale}/courses`);
+        revalidatePath(`/${locale}/courses/${courseId}`);
+      }
+    } catch (revalErr) {
+      console.warn('Failed to revalidate paths after pricing save:', revalErr);
+    }
     
     return NextResponse.json({
       ok: true,

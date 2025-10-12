@@ -25,10 +25,12 @@ import { useState } from "react";
 import { ImageUploader } from "./ImageUploader";
 import TimeIntervalSettings from "./TimeIntervalSettings";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const formSchema = z.object({
   name: z.string().min(3, "Course name must be at least 3 characters.").max(100, "Course name cannot exceed 100 characters."),
   location: z.string().min(3, "Location is required.").max(100, "Location cannot exceed 100 characters."),
+  address: z.string().min(5, "Address must be at least 5 characters.").max(200, "Address cannot exceed 200 characters.").optional(),
   description: z.string().min(10, "Description must be at least 10 characters.").max(1000, "Description cannot exceed 1000 characters."),
   rules: z.string().max(500, "Rules cannot exceed 500 characters.").optional(),
   basePrice: z.coerce.number().min(1, "Base price must be at least $1.").max(10000, "Base price cannot exceed $10,000."),
@@ -62,7 +64,7 @@ const formSchema = z.object({
       par: z.coerce.number().min(27, "9-hole par must be at least 27").max(45, "9-hole par cannot exceed 45")
     }).optional(),
     holes18: z.object({
-      yards: z.coerce.number().min(4000, "18-hole yards must be at least 4000").max(8500, "18-hole yards cannot exceed 8,500"),
+      yards: z.coerce.number().min(1500, "18-hole yards must be at least 1500 for par-3/executive courses").max(8500, "18-hole yards cannot exceed 8,500"),
       par: z.coerce.number().min(54, "18-hole par must be at least 54").max(90, "18-hole par cannot exceed 90")
     }).optional(),
     holes27: z.object({
@@ -80,6 +82,28 @@ const formSchema = z.object({
     if (data.availableHoles.includes(27) && (!data.holeDetails?.holes27 || !data.holeDetails.holes27.yards || !data.holeDetails.holes27.par)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "27-hole details (yards and par) are required.", path: ["holeDetails.holes27.yards"] });
     }
+
+    // Conditional yardage rules for 18-hole courses
+    if (data.holeDetails?.holes18) {
+        const yards18 = data.holeDetails.holes18.yards;
+        const par18 = data.holeDetails.holes18.par;
+        // Standard 18-hole courses (par > 60) must be at least 4000 yards
+        if (par18 > 60 && yards18 < 4000) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "For standard 18-hole courses (par > 60), yards must be at least 4000.",
+                path: ["holeDetails.holes18.yards"],
+            });
+        }
+        // Par-3 or executive 18-hole courses (par ≤ 60) must be at least 1500 yards
+        if (par18 <= 60 && yards18 < 1500) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "For par-3 or executive 18-hole courses (par ≤ 60), yards must be at least 1500.",
+                path: ["holeDetails.holes18.yards"],
+            });
+        }
+    }
 });
 
 type CourseFormValues = z.infer<typeof formSchema>;
@@ -95,12 +119,14 @@ export function CourseForm({ course, lang }: CourseFormProps) {
   const [newImages, setNewImages] = useState<File[]>([]);
   const [existingImageUrls, setExistingImageUrls] = useState<string[]>(course?.imageUrls || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { user } = useAuth();
 
   const form = useForm<CourseFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: course?.name || "",
       location: course?.location || "",
+      address: (course as any)?.address || "",
       description: course?.description || "",
       rules: course?.rules || "",
       basePrice: course?.basePrice || 50,
@@ -151,21 +177,41 @@ export function CourseForm({ course, lang }: CourseFormProps) {
         operatingHours: values.operatingHours
       };
 
+      let savedCourseId: string | undefined;
+
       if (course) {
         // Update existing course
         await updateCourse(course.id, courseData);
+        savedCourseId = course.id;
         toast({
           title: "Course Updated",
           description: `The course "${values.name}" has been saved successfully.`,
         });
       } else {
         // Create new course
-        await addCourse(courseData);
+        const newCourseId = await addCourse(courseData);
+        savedCourseId = newCourseId;
         toast({
           title: "Course Created",
           description: `The course "${values.name}" has been created successfully.`,
         });
       }
+
+      // Trigger revalidation of public pages to reflect price/base data changes immediately
+      try {
+        const token = user ? await user.getIdToken() : null;
+        await fetch("/api/admin/courses/revalidate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ courseId: savedCourseId })
+        });
+      } catch (revalErr) {
+        console.warn("Revalidation request failed:", revalErr);
+      }
+
       router.push(`/${lang}/admin/courses`);
       router.refresh();
     } catch (error) {
@@ -207,6 +253,22 @@ export function CourseForm({ course, lang }: CourseFormProps) {
                                 <FormLabel>Location</FormLabel>
                                 <FormControl>
                                     <Input placeholder="e.g., Cabo San Lucas" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <FormField
+                            control={form.control}
+                            name="address"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>{lang === 'es' ? 'Dirección' : 'Address'}</FormLabel>
+                                <FormControl>
+                                    <Input placeholder={lang === 'es' ? 'p.ej., Blvd. Kukulkan Km 17, Cancún, Q.R.' : 'e.g., Blvd. Kukulkan Km 17, Cancún, Q.R.'} {...field} />
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>

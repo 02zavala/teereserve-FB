@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { validateCoupon } from '@/lib/data';
+import { PricingEngine } from '@/lib/pricing-engine';
+import { db } from '@/lib/firebase-admin';
 
 interface QuoteRequest {
   courseId: string;
@@ -8,7 +10,7 @@ interface QuoteRequest {
   time: string;
   players: number;
   holes: number;
-  basePrice: number;
+  basePrice?: number; // optional fallback
   promoCode?: string;
 }
 
@@ -30,7 +32,49 @@ const QUOTE_TTL_MINUTES = 10;
 // Secret key for HMAC (should be in environment variables)
 const QUOTE_SECRET = process.env.QUOTE_SECRET || 'fallback-secret-key';
 
-async function calculateDiscount(basePrice: number, promoCode?: string): Promise<number> {
+function getHoleMultiplier(holes: number): number {
+  if (holes === 9) return 0.6;
+  if (holes === 27) return 1.4;
+  return 1;
+}
+
+async function loadCoursePricingData(courseId: string) {
+  try {
+    const [seasonsSnap, timeBandsSnap, priceRulesSnap, overridesSnap, baseProductDoc] = await Promise.all([
+      db.collection('pricing').doc(courseId).collection('seasons').get().catch(() => null),
+      db.collection('pricing').doc(courseId).collection('timeBands').get().catch(() => null),
+      db.collection('pricing').doc(courseId).collection('priceRules').get().catch(() => null),
+      db.collection('pricing').doc(courseId).collection('specialOverrides').get().catch(() => null),
+      db.collection('pricing').doc(courseId).collection('baseProducts').doc('default').get().catch(() => null)
+    ]);
+
+    const seasons = seasonsSnap ? seasonsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) : [];
+    const timeBands = timeBandsSnap ? timeBandsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) : [];
+    const priceRules = priceRulesSnap ? priceRulesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) : [];
+    const specialOverrides = overridesSnap ? overridesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) : [];
+
+    let baseProduct: any = null;
+    if (baseProductDoc && baseProductDoc.exists) {
+      const bp = baseProductDoc.data() as any;
+      baseProduct = {
+        id: baseProductDoc.id,
+        courseId,
+        greenFeeBaseUsd: typeof bp.greenFeeBaseUsd === 'number' ? bp.greenFeeBaseUsd : (typeof bp.basePrice === 'number' ? bp.basePrice : 0),
+        cartFeeUsd: bp.cartFeeUsd ?? undefined,
+        caddieFeeUsd: bp.caddieFeeUsd ?? undefined,
+        insuranceFeeUsd: bp.insuranceFeeUsd ?? undefined,
+        updatedAt: bp.updatedAt || new Date().toISOString()
+      };
+    }
+
+    return { seasons, timeBands, priceRules, specialOverrides, baseProduct };
+  } catch (error) {
+    console.error('Failed to load pricing data for quote:', error);
+    return null;
+  }
+}
+
+async function calculateDiscount(amountUsd: number, promoCode?: string): Promise<number> {
   if (!promoCode) {
     return 0;
   }
@@ -39,10 +83,10 @@ async function calculateDiscount(basePrice: number, promoCode?: string): Promise
     const coupon = await validateCoupon(promoCode);
     
     if (coupon.discountType === 'percentage') {
-      return basePrice * (coupon.discountValue / 100);
+      return amountUsd * (coupon.discountValue / 100);
     } else {
       // Fixed amount discount
-      return Math.min(coupon.discountValue, basePrice); // Don't exceed base price
+      return Math.min(coupon.discountValue, amountUsd); // Don't exceed base price
     }
   } catch (error) {
     // If coupon validation fails, return 0 discount
@@ -71,20 +115,53 @@ export async function POST(request: NextRequest) {
   try {
     const body: QuoteRequest = await request.json();
     
-    // Validate required fields
-    if (!body.courseId || !body.date || !body.time || !body.players || !body.holes || !body.basePrice) {
+    // Validate required fields (basePrice optional)
+    if (!body.courseId || !body.date || !body.time || !body.players || !body.holes) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Calculate pricing in cents
-    const subtotal_cents = Math.round(body.basePrice * 100);
-    const discount_cents = Math.round((await calculateDiscount(body.basePrice, body.promoCode)) * 100);
-    const taxable_amount_cents = subtotal_cents - discount_cents;
+    const holeMultiplier = getHoleMultiplier(body.holes);
+
+    // Initialize and load pricing data
+    const engine = new PricingEngine();
+    const pricingData = await loadCoursePricingData(body.courseId);
+    if (pricingData) {
+      engine.importPricingData(body.courseId, pricingData as any);
+    }
+
+    // Calculate dynamic subtotal (USD)
+    let subtotalUsd: number;
+    try {
+      const result = await engine.calculatePrice({
+        courseId: body.courseId,
+        date: body.date,
+        time: body.time,
+        players: body.players
+      });
+      const perPlayer = result.finalPricePerPlayer * holeMultiplier;
+      subtotalUsd = perPlayer * body.players;
+    } catch (err) {
+      // Fallback to provided basePrice if engine cannot calculate
+      if (typeof body.basePrice === 'number' && body.basePrice > 0) {
+        subtotalUsd = body.basePrice * body.players * holeMultiplier;
+      } else {
+        return NextResponse.json(
+          { error: 'Pricing unavailable' },
+          { status: 500 }
+        );
+      }
+    }
+
+    const discountUsd = await calculateDiscount(subtotalUsd, body.promoCode);
+
+    const subtotal_cents = Math.round(subtotalUsd * 100);
+    const discount_cents = Math.round(discountUsd * 100);
+    const taxable_amount_cents = Math.max(subtotal_cents - discount_cents, 0);
     const tax_cents = Math.round(taxable_amount_cents * TAX_RATE);
-    const total_cents = subtotal_cents - discount_cents + tax_cents;
+    const total_cents = taxable_amount_cents + tax_cents;
 
     // Set expiration time
     const expires_at = new Date(Date.now() + QUOTE_TTL_MINUTES * 60 * 1000).toISOString();

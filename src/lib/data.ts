@@ -11,6 +11,7 @@ import { Locale } from '@/i18n-config';
 interface CourseDataInput {
     name: string;
     location: string;
+    address?: string;
     description: string;
     rules?: string;
     basePrice: number;
@@ -30,6 +31,7 @@ interface CourseDataInput {
         holes27?: { yards?: number; par?: number };
     };
     hidden?: boolean;
+    latLng?: { lat: number; lng: number };
 }
 
 // NOTE: The images for this initial set of courses are static assets.
@@ -217,6 +219,166 @@ export const initialCourses: Omit<GolfCourse, 'reviews'>[] = [
         par: 72,
         imageUrls: ['/images/fallback.svg'],
         latLng: { lat: 23.633, lng: -109.689 }
+    },
+    {
+        id: 'iberostar-cancun-golf-club',
+        name: 'Iberostar Cancún Golf Club',
+        location: 'Boulevard Kukulcan Km 17 Zona Hotelera, Cancún, Quintana Roo, 77500',
+        description: 'Iberostar Cancún Golf Club is a world-class 18-hole, par-72 championship course designed by Japanese legend Isao Aoki, offering an unforgettable golf experience in the heart of Cancún’s Hotel Zone. Surrounded by natural beauty and located next to the Caribbean Sea, this course is known for its exceptional layout, scenic views, and tropical setting with abundant wildlife, including crocodiles, iguanas, and a wide variety of birds. Golfers enjoy premium services such as unlimited food and beverages, including both alcoholic and non-alcoholic options, a shared golf cart, use of the driving range and putting green, and access to first-class facilities with personalized attention. Iberostar Cancún Golf Club is ideal for golfers of all skill levels looking to combine the sport with luxury and relaxation in a breathtaking seaside environment.',
+        rules: 'Standard golf etiquette and club rules apply.',
+        basePrice: 149,
+        teeTimeInterval: 10,
+        operatingHours: {
+          openingTime: "07:00",
+          closingTime: "15:00"
+        },
+        availableHoles: [18],
+        totalYards: 6735,
+        par: 72,
+        translations: {
+          es: {
+            name: 'Iberostar Cancún Golf Club',
+            location: 'Boulevard Kukulcán Km 17, Zona Hotelera, Cancún, Quintana Roo, 77500',
+            description: 'Campo de campeonato par 72 de 18 hoyos diseñado por la leyenda japonesa Isao Aoki, ubicado en el corazón de la Zona Hotelera de Cancún junto al Mar Caribe. Ofrece un trazado excepcional, vistas escénicas y un entorno tropical con vida silvestre. Servicios premium como alimentos y bebidas ilimitadas, carrito compartido, uso de driving range y putting green, y atención personalizada.',
+            rules: 'Etiqueta estándar de golf y reglas del club.'
+          },
+          en: {
+            name: 'Iberostar Cancun Golf Club',
+            location: 'Boulevard Kukulkan Km 17, Hotel Zone, Cancun, Quintana Roo, 77500',
+            description: 'World-class 18-hole, par-72 championship course designed by Isao Aoki with premium services (unlimited food and beverages, shared cart, range and putting green) in Cancun’s Hotel Zone by the Caribbean Sea.',
+            rules: 'Standard golf etiquette and club rules apply.'
+          }
+        },
+        imageUrls: ['/images/fallback.svg'],
+        latLng: { lat: 21.063728, lng: -86.782595 }
+    },
+    {
+        id: 'el-cameleon-mayakoba-golf-course',
+        name: 'El Camaleón Mayakoba Golf Course',
+        location: 'Carretera Fed. Chetumal Pto. Juárez Km. 298, 77710 Playa del Carmen, Q.R.',
+        description: 'The complex also offers a spectacular 18-hole golf course designed by renowned architect and PGA TOUR legend Greg Norman. The golf course is home to the Mayakoba Golf Classic, Mexico’s historic first-ever PGA TOUR event. Six miles of fresh water canals surrounded by exotic mangroves and birds lead to a beautiful white sand beach and to the turquoise waters of the Caribbean Sea. Guests are peacefully transported in boats through the resorts contemplating a revolutionary vision of beauty and harmony.',
+        rules: 'Standard golf etiquette and club rules apply.',
+        basePrice: 270,
+        teeTimeInterval: 10,
+        operatingHours: {
+          openingTime: "07:00",
+          closingTime: "16:00"
+        },
+        availableHoles: [18],
+        totalYards: 7024,
+        par: 72,
+        translations: {
+          es: {
+            name: 'El Camaleón Mayakoba Golf Course',
+            location: 'Carretera Fed. Chetumal Pto. Juárez Km. 298, 77710 Playa del Carmen, Q.R.',
+            description: 'Campo de 18 hoyos diseñado por Greg Norman, sede de eventos del PGA TOUR, con canales de agua dulce, manglares y acceso a playa de arena blanca en el Caribe. Experiencia única con transporte en bote dentro del complejo.',
+            rules: 'Etiqueta estándar de golf y reglas del club.'
+          },
+          en: {
+            name: 'El Camaleon Mayakoba Golf Course',
+            location: 'Federal Highway Chetumal - Puerto Juárez Km. 298, Playa del Carmen, QR 77710',
+            description: 'Spectacular 18-hole course by Greg Norman, home to PGA TOUR events, featuring freshwater canals, mangroves, and a white sand beach by the Caribbean. Unique experience with boat transportation through the resort.',
+            rules: 'Standard golf etiquette and club rules apply.'
+          }
+        },
+        imageUrls: ['/images/fallback.svg'],
+        latLng: { lat: 20.689640, lng: -87.031266 }
+    },
+    {
+        id: 'riviera-cancun-golf-resort',
+        name: 'Riviera Cancún Golf & Resort',
+        location: 'Blvd. Kukulcan 25.3, Zona Hotelera, 77500 Cancún, Q.R.',
+        description: 'The natural landscape of mangroves that shelters exotic flora and fauna, exceptional views of the Caribbean Sea and undulating fairways and greens make of Riviera Cancun Golf & Resorts the perfect sum of challenges for players of every skill level. The undisturbed natural terrain, along with the ever changing trade-winds will remind golfers of a traditional Links course that requires precise and accurate shot-making skills tee-to-green. Its 18 Holes par 72, which harmoniously integrate with nature on 7,060 yards, were designed by the worldwideleading golf designer Golden Bear, Jack Nicklaus. This is a golf course that rewards the player who calculates well the risk vs. reward shot value and offers the opportunity to experience a peaceful atmosphere to perform a perfect game.',
+        rules: 'Standard golf etiquette and club rules apply.',
+        basePrice: 180,
+        teeTimeInterval: 10,
+        operatingHours: {
+          openingTime: "07:00",
+          closingTime: "16:00"
+        },
+        availableHoles: [18],
+        totalYards: 7060,
+        par: 72,
+        translations: {
+          es: {
+            name: 'Riviera Cancún Golf & Resort',
+            location: 'Blvd. Kukulcán 25.3, Zona Hotelera, 77500 Cancún, Q.R.',
+            description: 'El paisaje natural de manglares que alberga flora y fauna exótica, las vistas excepcionales del Mar Caribe y los fairways y greens ondulados hacen de Riviera Cancún el equilibrio perfecto de desafíos para jugadores de todos los niveles. Su diseño de 18 hoyos par 72, con 7,060 yardas y obra del legendario Jack Nicklaus, premia el cálculo de riesgo vs. recompensa y ofrece un ambiente tranquilo para un juego perfecto.',
+            rules: 'Etiqueta estándar de golf y reglas del club.'
+          },
+          en: {
+            name: 'Riviera Cancun Golf & Resort',
+            location: 'Boulevard Kukulkan 25.3, Hotel Zone, Cancun, QR 77500',
+            description: 'Natural mangrove landscape with exotic wildlife, Caribbean Sea views, and undulating fairways/greens create a balanced challenge for all skill levels. 18-hole, par-72 course (7,060 yards) designed by Jack Nicklaus, rewarding precise shot-making and risk vs. reward decisions.',
+            rules: 'Standard golf etiquette and club rules apply.'
+          }
+        },
+        imageUrls: ['/images/fallback.svg'],
+        latLng: { lat: 21.011714, lng: -86.823707 }
+    },
+      {
+          id: 'el-tinto-golf-course',
+        name: 'El Tinto Golf Course',
+        location: 'Carr. Federal 307, Chetumal Km 388, 77580 Cancún, Q.R.',
+        description: '"El Tinto" is the golf course within our development which was designed by the world-renowned golf professional Nick Price. This challenging field contains 7,435 yards and is ready to meet any field design standard and service to its players, whether amateur or professional, ensuring them an excellent golfing experience.',
+        rules: 'Standard golf etiquette and club rules apply.',
+        basePrice: 130,
+        teeTimeInterval: 10,
+        operatingHours: {
+          openingTime: "08:30",
+          closingTime: "13:30"
+        },
+        availableHoles: [18],
+        totalYards: 7439,
+        par: 72,
+        translations: {
+          es: {
+            name: 'El Tinto Golf Course',
+            location: 'Carretera Federal 307, Chetumal Km 388, 77580 Cancún, Q.R.',
+            description: 'Campo diseñado por Nick Price con 7,435 yardas. Retador para jugadores amateurs y profesionales, preparado para cumplir estándares de diseño y servicio, garantizando una excelente experiencia de golf.',
+            rules: 'Etiqueta estándar de golf y reglas del club.'
+          },
+          en: {
+            name: 'El Tinto Golf Course',
+            location: 'Federal Highway 307, Chetumal Km 388, Cancun, QR 77580',
+            description: 'Course designed by Nick Price with 7,435 yards. Challenging for amateurs and professionals, meeting top design and service standards to ensure an excellent golfing experience.',
+            rules: 'Standard golf etiquette and club rules apply.'
+          }
+        },
+        imageUrls: ['/images/fallback.svg'],
+        latLng: { lat: 21.004963, lng: -86.872889 }
+    },
+    {
+        id: 'iberostar-playa-paraiso-golf-club',
+        name: 'Iberostar Playa Paraiso Golf Club',
+        location: 'Carr. Chetumal, Carr. Cancún - Tulum 309, 77710 Playa del Carmen, Q.R.',
+        description: 'For more than a decade, Iberostar Playa Paraíso Golf Club has secured its place in the history books of international golf. The club has hosted prestigious events such as the World Amateur Team Championships 2016, Big Break Mexico, Iberostar Riviera Maya Open, is an 11-time host of the classification round for the Mayakoba Golf Classic OHL PGA TOUR and host of the Bupa Match Play – PGA Tour Latinoamérica 2018-2019. Iberostar Playa Paraíso Golf Club shows its high standard, being a preferred course for the most demanding golfers. With several starting points, players of all levels can enjoy the course.',
+        rules: 'Standard golf etiquette and club rules apply.',
+        basePrice: 288,
+        teeTimeInterval: 10,
+        operatingHours: {
+          openingTime: "08:00",
+          closingTime: "11:00"
+        },
+        availableHoles: [18],
+        totalYards: 6800,
+        par: 72,
+        translations: {
+          es: {
+            name: 'Iberostar Playa Paraíso Golf Club',
+            location: 'Carretera Chetumal, Cancún - Tulum 309, 77710 Playa del Carmen, Q.R.',
+            description: 'Con más de una década de historia, ha sido sede de eventos de alto prestigio como el World Amateur Team Championships, Big Break Mexico, Iberostar Riviera Maya Open, clasificación del Mayakoba Golf Classic (OHL PGA TOUR) y Bupa Match Play (PGA Tour Latinoamérica). Preferido por golfistas exigentes, con múltiples tees para todo nivel.',
+            rules: 'Etiqueta estándar de golf y reglas del club.'
+          },
+          en: {
+            name: 'Iberostar Playa Paraiso Golf Club',
+            location: 'Chetumal Highway, Cancun - Tulum 309, Playa del Carmen, QR 77710',
+            description: 'With over a decade of history, host of prestigious events including World Amateur Team Championships, Big Break Mexico, Iberostar Riviera Maya Open, Mayakoba Golf Classic qualifying (OHL PGA TOUR), and Bupa Match Play (PGA Tour Latinoamérica). Preferred by demanding golfers; multiple tees for all levels.',
+            rules: 'Standard golf etiquette and club rules apply.'
+          }
+        },
+        imageUrls: ['/images/fallback.svg'],
+        latLng: { lat: 20.763084, lng: -86.966412 }
     },
   ];
 
@@ -439,6 +601,7 @@ export const addCourse = async (courseData: CourseDataInput): Promise<string> =>
     const courseDocData = removeUndefinedValues({
       name: restOfData.name,
       location: restOfData.location,
+      address: restOfData.address,
       description: restOfData.description,
       rules: restOfData.rules || "",
       basePrice: restOfData.basePrice,
@@ -450,7 +613,7 @@ export const addCourse = async (courseData: CourseDataInput): Promise<string> =>
       par: restOfData.par,
       holeDetails: restOfData.holeDetails,
       hidden: restOfData.hidden || false,
-      // latLng would need to be added to the form
+      latLng: restOfData.latLng,
     });
     
     const coursesCol = collection(db, 'courses');
@@ -472,6 +635,7 @@ export const updateCourse = async (courseId: string, courseData: CourseDataInput
     const courseUpdateData = removeUndefinedValues({
         name: restOfData.name,
         location: restOfData.location,
+        address: restOfData.address,
         description: restOfData.description,
         rules: restOfData.rules || "",
         basePrice: restOfData.basePrice,
@@ -482,7 +646,8 @@ export const updateCourse = async (courseId: string, courseData: CourseDataInput
         totalYards: restOfData.totalYards,
         par: restOfData.par,
         holeDetails: restOfData.holeDetails,
-        hidden: restOfData.hidden
+        hidden: restOfData.hidden,
+        latLng: restOfData.latLng,
     });
     
     if (courseSnap.exists()) {
