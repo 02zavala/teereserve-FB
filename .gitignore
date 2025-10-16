@@ -49,3 +49,8 @@ firestore-debug.log
 firebase-admin-key.json
 service-account-key.json
 teereserve-golf-firebase-adminsdk-*.json
+ 
+# Cloud Functions build artifacts
+functions/lib/lib/
+functions/lib/src/
+functions/node_modules/
