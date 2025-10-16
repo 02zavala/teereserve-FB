@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+import { withSentryConfig } from '@sentry/nextjs';
 const nextConfig = {
   // Build optimizations for Firebase Hosting
   output: 'standalone',
@@ -217,4 +218,4 @@ const sentryWebpackPluginOptions = {
   automaticVercelMonitors: true,
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);
