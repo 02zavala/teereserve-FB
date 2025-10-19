@@ -121,12 +121,12 @@ export async function GET() {
         const langUrl = locale === i18n.defaultLocale ? baseUrl : `${baseUrl}/${locale}`;
         return `
   <url>
-    <loc>${langUrl}/courses/${course.id}</loc>
+    <loc>${langUrl}/courses/${course.slug ?? course.id}</loc>
     <lastmod>${currentDate}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-    <xhtml:link rel="alternate" hreflang="es" href="${baseUrl}/es/courses/${course.id}" />
-    <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}/en/courses/${course.id}" />
+    <xhtml:link rel="alternate" hreflang="es" href="${baseUrl}/es/courses/${course.slug ?? course.id}" />
+    <xhtml:link rel="alternate" hreflang="en" href="${baseUrl}/en/courses/${course.slug ?? course.id}" />
   </url>`;
       })
     ).join('');

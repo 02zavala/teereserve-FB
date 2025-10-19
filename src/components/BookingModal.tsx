@@ -92,7 +92,7 @@ export function BookingModal({ isOpen, onClose, course, lang }: BookingModalProp
   };
 
   const handleLogin = () => {
-    router.push(`/${lang}/login?redirect=${encodeURIComponent(`/${lang}/courses/${course.id}`)}`);
+    router.push(`/${lang}/login?redirect=${encodeURIComponent(`/${lang}/courses/${course.slug ?? course.id}`)}`);
     onClose();
   };
 

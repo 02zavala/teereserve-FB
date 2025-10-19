@@ -34,7 +34,7 @@ export function MapPageClient({ courses, lang, dictionary }: MapPageClientProps)
     description: course.description,
     imageUrl: course.imageUrls?.[0],
     priceFromUSD: course.basePrice,
-    url: `/${lang}/courses/${course.id}`
+    url: `/${lang}/courses/${course.slug ?? course.id}`
   }));
 
   // Centro del mapa en Los Cabos

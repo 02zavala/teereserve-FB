@@ -3,6 +3,7 @@
 import { Resend } from 'resend';
 import { logger } from './logger';
 import { fallbackService, withFallback } from './fallback-service';
+import { getEmailVerificationTemplate } from './email-templates';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -985,3 +986,30 @@ export async function sendAdminBookingNotification(adminEmail, bookingDetails) {
       return handleEmailError('sendAdminBookingNotification', error, emailData);
     }
   }
+
+export async function sendVerificationEmail(userEmail, verifyUrl, options = {}) {
+  const { displayName = 'Golfista', lang = 'es' } = options;
+  const emailData = {
+    from: process.env.EMAIL_FROM || 'noreply@teereserve.golf',
+    to: [userEmail],
+  };
+
+  try {
+    const template = getEmailVerificationTemplate({ displayName, verifyUrl, lang });
+    const { data, error } = await resend.emails.send({
+      ...emailData,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+    });
+
+    if (error) {
+      return handleEmailError('sendVerificationEmail', error, { ...emailData, subject: template.subject });
+    }
+
+    markEmailSuccess('sendVerificationEmail', data);
+    return { success: true, data };
+  } catch (error) {
+    return handleEmailError('sendVerificationEmail', error, emailData);
+  }
+}

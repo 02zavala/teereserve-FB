@@ -83,6 +83,7 @@ export interface GolfCourseInput {
   rules: string;
   basePrice: number;
   imageUrls: string[];
+  slug?: string;
   hidden?: boolean; // Campo para ocultar cursos del público
   isFeatured?: boolean; // New field for featured courses
   latLng?: {

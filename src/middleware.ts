@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import Negotiator from 'negotiator';
 import { match as matchLocale } from '@formatjs/intl-localematcher';
@@ -81,6 +81,31 @@ function detectLocale(request: NextRequest): string {
 }
 
 export function middleware(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  const pathname = url.pathname || '/';
+
+  // --- Tope de 28 días para sesiones con "No cerrar sesión" ---
+  // Aplicar principalmente en rutas protegidas (admin)
+  const isApi = pathname.startsWith('/api');
+  const isStatic = pathname.startsWith('/_next') || pathname.startsWith('/assets') || pathname.startsWith('/static');
+  const isAdmin = pathname.includes('/admin');
+
+  if (!isApi && !isStatic && isAdmin) {
+    const remember = request.cookies.get('tr_remember')?.value === '1';
+    const loginTsSecStr = request.cookies.get('tr_login_ts')?.value;
+    const loginTsSec = loginTsSecStr ? parseInt(loginTsSecStr, 10) : undefined;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const TWENTY_EIGHT_DAYS = 28 * 24 * 60 * 60; // segundos
+
+    if (remember && loginTsSec && nowSec - loginTsSec > TWENTY_EIGHT_DAYS) {
+      // Expiró el tope de 28 días: limpiar cookies y redirigir a login
+      const res = NextResponse.redirect(new URL(`/${pathname.split('/')[1] || 'es'}/login?reason=expired`, request.url));
+      res.cookies.set('tr_remember', '', { maxAge: 0, path: '/' });
+      res.cookies.set('tr_login_ts', '', { maxAge: 0, path: '/' });
+      return res;
+    }
+  }
+
   const { pathname, origin } = request.nextUrl;
 
   // Aplicar protecciones para API

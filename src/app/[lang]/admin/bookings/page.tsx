@@ -84,7 +84,7 @@ function BookingRow({ booking, lang }: { booking: Booking, lang: Locale }) {
             </TableCell>
             <TableCell>{booking.players} players</TableCell>
             <TableCell>{booking.holes || 18} holes</TableCell>
-            <TableCell>${booking.totalPrice.toFixed(2)}</TableCell>
+            <TableCell>${booking.totalPrice?.toFixed(2) ?? '0.00'}</TableCell>
             <TableCell>
                 <Badge variant={getStatusVariant(booking.status)}>{getStatusLabel(booking.status)}</Badge>
             </TableCell>

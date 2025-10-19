@@ -1,11 +1,12 @@
 import type { GolfCourse, Review, TeeTime, Booking, BookingInput, ReviewInput, UserProfile, Scorecard, ScorecardInput, AchievementId, TeamMember, AboutPageContent, Coupon, CouponInput, ReviewLike, ReviewComment, ReviewBadge, UserReviewStats, CMSSection, CMSTemplate, EventTicket } from '@/types';
 import { db, storage } from './firebase';
-import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, where, setDoc, CollectionReference, writeBatch, serverTimestamp, orderBy, limit, deleteDoc, runTransaction, increment, QueryConstraint } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, where, setDoc, CollectionReference, writeBatch, serverTimestamp, orderBy, limit, deleteDoc, runTransaction, increment, QueryConstraint, getCountFromServer } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { format, startOfDay, subDays, isAfter, parse, set, isToday, isBefore, addMinutes } from 'date-fns';
 import { sendBookingConfirmationEmail } from '@/ai/flows/send-booking-confirmation-email';
 import { sendReviewInvitationEmail } from '@/ai/flows/send-review-invitation-email';
 import { Locale } from '@/i18n-config';
+import { slugify } from './normalize';
 
 
 interface CourseDataInput {
@@ -32,6 +33,7 @@ interface CourseDataInput {
     };
     hidden?: boolean;
     latLng?: { lat: number; lng: number };
+    slug?: string;
 }
 
 // NOTE: The images for this initial set of courses are static assets.
@@ -569,6 +571,45 @@ export const getCourseById = async (id: string): Promise<GolfCourse | undefined>
     return undefined;
 };
 
+export const getCourseBySlugOrId = async (slugOrId: string): Promise<GolfCourse | undefined> => {
+    if (!slugOrId) return undefined;
+
+    const byId = await getCourseById(slugOrId);
+    if (byId) return byId;
+
+    if (db) {
+        try {
+            const q = query(collection(db, 'courses'), where('slug', '==', slugOrId), limit(1));
+            const qs = await getDocs(q);
+            if (!qs.empty) {
+                const courseDoc = qs.docs[0];
+                const rawCourseData = { id: courseDoc.id, ...courseDoc.data() };
+                const serializedCourseData = serializeTimestamps(rawCourseData) as GolfCourse;
+                serializedCourseData.reviews = await getReviewsForCourse(courseDoc.id);
+                return serializedCourseData;
+            }
+        } catch (error: any) {
+            if (error.code === 'unavailable') {
+                console.warn(`Firestore unavailable when fetching course ${slugOrId} by slug. Falling back to static data.`, {
+                    code: error.code,
+                    message: error.message,
+                    connectivity: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline'
+                });
+            } else if (error.code === 'network-request-failed' || error.message?.includes('offline')) {
+                console.warn(`Network error fetching course ${slugOrId} by slug. Falling back to static data.`, {
+                    code: error.code,
+                    message: error.message,
+                    connectivity: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline'
+                });
+            } else if (error.code !== 'not-found' && !(error.message && error.message.includes("NOT_FOUND"))) {
+                console.error(`Firestore error fetching course by slug ${slugOrId}. Falling back to static data.`, error);
+            }
+        }
+    }
+
+    return undefined;
+};
+
 export const getCourseLocations = async (): Promise<string[]> => {
     const courseList = await getCourses({});
     return [...new Set(courseList.map(c => c.location))];
@@ -594,9 +635,29 @@ const removeUndefinedValues = (obj: any): any => {
 
 export const addCourse = async (courseData: CourseDataInput): Promise<string> => {
     if (!db) throw new Error("Firestore is not initialized.");
+    // Helper to generate a unique, slug-based course ID
+    const generateUniqueCourseId = async (candidateBase: string): Promise<string> => {
+        let base = slugify(candidateBase);
+        if (!base) base = `course-${Date.now()}`;
+        let candidate = base;
+        let suffix = 1;
+        while (true) {
+            const candidateRef = doc(db, 'courses', candidate);
+            const candidateSnap = await getDoc(candidateRef);
+            if (!candidateSnap.exists()) {
+                return candidate;
+            }
+            suffix += 1;
+            candidate = `${base}-${suffix}`;
+        }
+    };
+
     // This will add a new course to Firestore, it won't be in the initial static list
     const { newImages, ...restOfData } = courseData;
     const newImageUrls = await uploadImages(courseData.name, newImages);
+
+    // Generate unique slug ID for the course document
+    const slugId = await generateUniqueCourseId(restOfData.slug || restOfData.name);
     
     const courseDocData = removeUndefinedValues({
       name: restOfData.name,
@@ -614,11 +675,17 @@ export const addCourse = async (courseData: CourseDataInput): Promise<string> =>
       holeDetails: restOfData.holeDetails,
       hidden: restOfData.hidden || false,
       latLng: restOfData.latLng,
+      slug: slugId,
     });
     
     const coursesCol = collection(db, 'courses');
-    const docRef = await addDoc(coursesCol, courseDocData);
-    return docRef.id;
+    const courseDocRef = doc(coursesCol, slugId);
+    await setDoc(courseDocRef, {
+      ...courseDocData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return courseDocRef.id;
 }
 
 export const updateCourse = async (courseId: string, courseData: CourseDataInput): Promise<void> => {
@@ -648,6 +715,7 @@ export const updateCourse = async (courseId: string, courseData: CourseDataInput
         holeDetails: restOfData.holeDetails,
         hidden: restOfData.hidden,
         latLng: restOfData.latLng,
+        slug: restOfData.slug,
     });
     
     if (courseSnap.exists()) {
@@ -1429,7 +1497,7 @@ export async function checkIfUserHasPlayed(userId: string, courseId: string): Pr
         bookingsCol, 
         where('userId', '==', userId), 
         where('courseId', '==', courseId),
-        where('status', '==', 'Completed'),
+        where('status', '==', 'completed'),
         limit(1)
     );
     const snapshot = await getDocs(q);
@@ -1503,14 +1571,14 @@ export async function getDashboardStats() {
         const usersCol = collection(db, 'users');
         
         // Execute queries with reduced limits for better performance
-        const [revenueSnapshot, usersSnapshot, bookingsSnapshot, recentBookingsSnapshot] = await Promise.race([
+        const [revenueSnapshot, usersCountSnapshot, bookingsCountSnapshot, recentBookingsSnapshot] = await Promise.race([
             Promise.all([
-                // Get completed bookings for revenue calculation (reduced limit)
-                getDocs(query(bookingsCol, where('status', '==', 'Completed'), limit(200))),
-                // Get users count (reduced limit)
-                getDocs(query(usersCol, limit(200))),
-                // Get total bookings count (reduced limit)
-                getDocs(query(bookingsCol, limit(200))),
+                // Get completed bookings for revenue calculation (full set for accuracy)
+                getDocs(query(bookingsCol, where('status', '==', 'completed'))),
+                // Accurate users count using Firestore aggregation
+                getCountFromServer(query(usersCol)),
+                // Accurate bookings count using Firestore aggregation
+                getCountFromServer(query(bookingsCol)),
                 // Get recent bookings
                 getDocs(query(bookingsCol, orderBy('createdAt', 'desc'), limit(5)))
             ]),
@@ -1551,8 +1619,8 @@ export async function getDashboardStats() {
         
         return {
             totalRevenue,
-            totalUsers: usersSnapshot.size,
-            totalBookings: bookingsSnapshot.size,
+            totalUsers: usersCountSnapshot.data().count,
+            totalBookings: bookingsCountSnapshot.data().count,
             recentBookings,
             holeStats,
             revenueByHoles
@@ -1586,9 +1654,8 @@ export async function getRevenueLast7Days(): Promise<{ date: string; revenue: nu
         const bookingsCol = collection(db, 'bookings');
         const q = query(
             bookingsCol, 
-            where('status', '==', 'Completed'),
-            where('createdAt', '>=' , sevenDaysAgo.toISOString()),
-            limit(100) // Add limit for better performance
+            where('status', '==', 'completed'),
+            where('createdAt', '>=' , sevenDaysAgo.toISOString())
         );
         
         const snapshot = await Promise.race([
@@ -2553,10 +2620,10 @@ interface VisitMetrics {
 // Interface para registro de IPs de usuarios
 interface UserIPLog {
     id?: string;
-    userId: string;
+    userId?: string | null;
     ipAddress: string;
     timestamp: any; // serverTimestamp
-    action: 'login' | 'register' | 'guest_booking'; // tipo de acción que generó el registro
+    action: 'login' | 'register' | 'guest_booking' | 'visit'; // tipo de acción que generó el registro
     userAgent?: string;
     location?: string; // ciudad/país si se puede determinar
 }
@@ -2598,14 +2665,15 @@ async function updateDailyVisitMetrics(page: string, sessionId?: string): Promis
             
             if (metricsDoc.exists()) {
                 const data = metricsDoc.data() as VisitMetrics;
+                const currentPageViews = { ...(data.pageViews || {}) } as { [page: string]: number };
+                const updatedCount = (currentPageViews[page] || 0) + 1;
+                currentPageViews[page] = updatedCount;
+
                 const updates: any = {
                     totalVisits: increment(1),
+                    pageViews: currentPageViews,
                     lastUpdated: serverTimestamp()
                 };
-                
-                // Actualizar conteo por página
-                const pageKey = `pageViews.${page}`;
-                updates[pageKey] = increment(1);
                 
                 transaction.update(metricsRef, updates);
             } else {
@@ -2648,47 +2716,91 @@ export async function logUserIP(ipData: Omit<UserIPLog, 'timestamp'>): Promise<v
 
 // NUEVO: Función para obtener métricas de visitas para el admin
 export async function getVisitMetrics(days: number = 7): Promise<VisitMetrics[]> {
-    if (!db) throw new Error("Firestore is not initialized.");
-    
-    const metricsRef = collection(db, 'visitMetrics');
-    const endDate = new Date();
-    const startDate = subDays(endDate, days - 1);
-    
-    const q = query(
-        metricsRef,
-        where('date', '>=', format(startDate, 'yyyy-MM-dd')),
-        where('date', '<=', format(endDate, 'yyyy-MM-dd')),
-        orderBy('date', 'desc')
-    );
-    
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    })) as VisitMetrics[];
+    if (!db) {
+        console.warn("Firestore not initialized. Returning empty visit metrics.");
+        return [] as VisitMetrics[];
+    }
+    try {
+        const metricsRef = collection(db, 'visitMetrics');
+        const endDate = new Date();
+        const startDate = subDays(endDate, days - 1);
+        
+        const q = query(
+            metricsRef,
+            where('date', '>=', format(startDate, 'yyyy-MM-dd')),
+            where('date', '<=', format(endDate, 'yyyy-MM-dd')),
+            orderBy('date', 'desc')
+        );
+        
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as VisitMetrics[];
+    } catch (error) {
+        console.error("Error fetching visit metrics from Firestore:", error);
+        return [] as VisitMetrics[];
+    }
+}
+
+// NUEVO: Obtener métricas por rango de fechas personalizado
+export async function getVisitMetricsRange(from: string, to: string): Promise<VisitMetrics[]> {
+    if (!db) {
+        console.warn("Firestore not initialized. Returning empty visit metrics range.");
+        return [] as VisitMetrics[];
+    }
+    try {
+        const metricsRef = collection(db, 'visitMetrics');
+
+        const q = query(
+            metricsRef,
+            where('date', '>=', from),
+            where('date', '<=', to),
+            orderBy('date', 'desc')
+        );
+
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as VisitMetrics[];
+    } catch (error) {
+        console.error("Error fetching visit metrics range from Firestore:", error);
+        return [] as VisitMetrics[];
+    }
 }
 
 // NUEVO: Función para obtener IPs de usuarios para el admin
 export async function getUserIPs(limit: number = 50): Promise<UserIPLog[]> {
-    if (!db) throw new Error("Firestore is not initialized.");
-    
-    const userIPsRef = collection(db, 'userIPs');
-    const q = query(
-        userIPsRef,
-        orderBy('timestamp', 'desc'),
-        limit(limit)
-    );
-    
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    })) as UserIPLog[];
+    if (!db) {
+        console.warn("Firestore not initialized. Returning empty user IPs.");
+        return [] as UserIPLog[];
+    }
+    try {
+        const userIPsRef = collection(db, 'userIPs');
+        const q = query(
+            userIPsRef,
+            orderBy('timestamp', 'desc'),
+            limit(limit)
+        );
+        
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as UserIPLog[];
+    } catch (error) {
+        console.error("Error fetching user IPs from Firestore:", error);
+        return [] as UserIPLog[];
+    }
 }
 
 // NUEVO: Función para obtener estadísticas de visitas del día actual
 export async function getTodayVisitStats(): Promise<{ totalVisits: number; uniqueVisits: number; topPages: Array<{ page: string; visits: number }> }> {
-    if (!db) throw new Error("Firestore is not initialized.");
+    if (!db) {
+        console.warn("Firestore not initialized. Returning empty today visit stats.");
+        return { totalVisits: 0, uniqueVisits: 0, topPages: [] };
+    }
     
     const today = format(new Date(), 'yyyy-MM-dd');
     const metricsRef = doc(db, 'visitMetrics', today);

@@ -461,22 +461,22 @@ export default function CheckoutForm() {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            amount: Math.round(priceDetails.total * 100), // Convert to cents
-                            currency: 'usd',
-                            courseId,
-                            courseName: course.name,
-                            date,
-                            time,
-                            players: parseInt(players),
-                            holes: holes ? parseInt(holes) : 18,
-                            teeTimeId,
-                            comments: comments || '',
-                            specialRequests: specialRequests || '',
-                            couponCode: appliedCoupon?.code || '',
-                            customerEmail: user?.email || guestInfo.email,
-                            customerName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
-                            savePaymentMethod: savePaymentMethod
-                        }),
+                            amount: priceDetails.total, // Enviar en dólares; el backend convierte a centavos
+                             currency: 'usd',
+                             courseId,
+                             courseName: course.name,
+                             date,
+                             time,
+                             players: parseInt(players),
+                             holes: holes ? parseInt(holes) : 18,
+                             teeTimeId,
+                             comments: comments || '',
+                             specialRequests: specialRequests || '',
+                             couponCode: appliedCoupon?.code || '',
+                             customerEmail: user?.email || guestInfo.email,
+                             customerName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
+                             savePaymentMethod: savePaymentMethod
+                         }),
                     });
 
                     if (!response.ok) {
@@ -484,17 +484,17 @@ export default function CheckoutForm() {
                         throw new Error(errorData.error || 'Error al crear la intención de pago');
                     }
 
-                    const { client_secret } = await response.json();
+                    const { clientSecret } = await response.json();
 
-                    // Confirm payment
-                    const { error, paymentIntent } = await stripe.confirmPayment({
-                        elements,
-                        clientSecret: client_secret,
-                        redirect: 'if_required',
-                        confirmParams: {
-                            return_url: `${window.location.origin}/${lang}/book/success`,
-                        },
-                    });
+                     // Confirm payment
+                     const { error, paymentIntent } = await stripe.confirmPayment({
+                         elements,
+                        clientSecret: clientSecret,
+                         redirect: 'if_required',
+                         confirmParams: {
+                             return_url: `${window.location.origin}/${lang}/book/success`,
+                         },
+                     });
 
                     if (error) {
                         const { userMessage, fallbacksAvailable, showRetryWithNewCard } = handleStripeError(error as StripeError);
@@ -1250,7 +1250,7 @@ export default function CheckoutForm() {
                                                     "Cargando..."
                                                 ) : (isProcessing || isValidating) ? (
                                                     <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> 
-                                                    {isValidating ? 'Validando tarjeta...' : 'Procesando...'}></>
+                                                    {isValidating ? 'Validando tarjeta...' : 'Procesando...'}</>
                                                 ) : (
                                                     `Pagar ${priceDetails.total.toFixed(2)} USD y Confirmar`
                                                 )}

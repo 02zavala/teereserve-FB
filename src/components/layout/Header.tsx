@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image"; // ✅ NUEVO: usamos next/image para el logo
 import { Menu, Sparkles, GanttChartSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { UserNavWrapper } from "@/components/auth/UserNavWrapper";
 import type { Locale } from "@/i18n-config";
 import { ThemeToggle } from "./ThemeToggle";
@@ -97,14 +97,17 @@ export function Header({ dictionary, lang }: HeaderProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground"
               >
                 <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle Menu</span>
+                <span className="sr-only">Abrir menú</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="pr-0">
-              {/* Logo y marca en móvil (solo cambiamos Logo -> Image) */}
+            <SheetContent side="right" className="w-[80vw] sm:w-[400px]">
+              {/* Título accesible para el Sheet (oculto visualmente) */}
+              <SheetHeader>
+                <SheetTitle className="sr-only">Menú principal</SheetTitle>
+              </SheetHeader>
+
               <Link href={`/${lang}`} className="flex items-center space-x-2">
                 <div className="w-12 h-12">
                   <Image

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, Fragment } from 'react';
-import { MoreHorizontal, Edit, X, Calendar, CheckCircle, Clock, AlertTriangle, FileText, DollarSign } from 'lucide-react';
+import React, { useState, Fragment, useEffect } from 'react';
+import { MoreHorizontal, Edit, X, Calendar, CheckCircle, Clock, AlertTriangle, FileText, DollarSign, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import type { Booking, BookingStatus } from '@/types';
+import type { Booking, BookingStatus, GolfCourse } from '@/types';
 import { BookingEditDialog } from './BookingEditDialog';
 import { CancellationDialog } from './CancellationDialog';
 import { RescheduleDialog } from './RescheduleDialog';
@@ -21,6 +21,7 @@ import { PaymentManagementDialog } from './PaymentManagementDialog';
 import { AuditHistoryDialog } from './AuditHistoryDialog';
 import { CheckinDialog } from '@/components/booking/CheckinDialog';
 import type { CancellationRequest, RefundCalculation } from '@/lib/cancellation-policies';
+import { getCourseById } from '@/lib/data';
 
 interface BookingActionsMenuProps {
   booking: Booking;
@@ -42,6 +43,21 @@ export function BookingActionsMenu({
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showAuditDialog, setShowAuditDialog] = useState(false);
   const [showCheckinDialog, setShowCheckinDialog] = useState(false);
+  const [course, setCourse] = useState<GolfCourse | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const c = await getCourseById(booking.courseId);
+        if (isMounted) setCourse(c || null);
+      } catch (e) {
+        console.error('Error loading course for booking:', e);
+        if (isMounted) setCourse(null);
+      }
+    })();
+    return () => { isMounted = false; };
+  }, [booking.courseId]);
 
   const handleStatusChange = async (newStatus: BookingStatus, reason?: string) => {
     if (!onStatusChange) return;
@@ -303,17 +319,20 @@ export function BookingActionsMenu({
         onOpenChange={setShowAuditDialog}
       />
       
-      <CheckinDialog
-        booking={booking}
-        open={showCheckinDialog}
-        onOpenChange={setShowCheckinDialog}
-        onCheckinComplete={(updatedBooking) => {
-          if (onStatusChange) {
-            onStatusChange(booking.id, 'checked_in', 'Check-in verificado por geolocalización');
-          }
-          setShowCheckinDialog(false);
-        }}
-       />
+      {course && (
+        <CheckinDialog
+          booking={booking}
+          course={course}
+          open={showCheckinDialog}
+          onOpenChange={setShowCheckinDialog}
+          onCheckinComplete={(updatedBooking) => {
+            if (onStatusChange) {
+              onStatusChange(booking.id, 'checked_in', 'Check-in verificado por geolocalización');
+            }
+            setShowCheckinDialog(false);
+          }}
+        />
+      )}
      </Fragment>
    );
  }

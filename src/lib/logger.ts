@@ -112,10 +112,37 @@ class Logger {
     return undefined;
   }
 
+  // UTF-8 safe Base64 encoder to avoid InvalidCharacterError in btoa
+  private base64Utf8(input: string): string {
+    try {
+      // Browser path with TextEncoder available
+      if (typeof window !== 'undefined' && typeof TextEncoder !== 'undefined') {
+        const bytes = new TextEncoder().encode(input);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+      }
+      // Node/SSR fallback using Buffer if available
+      // @ts-ignore
+      if (typeof Buffer !== 'undefined') {
+        // @ts-ignore
+        return Buffer.from(input, 'utf-8').toString('base64');
+      }
+      // Generic fallback
+      // eslint-disable-next-line deprecation/unescape
+      return btoa(unescape(encodeURIComponent(input)));
+    } catch {
+      // Last resort: replace non-Latin1 chars before encoding
+      const ascii = input.replace(/[^\x00-\xFF]/g, '?');
+      return btoa(ascii);
+    }
+  }
   private generateFingerprint(error: Error): string {
     // Create a unique fingerprint for similar errors
     const key = `${error.name}_${error.message}_${error.stack?.split('\n')[1] || ''}`;
-    return btoa(key).substr(0, 16);
+    return this.base64Utf8(key).substring(0, 16);
   }
 
   private addToBuffer(entry: LogEntry): void {

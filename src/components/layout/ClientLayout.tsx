@@ -1,7 +1,6 @@
 
 "use client";
 
-import { AppProviders } from '@/context/AppProviders';
 import { ThemeProvider } from '@/components/layout/ThemeProvider';
 import { OnboardingProvider } from '@/components/onboarding/OnboardingProvider';
 import { PageErrorBoundary } from '@/components/error/ErrorBoundary';
@@ -11,6 +10,8 @@ import { initGA4 } from '@/lib/analytics';
 import { Suspense, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { Locale } from '@/i18n-config';
+import { useAuth } from '@/context/AuthContext';
+import { usePathname, useRouter } from 'next/navigation';
 
 // Desregistrar Service Workers en desarrollo
 if (process.env.NODE_ENV === 'development') {
@@ -22,8 +23,33 @@ interface ClientLayoutProps {
   lang: Locale;
 }
 
+// Mover el guard a un subcomponente envuelto por AppProviders
+function EmailVerificationGuard({ children, lang }: { children: React.ReactNode; lang: Locale }) {
+  const { user, loading } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+  const requireVerification = process.env.NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION === 'true';
+
+  useEffect(() => {
+    if (!requireVerification) return;
+    if (loading) return;
+    if (!user) return;
+    const path = pathname || '';
+    const isAllowed =
+      path.includes('/verify-email') ||
+      path.includes('/login') ||
+      path.includes('/signup');
+    if (!user.emailVerified && !isAllowed) {
+      router.push(`/${lang}/verify-email`);
+    }
+  }, [requireVerification, user, loading, pathname, lang, router]);
+
+  return <>{children}</>;
+}
+
 export function ClientLayout({ children, lang }: ClientLayoutProps) {
   // Initialize global error handling and analytics
+  // Eliminar uso directo de useAuth aquí: el provider está más abajo
   useEffect(() => {
     initializeErrorHandling();
     
@@ -67,10 +93,10 @@ export function ClientLayout({ children, lang }: ClientLayoutProps) {
       enableSystem
       disableTransitionOnChange
     >
-      <AppProviders>
-        <OnboardingProvider lang={lang}>
-          <PageErrorBoundary>
-            <FirebaseErrorHandler>
+      <OnboardingProvider lang={lang}>
+        <PageErrorBoundary>
+          <FirebaseErrorHandler>
+            <EmailVerificationGuard lang={lang}>
               <Suspense fallback={
                   <div className="flex h-screen w-full items-center justify-center">
                       <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -78,10 +104,10 @@ export function ClientLayout({ children, lang }: ClientLayoutProps) {
               }>
                   {children}
               </Suspense>
-            </FirebaseErrorHandler>
-          </PageErrorBoundary>
-        </OnboardingProvider>
-      </AppProviders>
+            </EmailVerificationGuard>
+          </FirebaseErrorHandler>
+        </PageErrorBoundary>
+      </OnboardingProvider>
     </ThemeProvider>
   );
 }

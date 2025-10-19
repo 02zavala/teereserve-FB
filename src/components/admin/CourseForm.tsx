@@ -30,6 +30,10 @@ import { useAuth } from "@/context/AuthContext";
 const formSchema = z.object({
   name: z.string().min(3, "Course name must be at least 3 characters.").max(100, "Course name cannot exceed 100 characters."),
   location: z.string().min(3, "Location is required.").max(100, "Location cannot exceed 100 characters."),
+  slug: z.union([
+    z.string().trim().toLowerCase().regex(/^[a-z0-9-]+$/, "Use lowercase letters, numbers, and hyphens only.").min(3, "Slug must be at least 3 characters.").max(100, "Slug cannot exceed 100 characters."),
+    z.literal("")
+  ]).optional(),
   address: z.string().min(5, "Address must be at least 5 characters.").max(200, "Address cannot exceed 200 characters.").optional(),
   description: z.string().min(10, "Description must be at least 10 characters.").max(1000, "Description cannot exceed 1000 characters."),
   rules: z.string().max(500, "Rules cannot exceed 500 characters.").optional(),
@@ -126,6 +130,7 @@ export function CourseForm({ course, lang }: CourseFormProps) {
     defaultValues: {
       name: course?.name || "",
       location: course?.location || "",
+      slug: (course as any)?.slug || "",
       address: (course as any)?.address || "",
       description: course?.description || "",
       rules: course?.rules || "",
@@ -168,8 +173,11 @@ export function CourseForm({ course, lang }: CourseFormProps) {
           totalYards = values.holeDetails.holes9.yards;
       }
 
+      const normalizedSlug = values.slug && values.slug.trim() !== "" ? values.slug.trim().toLowerCase() : undefined;
+
       const courseData = {
         ...values,
+        slug: normalizedSlug,
         totalYards, // Use the calculated value
         newImages,
         existingImageUrls,
@@ -206,7 +214,7 @@ export function CourseForm({ course, lang }: CourseFormProps) {
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {})
           },
-          body: JSON.stringify({ courseId: savedCourseId })
+          body: JSON.stringify({ courseId: normalizedSlug || savedCourseId })
         });
       } catch (revalErr) {
         console.warn("Revalidation request failed:", revalErr);
@@ -269,6 +277,19 @@ export function CourseForm({ course, lang }: CourseFormProps) {
                                 <FormLabel>{lang === 'es' ? 'Dirección' : 'Address'}</FormLabel>
                                 <FormControl>
                                     <Input placeholder={lang === 'es' ? 'p.ej., Blvd. Kukulkan Km 17, Cancún, Q.R.' : 'e.g., Blvd. Kukulkan Km 17, Cancún, Q.R.'} {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="slug"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>{lang === 'es' ? 'Slug (opcional)' : 'Slug (optional)'}</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g., solmar-golf-links" {...field} />
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>

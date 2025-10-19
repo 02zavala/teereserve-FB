@@ -256,6 +256,7 @@ export function generateStructuredData({
 // Datos estructurados específicos para golf
 export function generateGolfCourseStructuredData(course: {
   id: string;
+  slug?: string;
   name: string;
   description: string;
   location: string;
@@ -271,7 +272,7 @@ export function generateGolfCourseStructuredData(course: {
     '@type': 'GolfCourse',
     name: course.name,
     description: course.description,
-    url: `${baseUrl}/courses/${course.id}`,
+    url: `${baseUrl}/courses/${course.slug ?? course.id}`,
     image: course.imageUrls[0],
     address: {
       '@type': 'PostalAddress',

@@ -312,6 +312,10 @@ export function AuditHistoryDialog({ booking, open, onOpenChange }: AuditHistory
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="sr-only">Cargando historial de auditoría</DialogTitle>
+            <DialogDescription className="sr-only">Esperando datos del historial…</DialogDescription>
+          </DialogHeader>
           <div className="flex items-center justify-center p-8">
             <RefreshCw className="h-6 w-6 animate-spin mr-2" />
             <span>Cargando historial de auditoría...</span>

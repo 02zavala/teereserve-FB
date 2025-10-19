@@ -136,9 +136,12 @@ export function SignUpForm() {
         // No interrumpir el flujo si falla el webhook
       }
       
+      const requireVerification = process.env.NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION === 'true';
       toast({
         title: "¡Bienvenido a TeeReserve!",
-        description: "Tu cuenta ha sido creada exitosamente. Revisa tu email para más información.",
+        description: requireVerification
+          ? (lang === 'es' ? "Tu cuenta ha sido creada exitosamente. Revisa tu email para más información." : "Your account has been created successfully. Check your email for more info.")
+          : (lang === 'es' ? "Tu cuenta ha sido creada exitosamente." : "Your account has been created successfully."),
       });
       
       // Activar el onboarding para nuevos usuarios

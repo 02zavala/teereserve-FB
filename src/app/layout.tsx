@@ -7,6 +7,7 @@ import { ClientLayout } from '@/components/layout/ClientLayout'
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics'
 import { VisitTracker } from '@/components/analytics/VisitTracker' // NUEVO: Importar tracker de visitas
 import type { Locale } from '@/i18n-config'
+import { AppProviders } from '@/context/AppProviders'
 
 const fontHeadline = Playfair_Display({
   subsets: ['latin'],
@@ -63,9 +64,11 @@ export default async function RootLayout({
         {/* Visit Tracking - NUEVO */}
         <VisitTracker enabled={true} debounceMs={1000} />
         
-        <ClientLayout lang={lang}>
+        <AppProviders>
+          <ClientLayout lang={lang}>
             {children}
-        </ClientLayout>
+          </ClientLayout>
+        </AppProviders>
       </body>
     </html>
   )

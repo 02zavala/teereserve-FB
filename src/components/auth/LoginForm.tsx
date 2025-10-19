@@ -1,208 +1,145 @@
 
-"use client"
+"use client";
 
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import { useRouter, usePathname } from "next/navigation"
-import { useState } from "react"
-import { useStableNavigation } from "@/hooks/useStableNavigation"
-
-import { Button } from "@/components/ui/button"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/context/AuthContext"
-import { useErrorHandler, commonValidators } from "@/hooks/useErrorHandler"
-import { ValidationError } from "@/lib/error-handling"
-import { FirebaseError } from "firebase/app"
-import { Loader2 } from "lucide-react"
-import { handleError, translateFirebaseError } from "@/lib/error-handling"
+import React, { useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Form, FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { translateFirebaseError } from '@/lib/error-handling';
+import { FirebaseError } from 'firebase/app';
+import { useRouter, usePathname } from 'next/navigation';
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email." }).max(254, { message: "Email is too long." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters." }).max(128, { message: "Password is too long." }),
-})
+  email: z.string().email({ message: 'Email inválido' }),
+  password: z.string().min(6, { message: 'Mínimo 6 caracteres' }),
+  remember: z.boolean().optional().default(false),
+});
 
-export function LoginForm() {
-  const { toast } = useToast()
-  const { login, sendPasswordResetEmail } = useAuth()
-  const { handleAsyncError } = useErrorHandler()
-  const router = useRouter()
-  const pathname = usePathname()
-  const lang = pathname?.split('/')[1] || 'en'
-  const { go } = useStableNavigation()
-  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false)
-  const [resetEmail, setResetEmail] = useState('')
-  const [isResetting, setIsResetting] = useState(false)
+type FormValues = z.infer<typeof formSchema>;
 
-  const form = useForm<z.infer<typeof formSchema>>({
+export default function LoginForm() {
+  const { login, resetPassword } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
+  const lang = pathname?.split('/')[1] || 'es';
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  })
+    defaultValues: { email: '', password: '', remember: false },
+  });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    handleAsyncError(async () => {
-      console.log('Starting login process...');
-      
-      // Validación adicional de datos
-      if (!commonValidators.isValidEmail(values.email)) {
-        throw new ValidationError('Please enter a valid email address');
-      }
-      
-      if (values.password.length < 6) {
-        throw new ValidationError('Password must be at least 6 characters long');
-      }
-      
-      await login(values.email.trim().toLowerCase(), values.password);
-      console.log('Login successful');
-      
+  const onSubmit = async (values: FormValues) => {
+    setLoading(true);
+    try {
+      await login(values.email.trim().toLowerCase(), values.password, !!values.remember);
       toast({
-        title: "¡Bienvenido de nuevo!",
-        description: "Has iniciado sesión correctamente.",
+        title: '¡Bienvenido de nuevo!',
+        description: 'Inicio de sesión correcto.',
       });
-      
-      go(`/${lang}/profile`);
-    }, {
-      onError: async (error: any) => {
-        // Usar mensajes de error amigables
-        const friendlyMessage = getFriendlyErrorMessage(error.code);
-        
-        toast({
-          title: "Error al iniciar sesión",
-          description: friendlyMessage,
-          variant: "destructive",
-        });
-        
-        throw error; // Relanzar para que useErrorHandler lo maneje
-      }
-    });
-  }
-
-
-
-  function handlePasswordReset() {
-    handleAsyncError(async () => {
-      if (!resetEmail) {
-        throw new ValidationError('Por favor ingresa tu email');
-      }
-      
-      if (!commonValidators.isValidEmail(resetEmail)) {
-        throw new ValidationError('Please enter a valid email address');
-      }
-      
-      console.log('Sending password reset email...');
-      setIsResetting(true);
-      
-      await resetPassword(resetEmail.trim().toLowerCase());
-      console.log('Password reset email sent successfully');
-      
+      router.push(`/${lang}`);
+      router.refresh();
+    } catch (error) {
+      const friendly = translateFirebaseError(error as FirebaseError);
       toast({
-        title: "Email enviado",
-        description: "Revisa tu bandeja de entrada para restablecer tu contraseña.",
+        title: 'Error al iniciar sesión',
+        description: friendly,
+        variant: 'destructive',
       });
-      setIsResetDialogOpen(false);
-      setResetEmail('');
-      setIsResetting(false);
-    });
-  }
+      // Marcar errores en el formulario cuando la credencial es inválida
+      const code = (error as any)?.code as string | undefined;
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+        form.setError('password', { message: 'Correo o contraseña incorrecta' });
+      }
+      console.error('Login error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const handlePasswordReset = async () => {
+    const emailValue = form.getValues('email');
+    if (!emailValue) {
+      form.setError('email', { message: 'Ingresa tu email para recuperar contraseña' });
+      return;
+    }
+    try {
+      await resetPassword(emailValue.trim().toLowerCase());
+      toast({
+        title: 'Recuperación enviada',
+        description: 'Si el email existe, te enviamos instrucciones.',
+      });
+    } catch (e) {
+      const friendly = translateFirebaseError(e as FirebaseError);
+      toast({
+        title: 'Error al recuperar contraseña',
+        description: friendly,
+        variant: 'destructive',
+      });
+      console.error('Reset password error', e);
+    }
+  };
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="name@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {form.formState.isSubmitting ? 'Logging In...' : 'Log In'}
-            </Button>
-            
-            <div className="text-center">
-              <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="link" className="text-sm text-muted-foreground hover:text-primary">
-                    ¿Olvidaste tu contraseña?
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Restablecer contraseña</DialogTitle>
-                    <DialogDescription>
-                      Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <Input
-                      type="email"
-                      placeholder="tu@email.com"
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                    />
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => setIsResetDialogOpen(false)}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button 
-                        className="flex-1" 
-                        onClick={handlePasswordReset}
-                        disabled={isResetting}
-                      >
-                        {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isResetting ? 'Enviando...' : 'Enviar enlace'}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
-  )
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="tucorreo@ejemplo.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Contraseña</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="••••••••" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="remember"
+          render={({ field }) => (
+            <FormItem className="flex items-center justify-between">
+              <FormLabel>No cerrar sesión (28 días)</FormLabel>
+              <FormControl>
+                <Switch checked={!!field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex items-center gap-3">
+          <Button type="submit" disabled={loading}>
+            {loading ? 'Ingresando…' : 'Ingresar'}
+          </Button>
+          <Button type="button" variant="link" onClick={handlePasswordReset}>
+            ¿Olvidaste tu contraseña?
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
 }

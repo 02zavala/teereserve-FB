@@ -1,6 +1,6 @@
 
-import { LoginForm } from "@/components/auth/LoginForm";
 import Link from "next/link";
+import LoginFormClient from "./LoginFormClient";
 
 interface LoginPageProps {
     params: {
@@ -23,7 +23,7 @@ export default function LoginPage({ params }: LoginPageProps) {
                         </Link>
                     </p>
                 </div>
-                <LoginForm />
+                <LoginFormClient />
             </div>
         </div>
     );

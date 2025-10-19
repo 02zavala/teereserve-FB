@@ -105,11 +105,29 @@ export function GeolocationCheckin({ booking, course, onCheckinComplete, onCance
       });
 
       // Calcular distancia al campo de golf
+      const courseLat = course.latLng?.lat;
+      const courseLng = course.latLng?.lng;
+      if (typeof courseLat !== 'number' || typeof courseLng !== 'number') {
+        setLocationState({
+          loading: false,
+          position,
+          error: 'Este campo no tiene coordenadas configuradas (lat/lng).',
+          distanceToVenue: null,
+          isWithinRange: false
+        });
+        toast({
+          title: 'Coordenadas no disponibles',
+          description: 'El curso no tiene latitud/longitud. Configúralas para habilitar el check-in.',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       const distance = calculateDistance(
         position.coords.latitude,
         position.coords.longitude,
-        course.location.lat,
-        course.location.lng
+        courseLat,
+        courseLng
       );
 
       const isWithinRange = distance <= VENUE_RADIUS_METERS;

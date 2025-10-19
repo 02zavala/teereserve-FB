@@ -65,7 +65,7 @@ export default async function CoursesPage({ params: paramsProp, searchParams: se
                     {courses.map((course) => (
                         <LinkComponent 
                             key={course.id}
-                            href={`/${params.lang}/courses/${course.id}`}
+                            href={`/${params.lang}/courses/${course.slug ?? course.id}`}
                             className="block"
                         >
                             <CourseCard course={course} dictionary={dictionary.courseCard} lang={params.lang} asLink />

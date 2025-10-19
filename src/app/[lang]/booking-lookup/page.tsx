@@ -2,7 +2,7 @@ export const revalidate = 300;
 
 import { getDictionary } from "@/lib/get-dictionary";
 import type { Locale } from "@/i18n-config";
-import { BookingLookupClient } from "./BookingLookupClient";
+import BookingLookupClientWrapper from "./BookingLookupClientWrapper";
 
 interface BookingLookupPageProps {
   params: Promise<{ lang: Locale }>;
@@ -19,7 +19,7 @@ export default async function BookingLookupPage({ params }: BookingLookupPagePro
         <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">{t.title}</h1>
         <p className="mt-2 text-lg text-muted-foreground">{t.subtitle}</p>
       </div>
-      <BookingLookupClient dictionary={t} lang={lang} />
+      <BookingLookupClientWrapper dictionary={t} lang={lang} />
     </div>
   );
 }

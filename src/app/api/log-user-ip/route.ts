@@ -42,16 +42,18 @@ export async function POST(request: NextRequest) {
         const { userId, action } = body;
         
         // Validar parámetros requeridos
-        if (!userId || typeof userId !== 'string') {
+        const allowedActions = ['login', 'register', 'guest_booking', 'visit'];
+        if (!action || !allowedActions.includes(action)) {
             return NextResponse.json(
-                { error: 'userId parameter is required' },
+                { error: 'Valid action parameter is required (login, register, guest_booking, visit)' },
                 { status: 400 }
             );
         }
-        
-        if (!action || !['login', 'register', 'guest_booking'].includes(action)) {
+
+        // Para acciones distintas de 'visit', exigir userId
+        if (action !== 'visit' && (!userId || typeof userId !== 'string')) {
             return NextResponse.json(
-                { error: 'Valid action parameter is required (login, register, guest_booking)' },
+                { error: 'userId parameter is required for this action' },
                 { status: 400 }
             );
         }
@@ -63,9 +65,9 @@ export async function POST(request: NextRequest) {
         
         // Datos del registro de IP
         const ipData = {
-            userId,
+            userId: userId ?? null,
             ipAddress: clientIP,
-            action: action as 'login' | 'register' | 'guest_booking',
+            action: action as 'login' | 'register' | 'guest_booking' | 'visit',
             userAgent,
             location
         };
@@ -104,6 +106,6 @@ export async function GET() {
     return NextResponse.json({
         message: 'User IP logging endpoint is active',
         timestamp: new Date().toISOString(),
-        supportedActions: ['login', 'register', 'guest_booking']
+        supportedActions: ['login', 'register', 'guest_booking', 'visit']
     });
 }

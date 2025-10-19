@@ -1,6 +1,6 @@
 // NUEVO: API endpoint para obtener métricas de visitas (solo admin)
 import { NextRequest, NextResponse } from 'next/server';
-import { getVisitMetrics, getTodayVisitStats, getUserIPs } from '@/lib/data';
+import { getVisitMetrics, getTodayVisitStats, getUserIPs, getVisitMetricsRange } from '@/lib/data';
 import { verifyIdToken } from '@/lib/firebase-admin';
 
 // Función para verificar si el usuario es admin
@@ -30,11 +30,19 @@ export async function GET(request: NextRequest) {
         }
         
         const { searchParams } = new URL(request.url);
-        const days = parseInt(searchParams.get('days') || '7');
+        const daysParam = searchParams.get('days');
+        const from = searchParams.get('from');
+        const to = searchParams.get('to');
         const includeIPs = searchParams.get('includeIPs') === 'true';
-        
-        // Obtener métricas de visitas
-        const visitMetrics = await getVisitMetrics(days);
+
+        // Obtener métricas de visitas según parámetros
+        let visitMetrics;
+        if (from && to) {
+            visitMetrics = await getVisitMetricsRange(from, to);
+        } else {
+            const days = parseInt(daysParam || '7');
+            visitMetrics = await getVisitMetrics(days);
+        }
         const todayStats = await getTodayVisitStats();
         
         let userIPs = [] as any[];
@@ -70,11 +78,14 @@ export async function GET(request: NextRequest) {
                     topPages
                 },
                 userIPs: includeIPs ? userIPs : undefined,
-                period: {
-                    days,
-                    from: visitMetrics[visitMetrics.length - 1]?.date,
-                    to: visitMetrics[0]?.date
-                }
+                period: from && to
+                    ? { mode: 'range', from, to }
+                    : {
+                        mode: 'days',
+                        days: parseInt(daysParam || '7'),
+                        from: visitMetrics[visitMetrics.length - 1]?.date,
+                        to: visitMetrics[0]?.date
+                    }
             }
         });
     } catch (error) {

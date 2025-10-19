@@ -17,6 +17,25 @@ export function VisitTracker({ enabled = true, debounceMs = 1000 }: VisitTracker
     debounceMs,
   });
 
+  // Registrar IP de visita anónima una vez por sesión
+  useEffect(() => {
+    if (!enabled) return;
+    try {
+      if (typeof window !== 'undefined' && !sessionStorage.getItem('ip_visit_logged')) {
+        fetch('/api/log-user-ip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'visit',
+          }),
+        }).catch(() => {});
+        sessionStorage.setItem('ip_visit_logged', '1');
+      }
+    } catch (error) {
+      console.debug('IP visit logging skipped:', error);
+    }
+  }, [enabled]);
+
   // Tracking de eventos especiales del navegador
   useEffect(() => {
     if (!enabled) return;

@@ -1,6 +1,6 @@
 
-import { SignUpForm } from "@/components/auth/SignUpForm";
 import Link from "next/link";
+import RegistrationFormClient from "./RegistrationFormClient";
 
 interface SignUpPageProps {
     params: {
@@ -23,7 +23,7 @@ export default function SignUpPage({ params }: SignUpPageProps) {
                         </Link>
                     </p>
                 </div>
-                <SignUpForm />
+                <RegistrationFormClient />
             </div>
         </div>
     );

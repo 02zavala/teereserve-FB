@@ -1,9 +1,9 @@
-import { getCourseById } from '@/lib/data';
+import { getCourseBySlugOrId } from '@/lib/data';
 import { getDictionary } from '@/lib/get-dictionary';
 import { generateSEOMetadata, generateGolfCourseStructuredData } from '@/components/seo/SEOHead';
 import type { Metadata } from 'next';
 import type { Locale } from '@/i18n-config';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 interface CourseLayoutProps {
   children: React.ReactNode;
@@ -16,7 +16,7 @@ export async function generateMetadata({ params: paramsProp }: { params: Promise
   const { lang, id } = params;
   
   try {
-    const course = await getCourseById(id);
+    const course = await getCourseBySlugOrId(id);
     const dictionary = await getDictionary(lang);
     
     if (!course) {
@@ -47,11 +47,11 @@ export async function generateMetadata({ params: paramsProp }: { params: Promise
       description,
       keywords,
       image: course.imageUrls?.[0] || '/logo-final.png',
-      url: `/${lang}/courses/${id}`,
+      url: `/${lang}/courses/${course.slug ?? id}`,
       locale: lang,
       alternateLocales: [
-        { locale: 'es', url: `/es/courses/${id}` },
-        { locale: 'en', url: `/en/courses/${id}` }
+        { locale: 'es', url: `/es/courses/${course.slug ?? id}` },
+        { locale: 'en', url: `/en/courses/${course.slug ?? id}` }
       ],
       type: 'article'
     });
@@ -71,15 +71,21 @@ export default async function CourseLayout({ children, params: paramsProp }: Cou
   const { lang, id } = params;
   
   try {
-    const course = await getCourseById(id);
+    const course = await getCourseBySlugOrId(id);
     
     if (!course) {
       notFound();
     }
 
+    // Canonical redirect to slug-based URL when param is not the slug
+    if (course.slug && id !== course.slug) {
+      redirect(`/${lang}/courses/${course.slug}`);
+    }
+
     // Generar datos estructurados para el campo de golf
     const golfCourseStructuredData = generateGolfCourseStructuredData({
       id: course.id,
+      slug: course.slug,
       name: course.name,
       description: course.description,
       location: course.location,
@@ -106,7 +112,7 @@ export default async function CourseLayout({ children, params: paramsProp }: Cou
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'LocalBusiness',
-              '@id': `https://teereserve.golf/${lang}/courses/${id}`,
+              '@id': `https://teereserve.golf/${lang}/courses/${course.slug ?? id}`,
               name: course.name,
               description: course.description,
               image: course.imageUrls?.[0],
@@ -122,7 +128,7 @@ export default async function CourseLayout({ children, params: paramsProp }: Cou
               } : undefined,
               priceRange: `$195 - $295`,
               // telephone: course.contactInfo?.phone, // contactInfo not available in GolfCourse type
-              url: `https://teereserve.golf/${lang}/courses/${id}`,
+              url: `https://teereserve.golf/${lang}/courses/${course.slug ?? id}`,
               // sameAs: course.website ? [course.website] : undefined, // website not available in GolfCourse type
               // aggregateRating: course.averageRating ? {
               //   '@type': 'AggregateRating',
@@ -137,7 +143,7 @@ export default async function CourseLayout({ children, params: paramsProp }: Cou
                 priceCurrency: 'USD',
                 availability: 'https://schema.org/InStock',
                 validFrom: new Date().toISOString(),
-                url: `https://teereserve.golf/${lang}/courses/${id}`
+                url: `https://teereserve.golf/${lang}/courses/${course.slug ?? id}`
               }
             })
           }}

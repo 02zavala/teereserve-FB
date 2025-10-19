@@ -1,6 +1,6 @@
 "use client";
 
-import { getCourseById } from '@/lib/data';
+import { getCourseBySlugOrId } from '@/lib/data';
 import { getDictionary } from '@/lib/get-dictionary';
 import { notFound, useParams, usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -39,7 +39,7 @@ export default function CourseDetailPage() {
 
         const fetchCourseAndDict = async () => {
             const [courseData, dictData] = await Promise.all([
-                getCourseById(courseId),
+                getCourseBySlugOrId(courseId),
                 getDictionary(lang)
             ]);
             
@@ -144,7 +144,7 @@ export default function CourseDetailPage() {
                                 description: course.description,
                                 imageUrl: course.images?.[0],
                                 priceFromUSD: typeof course.basePrice === 'number' ? course.basePrice : course.priceFromUSD,
-                                url: `/courses/${course.id}`
+                                url: `/${lang}/courses/${course.slug ?? course.id}`
                             }]}
                             height="400px"
                             showUserLocation={true}

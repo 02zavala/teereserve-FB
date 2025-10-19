@@ -47,10 +47,29 @@ export function CheckinDialog({
   // Verificar si la reserva es elegible para check-in
   const isEligibleForCheckin = () => {
     const now = new Date();
-    const bookingDate = new Date(booking.date);
-    const bookingTime = booking.time.split(':');
-    const bookingDateTime = new Date(bookingDate);
-    bookingDateTime.setHours(parseInt(bookingTime[0]), parseInt(bookingTime[1]));
+
+    // Obtener Date completo de la reserva
+    let bookingDateTime: Date | null = null;
+
+    if (booking.teeDateTime) {
+      const dt = new Date(booking.teeDateTime as any);
+      bookingDateTime = isNaN(dt.getTime()) ? null : dt;
+    } else if (booking.date) {
+      const dateObj = new Date(booking.date as any);
+      if (!isNaN(dateObj.getTime())) {
+        if (typeof booking.time === 'string') {
+          const parts = booking.time.split(':');
+          const hours = parseInt(parts[0], 10) || 0;
+          const minutes = parseInt(parts[1], 10) || 0;
+          dateObj.setHours(hours, minutes, 0, 0);
+        }
+        bookingDateTime = dateObj;
+      }
+    }
+
+    if (!bookingDateTime) {
+      return false;
+    }
 
     // Permitir check-in 2 horas antes y hasta 1 hora después
     const checkinWindowStart = new Date(bookingDateTime.getTime() - 2 * 60 * 60 * 1000);
@@ -137,11 +156,33 @@ export function CheckinDialog({
   // Formatear fecha y hora
   const formatBookingDateTime = () => {
     try {
-      const bookingDate = new Date(booking.date);
-      const formattedDate = format(bookingDate, 'EEEE, d MMMM yyyy', { locale: es });
-      return `${formattedDate} a las ${booking.time}`;
+      let dateToFormat: Date | null = null;
+      let timeLabel: string | null = null;
+
+      if (booking.teeDateTime) {
+        const dt = new Date(booking.teeDateTime as any);
+        if (!isNaN(dt.getTime())) {
+          dateToFormat = dt;
+          timeLabel = `${dt.getHours().toString().padStart(2,'0')}:${dt.getMinutes().toString().padStart(2,'0')}`;
+        }
+      }
+
+      if (!dateToFormat && booking.date) {
+        const d = new Date(booking.date as any);
+        if (!isNaN(d.getTime())) {
+          dateToFormat = d;
+          timeLabel = typeof booking.time === 'string' ? booking.time : null;
+        }
+      }
+
+      if (!dateToFormat) {
+        return `${booking.date ?? 'Fecha no disponible'} a las ${booking.time ?? '--:--'}`;
+      }
+
+      const formattedDate = format(dateToFormat, 'EEEE, d MMMM yyyy', { locale: es });
+      return `${formattedDate} a las ${timeLabel ?? '--:--'}`;
     } catch (error) {
-      return `${booking.date} a las ${booking.time}`;
+      return `${booking.date ?? 'Fecha no disponible'} a las ${booking.time ?? '--:--'}`;
     }
   };
 
@@ -173,7 +214,7 @@ export function CheckinDialog({
               
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{course.location.address}</span>
+                <span>{course.address || course.location}</span>
               </div>
               
               <div className="flex items-center gap-2">

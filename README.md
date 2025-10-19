@@ -294,4 +294,46 @@ YAHOO_VERIFICATION=your-yahoo-verification-code
 - `npm run build`: Builds the application for production.
 - `npm run start`: Starts the production server.
 - `npm run lint`: Lints the codebase for errors.
-# Teereserve-Golf
+## ⚠️ Solución a 404 en enlaces de verificación de email
+
+Si los correos de verificación llegan con un enlace que apunta a `https://<tu-dominio>/__/auth/action` y devuelve 404, o si ves `continueUrl=http://localhost:3000/undefined/auth/action`, ajusta estas variables y verifica el flujo:
+
+- Asegura que `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` use tu dominio `firebaseapp.com` del proyecto (no tu dominio personalizado), por ejemplo:
+  ```bash
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=tu-proyecto.firebaseapp.com
+  ```
+  Usar un dominio personalizado como `https://teereserve.golf` para `__/auth/action` puede dar 404 si el hosting no está configurado para manejar esa ruta reservada de Firebase.
+
+- Define `NEXT_PUBLIC_SITE_URL` para que el backend construya correctamente el `continueUrl` y los enlaces internos:
+  ```bash
+  # Desarrollo
+  NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+  # Producción (si tu app vive en teereserve.golf)
+  NEXT_PUBLIC_SITE_URL=https://teereserve.golf
+  ```
+
+- Asegúrate de que el `lang` esté presente en la URL interna. Los enlaces deben terminar en `/<en|es>/auth/action`. Si ves `undefined`, tu página origen no tenía el segmento de idioma.
+
+### Comprobación rápida
+1. Inicia el servidor de desarrollo: `npm run dev` y abre `http://localhost:3000/es/verify-email`.
+2. Reenvía el correo y revisa el enlace:
+   - Debe contener `https://tu-proyecto.firebaseapp.com/__/auth/action?...&continueUrl=http://localhost:3000/<en|es>/auth/action`.
+   - El correo también incluye un enlace directo interno: `http://localhost:3000/<en|es>/auth/action?mode=verifyEmail&oobCode=...`.
+3. Al abrir el enlace interno, la verificación se aplica dentro de la app y redirige correctamente.
+
+### Notas
+- Si quieres usar tu dominio en producción para los enlaces `__/auth/action`, asegúrate de desplegar en Firebase Hosting y que la ruta reservada `__/auth/*` no sea sobreescrita por rewrites.
+- En este repo ya se corrigió la lectura de `params.lang` en las páginas `src/app/[lang]/auth/action/page.tsx` y `src/app/[lang]/verify-email/page.tsx` para evitar `undefined`.
+
+## 🔌 Toggle: desactivar verificación de email temporalmente
+
+Para pausar el envío de correos de verificación y eliminar la redirección de usuarios no verificados, usa esta variable de entorno:
+
+```bash
+# Desactivar verificación de email (por defecto desactivada si no se define)
+NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION=false
+```
+
+- Cuando está en `false`, no se envía el correo de verificación al registrarse, la página `/[lang]/verify-email` deshabilita el botón de reenviar, y no existe redirección forzada por `emailVerified`.
+- Ponla en `true` para reactivar el flujo completo de verificación.

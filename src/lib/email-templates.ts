@@ -532,5 +532,67 @@ export const emailTemplates = {
   bookingConfirmation: getBookingConfirmationTemplate,
   bookingReminder: getBookingReminderTemplate,
   paymentConfirmation: getPaymentConfirmationTemplate,
-  reviewInvitation: getReviewInvitationTemplate
+  reviewInvitation: getReviewInvitationTemplate,
+  emailVerification: getEmailVerificationTemplate,
 };
+
+export function getEmailVerificationTemplate(data: TemplateData): EmailTemplate {
+  const lang = (data.lang || 'es') as 'es' | 'en';
+  const subject = lang === 'es' ? 'Verifica tu correo en TeeReserve' : 'Verify your email for TeeReserve';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${lang === 'es' ? 'Verificación de correo' : 'Email Verification'}</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
+        .button { display: inline-block; background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🏌️ TeeReserve</h1>
+          <h2>${lang === 'es' ? 'Verificación de correo' : 'Verify your email'}</h2>
+        </div>
+        <div class="content">
+          <p>${lang === 'es' ? 'Hola' : 'Hello'} {{displayName}}!</p>
+          <p>${lang === 'es' ? 'Para activar tu cuenta, por favor confirma tu correo electrónico.' : 'To activate your account, please confirm your email address.'}</p>
+          <a href="{{verifyUrl}}" class="button">${lang === 'es' ? 'Verificar correo' : 'Verify Email'}</a>
+          <p>${lang === 'es' ? 'Si el botón no funciona, copia y pega este enlace:' : 'If the button does not work, copy and paste this link:'}</p>
+          <p><a href="{{verifyUrl}}">{{verifyUrl}}</a></p>
+          <p>${lang === 'es' ? 'Gracias por unirte a TeeReserve.' : 'Thanks for joining TeeReserve.'}</p>
+        </div>
+        <div class="footer">
+          <p>© 2025 TeeReserve. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+${lang === 'es' ? 'Verificación de correo' : 'Email Verification'}
+
+${lang === 'es' ? 'Hola' : 'Hello'} {{displayName}},
+
+${lang === 'es' ? 'Para activar tu cuenta, confirma tu correo electrónico.' : 'To activate your account, confirm your email address.'}
+
+${lang === 'es' ? 'Verificar:' : 'Verify:'} {{verifyUrl}}
+
+${lang === 'es' ? 'Gracias por unirte a TeeReserve.' : 'Thanks for joining TeeReserve.'}
+  `;
+
+  return {
+    subject: replacePlaceholders(subject, data),
+    html: replacePlaceholders(html, data),
+    text: replacePlaceholders(text, data)
+  };
+}

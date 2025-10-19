@@ -136,7 +136,7 @@ export default async function Home({ params: paramsProp }: { params: Promise<{ l
             {featuredCourses.map((course, index) => (
               <div key={course.id} className="group">
                 <LinkComponent 
-                  href={`/${lang}/courses/${course.id}`}
+                  href={`/${lang}/courses/${course.slug ?? course.id}`}
                   className="block"
                 >
                   <CourseCard course={course} dictionary={dictionary.courseCard} lang={lang} asLink />
