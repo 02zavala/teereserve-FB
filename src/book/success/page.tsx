@@ -5,7 +5,7 @@ import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Mail, Printer, Share2, Info, User, Calendar, Clock, Users, DollarSign } from 'lucide-react';
+import { CheckCircle, Mail, Printer, Share2, Info, User, Calendar, Clock, Users, DollarSign, FileDown } from 'lucide-react';
 import Link from 'next/link';
 import { getCourseById } from '@/lib/data';
 import type { GolfCourse } from '@/types';
@@ -70,6 +70,41 @@ function SuccessPageContent() {
     }, [courseId, router, lang, date, price]);
     
     const handlePrint = () => window.print();
+
+    const handleDownloadPdf = async () => {
+        try {
+            const payload = {
+                bookingDetails: {
+                    courseName: course?.name || 'Golf Course',
+                    courseLocation: course?.location,
+                    date: formattedDate || '',
+                    time: time || '',
+                    players: players || 1,
+                    totalPrice: totalPrice ? parseFloat(totalPrice).toFixed(2) : '0.00',
+                    customerName: user?.displayName || undefined,
+                    customerEmail: user?.email || undefined,
+                },
+                saveToStorage: false,
+            };
+            const res = await fetch('/api/booking/receipt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error('Error generating PDF');
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `TRG-${course?.name || 'receipt'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Download PDF failed:', e);
+        }
+    };
 
     const getShareMessage = () => {
         const message = `Booking Confirmation:\n\nCourse: ${course?.name}\nDate: ${formattedDate}\nTime: ${time}\nPlayers: ${players}\nTotal: $${totalPrice ? parseFloat(totalPrice).toFixed(2) : '0.00'}\n\nBooked via TeeReserve!`;
@@ -136,9 +171,9 @@ function SuccessPageContent() {
                     </Card>
 
                     {/* Actions */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <Button variant="default" onClick={handlePrint} className="bg-green-700 hover:bg-green-800"><Printer className="mr-2 h-4 w-4"/> Print Receipt</Button>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                         <Button variant="outline" asChild><a href={getEmailMessage()}><Mail className="mr-2 h-4 w-4"/> Send by Email</a></Button>
+                        <Button variant="outline" onClick={handleDownloadPdf}><FileDown className="mr-2 h-4 w-4"/> Download PDF</Button>
                         <Button variant="outline" onClick={getShareMessage}><Share2 className="mr-2 h-4 w-4"/> Share</Button>
                     </div>
 
