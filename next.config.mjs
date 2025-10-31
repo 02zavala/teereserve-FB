@@ -29,12 +29,13 @@ const nextConfig = {
     'genkit',
     '@genkit-ai/googleai',
     'handlebars',
+    // Ensure pdfkit assets (AFM files) resolve from node_modules at runtime
+    'pdfkit',
   ],
   
   // Experimental features for Next.js 15
   experimental: {
     optimizePackageImports: [
-      'lucide-react', 
       '@radix-ui/react-icons',
       '@radix-ui/react-slot',
       'class-variance-authority'
@@ -149,11 +150,11 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self' http://localhost:* ws://localhost:*",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* https://apis.google.com https://www.google.com https://accounts.google.com https://www.gstatic.com https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://js.stripe.com https://m.stripe.network https://api.stripe.com https://*.firebaseapp.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* https://apis.google.com https://www.google.com https://accounts.google.com https://www.gstatic.com https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://js.stripe.com https://checkout.stripe.com https://m.stripe.network https://api.stripe.com https://*.firebaseapp.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com https://*.paypal.com https://*.paypalobjects.com",
               "style-src 'self' 'unsafe-inline' http://localhost:* https://fonts.googleapis.com https://www.gstatic.com",
-              "img-src 'self' http://localhost:* https://apis.google.com https://www.google.com https://accounts.google.com https://www.gstatic.com https://lh3.googleusercontent.com https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://*.stripe.com https://m.stripe.network https://*.openstreetmap.org https://*.tile.openstreetmap.org https://unpkg.com https://firebasestorage.googleapis.com data: blob:",
-              "connect-src 'self' http://localhost:* ws://localhost:* https://apis.google.com https://www.google.com https://accounts.google.com https://www.gstatic.com https://www.google-analytics.com https://region1.google-analytics.com https://stats.g.doubleclick.net https://api.stripe.com https://*.stripe.com https://m.stripe.network https://*.firebaseapp.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com https://*.openstreetmap.org https://nominatim.openstreetmap.org wss://*.firebaseio.com https://api.openweathermap.org http://api.openweathermap.org",
-              "frame-src 'self' http://localhost:* https://apis.google.com https://www.google.com https://accounts.google.com https://www.googletagmanager.com https://js.stripe.com https://hooks.stripe.com https://m.stripe.network",
+              "img-src 'self' http://localhost:* https://apis.google.com https://www.google.com https://accounts.google.com https://www.gstatic.com https://lh3.googleusercontent.com https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://*.stripe.com https://checkout.stripe.com https://m.stripe.network https://*.openstreetmap.org https://*.tile.openstreetmap.org https://unpkg.com https://firebasestorage.googleapis.com https://*.paypalobjects.com data: blob:",
+              "connect-src 'self' http://localhost:* ws://localhost:* https://apis.google.com https://www.google.com https://accounts.google.com https://www.gstatic.com https://www.google-analytics.com https://region1.google-analytics.com https://stats.g.doubleclick.net https://api.stripe.com https://checkout.stripe.com https://*.stripe.com https://m.stripe.network https://*.firebaseapp.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com https://*.openstreetmap.org https://nominatim.openstreetmap.org wss://*.firebaseio.com https://api.openweathermap.org http://api.openweathermap.org https://*.sentry.io https://*.paypal.com",
+              "frame-src 'self' http://localhost:* https://apis.google.com https://www.google.com https://accounts.google.com https://www.googletagmanager.com https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://m.stripe.network https://*.paypal.com",
               "font-src 'self' http://localhost:* https://fonts.gstatic.com https://fonts.googleapis.com",
               "object-src 'none'",
               "base-uri 'self'",
@@ -203,7 +204,8 @@ const sentryWebpackPluginOptions = {
   // This can increase your server load as well as your hosting bill.
   // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
   // side errors will fail.
-  tunnelRoute: '/monitoring',
+  // Only enable tunnel in production and when Sentry is enabled
+  tunnelRoute: process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_DISABLE_SENTRY !== 'true' ? '/monitoring' : undefined,
   
   // Hides source maps from generated client bundles
   hideSourceMaps: true,

@@ -6,7 +6,7 @@ import { Suspense, useEffect, useState } from 'react';
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Mail, Printer, Share2, Info, User, Calendar, Clock, Users, DollarSign, Flag, Send, FileText } from 'lucide-react';
+import { CheckCircle, Mail, Printer, Share2, Info, User, Calendar, Clock, Users, DollarSign, Flag, Send, FileText, FileDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -162,6 +162,53 @@ function SuccessPageContent() {
     
     const handlePrint = () => window.print();
 
+    const handleDownloadPdf = async () => {
+        try {
+            const courseName = booking?.courseName || course?.name;
+            const bookingDate = booking?.date ? formatBookingDate(booking.date, "PPP", lang) : formattedDate;
+            const bookingTime = booking?.time || time;
+            const bookingPlayers = booking?.players || players;
+            const bookingHoles = booking?.holes || holes || '18';
+            const total = booking?.pricing_snapshot ? (booking.pricing_snapshot.total_cents / 100).toFixed(2) : (totalPrice ? parseFloat(totalPrice).toFixed(2) : '0.00');
+
+            const payload = {
+                bookingDetails: {
+                    bookingId: booking?.id,
+                    confirmationNumber: booking?.confirmationNumber,
+                    courseName: courseName || 'Golf Course',
+                    courseLocation: course?.location,
+                    date: bookingDate || '',
+                    time: bookingTime || '',
+                    players: bookingPlayers || 1,
+                    holes: bookingHoles,
+                    totalPrice: total,
+                    customerName: booking?.userName || user?.displayName || undefined,
+                    customerEmail: booking?.userEmail || user?.email || undefined,
+                },
+                saveToStorage: true,
+            };
+
+            const res = await fetch('/api/booking/receipt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error('Error generando PDF');
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `TRG-${booking?.confirmationNumber || booking?.id || 'receipt'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (e) {
+            console.error('Download PDF failed:', e);
+            toast({ title: 'Error', description: 'No se pudo descargar el PDF', variant: 'destructive' });
+        }
+    };
+
     const getShareMessage = () => {
         const confirmationText = booking?.confirmationNumber ? `\nConfirmation #: ${booking.confirmationNumber}` : '';
         const courseName = booking?.courseName || course?.name;
@@ -294,8 +341,7 @@ function SuccessPageContent() {
                         </CardContent>
                     </Card>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                        <Button variant="default" onClick={handlePrint} className="bg-green-700 hover:bg-green-800"><Printer className="mr-2 h-4 w-4"/> Print Receipt</Button>
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
                         <Button variant="outline" asChild><a href={getEmailMessage()}><Mail className="mr-2 h-4 w-4"/> Send by Email</a></Button>
                         <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
                             <DialogTrigger asChild>
@@ -341,6 +387,7 @@ function SuccessPageContent() {
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
+                        <Button variant="outline" onClick={handleDownloadPdf}><FileDown className="mr-2 h-4 w-4"/> {lang === 'es' ? 'Descargar PDF' : 'Download PDF'}</Button>
                         <Button variant="outline" onClick={getShareMessage}><Share2 className="mr-2 h-4 w-4"/> Share</Button>
                     </div>
 
