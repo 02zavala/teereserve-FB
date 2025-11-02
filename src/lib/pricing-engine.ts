@@ -133,8 +133,8 @@ export class PricingEngine {
       });
     }
 
-    // Redondeo final por defecto a múltiplo de 5
-    const finalPrice = Math.round(currentPrice / 5) * 5;
+    // Usar precio exacto sin redondeo por defecto
+    const finalPrice = currentPrice;
 
     return {
       basePrice: baseProduct.greenFeeBaseUsd,
@@ -498,6 +498,280 @@ export class PricingEngine {
         createdAt: new Date().toISOString()
       }
     ]);
+
+    // ====== Precios exactos para cursos solicitados (Nov 1, 2025 – May 15, 2026) ======
+    // Cabo Real
+    const caboRealId = 'cabo-real-golf-club';
+    this.baseProducts.set(caboRealId, {
+      id: 'base-cabo-real',
+      courseId: caboRealId,
+      greenFeeBaseUsd: 295,
+      updatedAt: new Date().toISOString()
+    });
+    this.seasons.set(caboRealId, [
+      {
+        id: 'alta-nov2025-may2026',
+        courseId: caboRealId,
+        name: 'Alta Nov 2025 – May 2026',
+        startDate: '2025-11-01',
+        endDate: '2026-05-15',
+        priority: 90,
+        active: true,
+        createdAt: new Date().toISOString()
+      }
+    ]);
+    this.timeBands.set(caboRealId, [
+      {
+        id: 'cabo-real-morning',
+        courseId: caboRealId,
+        label: '07:00–11:50',
+        startTime: '07:00',
+        endTime: '11:50',
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'cabo-real-mid',
+        courseId: caboRealId,
+        label: '12:00–13:20',
+        startTime: '12:00',
+        endTime: '13:20',
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'cabo-real-afternoon',
+        courseId: caboRealId,
+        label: '13:30–18:00',
+        startTime: '13:30',
+        endTime: '18:00',
+        active: true,
+        createdAt: new Date().toISOString()
+      }
+    ]);
+    this.priceRules.set(caboRealId, [
+      {
+        id: 'cabo-real-morning-price',
+        courseId: caboRealId,
+        name: 'Morning Fixed',
+        description: '7:00–11:50',
+        seasonId: 'alta-nov2025-may2026',
+        timeBandId: 'cabo-real-morning',
+        priceType: 'fixed',
+        priceValue: 295,
+        priority: 90,
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'cabo-real-mid-price',
+        courseId: caboRealId,
+        name: 'Midday Fixed',
+        description: '12:00–13:20',
+        seasonId: 'alta-nov2025-may2026',
+        timeBandId: 'cabo-real-mid',
+        priceType: 'fixed',
+        priceValue: 245,
+        priority: 90,
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'cabo-real-afternoon-price',
+        courseId: caboRealId,
+        name: 'Afternoon Fixed',
+        description: '13:30–close',
+        seasonId: 'alta-nov2025-may2026',
+        timeBandId: 'cabo-real-afternoon',
+        priceType: 'fixed',
+        priceValue: 220,
+        priority: 90,
+        active: true,
+        createdAt: new Date().toISOString()
+      }
+    ]);
+
+    // Club Campestre San José
+    const campestreId = 'club-campestre-san-jose';
+    this.baseProducts.set(campestreId, {
+      id: 'base-campestre',
+      courseId: campestreId,
+      greenFeeBaseUsd: 220,
+      updatedAt: new Date().toISOString()
+    });
+    this.seasons.set(campestreId, [
+      {
+        id: 'campestre-alta-nov2025-may2026',
+        courseId: campestreId,
+        name: 'Alta Nov 2025 – May 2026',
+        startDate: '2025-11-01',
+        endDate: '2026-05-15',
+        priority: 90,
+        active: true,
+        createdAt: new Date().toISOString()
+      }
+    ]);
+    this.timeBands.set(campestreId, [
+      {
+        id: 'campestre-morning',
+        courseId: campestreId,
+        label: '07:30–11:50',
+        startTime: '07:30',
+        endTime: '11:50',
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'campestre-mid',
+        courseId: campestreId,
+        label: '12:00–13:20',
+        startTime: '12:00',
+        endTime: '13:20',
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'campestre-afternoon',
+        courseId: campestreId,
+        label: '13:30–17:30',
+        startTime: '13:30',
+        endTime: '17:30',
+        active: true,
+        createdAt: new Date().toISOString()
+      }
+    ]);
+    this.priceRules.set(campestreId, [
+      {
+        id: 'campestre-morning-price',
+        courseId: campestreId,
+        name: 'Morning Fixed',
+        description: '7:30–11:50',
+        seasonId: 'campestre-alta-nov2025-may2026',
+        timeBandId: 'campestre-morning',
+        priceType: 'fixed',
+        priceValue: 260,
+        priority: 90,
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'campestre-mid-price',
+        courseId: campestreId,
+        name: 'Midday Fixed',
+        description: '12:00–13:20',
+        seasonId: 'campestre-alta-nov2025-may2026',
+        timeBandId: 'campestre-mid',
+        priceType: 'fixed',
+        priceValue: 220,
+        priority: 90,
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'campestre-afternoon-price',
+        courseId: campestreId,
+        name: 'Afternoon Fixed',
+        description: '13:30–close',
+        seasonId: 'campestre-alta-nov2025-may2026',
+        timeBandId: 'campestre-afternoon',
+        priceType: 'fixed',
+        priceValue: 195,
+        priority: 90,
+        active: true,
+        createdAt: new Date().toISOString()
+      }
+    ]);
+
+    // Puerto Los Cabos
+    const puertoId = 'puerto-los-cabos';
+    this.baseProducts.set(puertoId, {
+      id: 'base-puerto',
+      courseId: puertoId,
+      greenFeeBaseUsd: 395,
+      updatedAt: new Date().toISOString()
+    });
+    this.seasons.set(puertoId, [
+      {
+        id: 'puerto-alta-nov2025-may2026',
+        courseId: puertoId,
+        name: 'Alta Nov 2025 – May 2026',
+        startDate: '2025-11-01',
+        endDate: '2026-05-15',
+        priority: 90,
+        active: true,
+        createdAt: new Date().toISOString()
+      }
+    ]);
+    this.timeBands.set(puertoId, [
+      {
+        id: 'puerto-morning',
+        courseId: puertoId,
+        label: '07:00–11:50',
+        startTime: '07:00',
+        endTime: '11:50',
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'puerto-mid',
+        courseId: puertoId,
+        label: '12:00–13:20',
+        startTime: '12:00',
+        endTime: '13:20',
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'puerto-afternoon',
+        courseId: puertoId,
+        label: '13:30–19:00',
+        startTime: '13:30',
+        endTime: '19:00',
+        active: true,
+        createdAt: new Date().toISOString()
+      }
+    ]);
+    this.priceRules.set(puertoId, [
+      {
+        id: 'puerto-morning-price',
+        courseId: puertoId,
+        name: 'Morning Fixed',
+        description: '7:00–11:50',
+        seasonId: 'puerto-alta-nov2025-may2026',
+        timeBandId: 'puerto-morning',
+        priceType: 'fixed',
+        priceValue: 395,
+        priority: 90,
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'puerto-mid-price',
+        courseId: puertoId,
+        name: 'Midday Fixed',
+        description: '12:00–13:20',
+        seasonId: 'puerto-alta-nov2025-may2026',
+        timeBandId: 'puerto-mid',
+        priceType: 'fixed',
+        priceValue: 320,
+        priority: 90,
+        active: true,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'puerto-afternoon-price',
+        courseId: puertoId,
+        name: 'Afternoon Fixed',
+        description: '13:30–close',
+        seasonId: 'puerto-alta-nov2025-may2026',
+        timeBandId: 'puerto-afternoon',
+        priceType: 'fixed',
+        priceValue: 295,
+        priority: 90,
+        active: true,
+        createdAt: new Date().toISOString()
+      }
+    ]);
   }
 
   /**
@@ -856,15 +1130,24 @@ export class PricingEngine {
     specialOverrides?: SpecialOverride[];
     baseProduct?: BaseProduct;
   }) {
-    if (data.seasons) this.seasons.set(courseId, data.seasons);
-    if (data.timeBands) this.timeBands.set(courseId, data.timeBands);
-    if (data.priceRules) this.priceRules.set(courseId, data.priceRules);
-    if (data.specialOverrides) {
+    // Solo sobrescribir si los arrays tienen contenido; evitar borrar defaults con vacíos
+    if (data.seasons && data.seasons.length > 0) {
+      this.seasons.set(courseId, data.seasons);
+    }
+    if (data.timeBands && data.timeBands.length > 0) {
+      this.timeBands.set(courseId, data.timeBands);
+    }
+    if (data.priceRules && data.priceRules.length > 0) {
+      this.priceRules.set(courseId, data.priceRules);
+    }
+    if (data.specialOverrides && data.specialOverrides.length > 0) {
       // Remove existing overrides for this course
       this.specialOverrides = this.specialOverrides.filter(o => o.courseId !== courseId);
       this.specialOverrides.push(...data.specialOverrides);
     }
-    if (data.baseProduct) this.baseProducts.set(courseId, data.baseProduct);
+    if (data.baseProduct) {
+      this.baseProducts.set(courseId, data.baseProduct);
+    }
     
     this.invalidateCache(courseId);
   }
