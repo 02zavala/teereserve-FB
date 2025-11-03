@@ -294,6 +294,50 @@ YAHOO_VERIFICATION=your-yahoo-verification-code
 - `npm run build`: Builds the application for production.
 - `npm run start`: Starts the production server.
 - `npm run lint`: Lints the codebase for errors.
+
+---
+
+## 🧹 Mantenimiento de Precios: Deduplicación en Firestore
+
+Para mantener las reglas de precio limpias y evitar duplicados visibles en el Panel Admin, se añadieron utilidades y un endpoint que deduplican directamente en Firestore.
+
+**Uso en la UI**
+- Botón verde “Eliminar duplicados por nombre”: agrupa por `name` y conserva una regla por nombre.
+  - Estrategias disponibles:
+    - `highest_priority`: conserva la regla con mayor `priority`; si empatan, la última `updatedAt`.
+    - `latest`: conserva la última `updatedAt`.
+- Botón rojo “Eliminar duplicados en Firestore”: deduplica por clave compuesta exacta (nombre + condiciones), útil para duplicados idénticos.
+
+**Cliente**
+- Funciones disponibles en `src/lib/pricing-engine.ts`:
+  - `dedupePriceRulesByNameInFirestore(courseId, strategy)`
+  - `dedupePriceRulesInFirestore(courseId)`
+  - `dedupeTimeBandsInFirestore(courseId)`
+
+Estas funciones requieren un token de autenticación (`Authorization: Bearer <idToken>`) y devuelven `removedCount`.
+
+**Endpoint**
+- `POST /api/admin/pricing/dedupe`
+- Body JSON:
+  ```json
+  {
+    "courseId": "puerto-los-cabos",
+    "type": "priceRulesByName", // "timeBands" | "priceRules" | "all"
+    "strategy": "highest_priority" // opcional, "highest_priority" | "latest"
+  }
+  ```
+- Respuesta exitosa:
+  ```json
+  { "success": true, "removedCount": 3, "message": "Successfully removed 3 duplicate items from Firestore" }
+  ```
+- En caso de error:
+  ```json
+  { "error": "Failed to deduplicate data", "details": "..." }
+  ```
+
+**Notas**
+- Para `puerto-los-cabos`, las reglas generales (sin `timeBandId`) se preservan; por banda horaria se mantiene la de mayor prioridad.
+- Si `removedCount` es `0`, no se encontraron duplicados con el criterio elegido; considera ampliar el criterio a `name + seasonId` o `timeBandId`.
 ## ⚠️ Solución a 404 en enlaces de verificación de email
 
 Si los correos de verificación llegan con un enlace que apunta a `https://<tu-dominio>/__/auth/action` y devuelve 404, o si ves `continueUrl=http://localhost:3000/undefined/auth/action`, ajusta estas variables y verifica el flujo:
