@@ -11,23 +11,24 @@ export async function handleUserRegistration(userData, idToken) {
     // 1. Crear usuario en Firebase (ya implementado)
     const user = await createUserInFirebase(userData);
     
-    // 2. Enviar email de bienvenida
-    const emailResponse = await fetch('/api/email/welcome', {
+    // 2. Enviar email de verificación (App Router)
+    const emailResponse = await fetch('/api/auth/send-verification', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        userEmail: user.email,
-        userName: user.displayName || user.email.split('@')[0],
+        email: user.email,
+        displayName: user.displayName || user.email.split('@')[0],
+        lang: 'es',
         idToken: idToken
       })
     });
     
     if (!emailResponse.ok) {
-      console.warn('Error enviando email de bienvenida:', await emailResponse.text());
+      console.warn('Error enviando email de verificación:', await emailResponse.text());
     } else {
-      console.log('✅ Email de bienvenida enviado correctamente');
+      console.log('✅ Email de verificación enviado correctamente');
     }
     
     return { success: true, user };
@@ -47,21 +48,23 @@ export async function handleBookingConfirmation(bookingData, userEmail, idToken)
       // 2. Guardar reserva en base de datos
       const booking = await saveBookingToDatabase(bookingData);
       
-      // 3. Enviar confirmación por email al cliente
-      const emailResponse = await fetch('/api/email/booking-confirmation', {
+      // 3. Enviar confirmación por email al cliente (App Router)
+      const emailResponse = await fetch('/api/guest-booking-confirmation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           userEmail: userEmail,
-          idToken: idToken,
           bookingDetails: {
             courseName: bookingData.courseName,
             date: new Date(bookingData.date).toLocaleDateString('es-ES'),
             time: bookingData.time,
             players: bookingData.players,
-            totalPrice: bookingData.totalPrice
+            totalPrice: String(bookingData.totalPrice),
+            confirmationNumber: booking.confirmationNumber,
+            courseLocation: bookingData.courseLocation,
+            userName: bookingData.customerName
           }
         })
       });
@@ -72,17 +75,15 @@ export async function handleBookingConfirmation(bookingData, userEmail, idToken)
         console.log('✅ Confirmación de reserva enviada correctamente');
       }
 
-      // 4. Enviar notificación a administradores
-      const adminEmail = process.env.ADMIN_EMAIL || 'admin@teereserve.golf';
-      const adminNotificationResponse = await fetch('/api/email/admin-booking-notification', {
+      // 4. Enviar alerta a administradores (App Router)
+      const adminNotificationResponse = await fetch('/api/test-admin-alerts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          adminEmail: adminEmail,
-          idToken: idToken,
-          bookingDetails: {
+          type: 'booking',
+          bookingData: {
             bookingId: booking.id || 'N/A',
             customerName: bookingData.customerName || userEmail,
             customerEmail: userEmail,
@@ -91,9 +92,13 @@ export async function handleBookingConfirmation(bookingData, userEmail, idToken)
             date: new Date(bookingData.date).toLocaleDateString('es-ES'),
             time: bookingData.time,
             players: bookingData.players,
-            totalPrice: bookingData.totalPrice,
-            paymentStatus: 'Completado',
-            specialRequests: bookingData.specialRequests || null
+            totalAmount: bookingData.totalPrice,
+            currency: 'USD',
+            paymentMethod: 'stripe',
+            transactionId: booking.transactionId,
+            bookingUrl: `${process.env.NEXT_PUBLIC_BASE_URL || ''}/booking/${booking.id || 'test'}`,
+            cardLast4: booking.cardLast4,
+            cardBrand: booking.cardBrand
           }
         })
       });
@@ -122,8 +127,8 @@ export async function handleContactForm(formData) {
       throw new Error('Todos los campos son requeridos');
     }
     
-    // Enviar notificación de contacto
-    const emailResponse = await fetch('/api/email/contact', {
+    // Enviar notificación de contacto (App Router)
+    const emailResponse = await fetch('/api/contact', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -156,14 +161,14 @@ export function useEmailNotifications() {
     setError(null);
     
     try {
-      const response = await fetch('/api/email/welcome', {
+      const response = await fetch('/api/auth/send-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userEmail, userName, idToken })
+        body: JSON.stringify({ email: userEmail, displayName: userName, lang: 'es', idToken })
       });
       
       if (!response.ok) {
-        throw new Error('Error enviando email de bienvenida');
+        throw new Error('Error enviando email de verificación');
       }
       
       return await response.json();
@@ -180,10 +185,10 @@ export function useEmailNotifications() {
     setError(null);
     
     try {
-      const response = await fetch('/api/email/booking-confirmation', {
+      const response = await fetch('/api/guest-booking-confirmation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userEmail, bookingDetails, idToken })
+        body: JSON.stringify({ userEmail, bookingDetails })
       });
       
       if (!response.ok) {
@@ -213,7 +218,13 @@ export function emailLogger(req, res, next) {
   
   res.send = function(data) {
     // Log del resultado del email
-    if (req.path.startsWith('/api/email/')) {
+    const monitoredPaths = [
+      '/api/auth/send-verification',
+      '/api/guest-booking-confirmation',
+      '/api/contact',
+      '/api/test-admin-alerts'
+    ];
+    if (monitoredPaths.includes(req.path)) {
       const result = typeof data === 'string' ? JSON.parse(data) : data;
       
       if (result.success) {

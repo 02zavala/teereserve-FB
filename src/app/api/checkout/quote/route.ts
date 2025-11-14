@@ -130,13 +130,9 @@ export async function POST(request: NextRequest) {
     // Initialize and load pricing data
     const engine = new PricingEngine();
     const pricingData = await loadCoursePricingData(body.courseId);
-    // Prefer default seeded rules for specific courses to ensure exact pricing
-    const preferDefaultCourses = new Set([
-      'cabo-real-golf-club',
-      'club-campestre-san-jose',
-      'puerto-los-cabos'
-    ]);
-    if (pricingData && !preferDefaultCourses.has(body.courseId)) {
+    // Siempre importar precios desde Firestore si están disponibles
+    // para que los cambios desde Admin persistan y se reflejen en checkout.
+    if (pricingData) {
       engine.importPricingData(body.courseId, pricingData as any);
     }
 

@@ -34,6 +34,12 @@ service firebase.storage {
       allow write: if request.auth != null; // For now, any authenticated user can upload
     }
     
+    // Allow user posts media uploads
+    match /posts/{userId}/{allPaths=**} {
+      allow read: if true; // Public read access
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
     // Default rule - deny all other access
     match /{allPaths=**} {
       allow read, write: if false;

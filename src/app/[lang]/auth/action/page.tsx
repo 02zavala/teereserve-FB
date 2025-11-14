@@ -9,11 +9,12 @@ import { Button } from "@/components/ui/button";
 import { MailCheck, AlertTriangle } from "lucide-react";
 
 interface ActionPageProps {
-  params: { lang: string };
+  params: Promise<{ lang: string }>;
 }
 
 export default function AuthActionPage({ params }: ActionPageProps) {
-  const lang = params?.lang === "en" ? "en" : "es";
+  const { lang: rawLang } = React.use(params);
+  const lang = rawLang === "en" ? "en" : "es";
   const search = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<"idle" | "processing" | "success" | "error">("idle");

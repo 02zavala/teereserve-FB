@@ -55,6 +55,11 @@ export function ClientLayout({ children, lang }: ClientLayoutProps) {
     
     // Initialize Google Analytics 4 with error handling
     if (typeof window !== 'undefined') {
+      // Permitir deshabilitar analytics vía flag
+      if (process.env.NEXT_PUBLIC_DISABLE_ANALYTICS === 'true') {
+      console.log('📴 GA4: deshabilitado por configuración');
+      return;
+      }
       try {
         // Verificar conectividad antes de inicializar
         if (!navigator.onLine) {
@@ -78,7 +83,7 @@ export function ClientLayout({ children, lang }: ClientLayoutProps) {
             console.warn('⚠️ GA4: Error de inicialización:', error);
           }
         }, 200);
-
+    
         return () => clearTimeout(timeoutId);
       } catch (error: any) {
         console.log('📴 GA4: Error en configuración inicial (modo offline)');

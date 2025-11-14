@@ -14,11 +14,15 @@ export interface BookingAlert {
   date: string;
   time: string;
   paymentMethod: 'stripe' | 'paypal' | 'apple_pay' | 'google_pay';
+  paymentLabel?: string;
   transactionId: string;
   amount: number;
   currency: string;
   customerEmail: string;
   customerName?: string;
+  customerPhone?: string;
+  cardLast4?: string;
+  cardBrand?: string;
 }
 
 export interface AlertRecord {
@@ -67,6 +71,7 @@ export class TelegramService {
 
     const emoji = paymentMethodEmojis[alert.paymentMethod] || '💳';
     
+    const paymentLabel = (alert.paymentLabel || alert.paymentMethod.replace('_', ' ')).toUpperCase();
     if (alert.type === 'booking') {
       return `🏌️ *Nueva Reserva Confirmada*
 
@@ -74,10 +79,13 @@ export class TelegramService {
 👥 *Jugadores:* ${alert.playerCount}
 📅 *Fecha:* ${alert.date}
 ⏰ *Hora:* ${alert.time}
-${emoji} *Pago:* ${alert.paymentMethod.replace('_', ' ').toUpperCase()}
-💰 *Monto:* ${alert.amount} ${alert.currency}
+${emoji} *Pago:* ${paymentLabel}
+💰 *Monto:* ${alert.amount} ${alert.currency.toUpperCase()}
+${alert.cardLast4 ? ('💳 *Tarjeta:* ' + (alert.cardBrand || '').toUpperCase() + ' •••• ' + alert.cardLast4) : ''}
 ✅ *Estado:* Transacción confirmada
-📧 *Cliente:* ${alert.customerEmail}
+👤 *Nombre:* ${alert.customerName || 'Cliente'}
+📞 *Teléfono:* ${alert.customerPhone || 'N/A'}
+📧 *Email:* ${alert.customerEmail}
 🔗 *ID:* \`${alert.transactionId}\``;
     } else {
       return `🎫 *Nuevo Ticket de Evento*
@@ -86,10 +94,13 @@ ${emoji} *Pago:* ${alert.paymentMethod.replace('_', ' ').toUpperCase()}
 👥 *Tickets:* ${alert.playerCount}
 📅 *Fecha:* ${alert.date}
 ⏰ *Hora:* ${alert.time}
-${emoji} *Pago:* ${alert.paymentMethod.replace('_', ' ').toUpperCase()}
-💰 *Monto:* ${alert.amount} ${alert.currency}
+${emoji} *Pago:* ${paymentLabel}
+💰 *Monto:* ${alert.amount} ${alert.currency.toUpperCase()}
+${alert.cardLast4 ? ('💳 *Tarjeta:* ' + (alert.cardBrand || '').toUpperCase() + ' •••• ' + alert.cardLast4) : ''}
 ✅ *Estado:* Transacción confirmada
-📧 *Cliente:* ${alert.customerEmail}
+👤 *Nombre:* ${alert.customerName || 'Cliente'}
+📞 *Teléfono:* ${alert.customerPhone || 'N/A'}
+📧 *Email:* ${alert.customerEmail}
 🔗 *ID:* \`${alert.transactionId}\``;
     }
   }

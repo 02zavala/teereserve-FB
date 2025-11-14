@@ -275,6 +275,15 @@
         "cancel": "Cancel",
         "savePreferences": "Save Preferences"
     },
+    "exitIntent": {
+        "title": "Wait! Get exclusive offers",
+        "subtitle": "Leave your email to receive deals, updates and golf tips.",
+        "placeholderEmail": "you@example.com",
+        "cta": "Keep me posted",
+        "skip": "No thanks",
+        "success": "Thanks! We'll be in touch soon.",
+        "invalid": "Please enter a valid email address."
+    },
     "aboutPage": {
         "hero": {
             "title": "About Us",
@@ -505,6 +514,8 @@
         }
     },
     "reviewsPage": {
+        "title": "Golfer Reviews",
+        "subtitle": "Experience Mexico through its fairways: real reviews from our community in every corner of the country",
         "writeNewReview": "Write New Review",
         "golfCourse": "Golf Course",
         "selectCourse": "Select a course",

@@ -78,14 +78,14 @@ function BookingRow({ booking, lang }: { booking: Booking, lang: Locale }) {
         <TableRow>
             <TableCell className="font-medium">{booking.id.substring(0, 7)}...</TableCell>
             <TableCell>{booking.courseName}</TableCell>
-            <TableCell>{booking.userName}</TableCell>
+            <TableCell className="hidden md:table-cell">{booking.userName}</TableCell>
             <TableCell>
                 {isClient && formattedDate ? formattedDate : <Skeleton className="h-4 w-24" />}
             </TableCell>
             <TableCell>{booking.players} players</TableCell>
-            <TableCell>{booking.holes || 18} holes</TableCell>
-            <TableCell>${booking.totalPrice?.toFixed(2) ?? '0.00'}</TableCell>
-            <TableCell>
+            <TableCell className="hidden lg:table-cell">{booking.holes || 18} holes</TableCell>
+            <TableCell className="hidden md:table-cell">${booking.totalPrice?.toFixed(2) ?? '0.00'}</TableCell>
+            <TableCell className="hidden lg:table-cell">
                 <Badge variant={getStatusVariant(booking.status)}>{getStatusLabel(booking.status)}</Badge>
             </TableCell>
             <TableCell>
@@ -128,17 +128,17 @@ export default function BookingsAdminPage() {
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                     ) : (
-                        <Table>
+                        <Table className="min-w-[900px]">
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Booking ID</TableHead>
                                     <TableHead>Course</TableHead>
-                                    <TableHead>User</TableHead>
+                                    <TableHead className="hidden md:table-cell">User</TableHead>
                                     <TableHead>Date</TableHead>
                                     <TableHead>Players</TableHead>
-                                    <TableHead>Holes</TableHead>
-                                    <TableHead>Total</TableHead>
-                                    <TableHead>Status</TableHead>
+                                    <TableHead className="hidden lg:table-cell">Holes</TableHead>
+                                    <TableHead className="hidden md:table-cell">Total</TableHead>
+                                    <TableHead className="hidden lg:table-cell">Status</TableHead>
                                     <TableHead>
                                         <span className="sr-only">Actions</span>
                                     </TableHead>

@@ -114,7 +114,7 @@ interface NotificationBellProps {
 }
 
 export const NotificationBell: React.FC<NotificationBellProps> = ({ onClick, className }) => {
-  const { unreadCount } = useNotifications();
+  const { unreadCount } = useNotificationCenter();
 
   return (
     <Button
@@ -143,7 +143,7 @@ interface NotificationPanelProps {
 }
 
 export const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose }) => {
-  const { notifications, markAsRead, markAllAsRead, clearAll, removeNotification } = useNotifications();
+  const { notifications, markAsRead, markAllAsRead, clearAll, removeNotification } = useNotificationCenter();
 
   const formatTime = (date: Date) => {
     const now = new Date();
@@ -243,7 +243,7 @@ interface NotificationProviderProps {
   children: ReactNode;
 }
 
-export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
+export const NotificationCenterProvider: React.FC<NotificationProviderProps> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [toasts, setToasts] = useState<Notification[]>([]);
   const [modalNotification, setModalNotification] = useState<Notification | null>(null);
@@ -365,10 +365,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
 };
 
 // Hook to use notifications
-export const useNotifications = (): NotificationContextType => {
+export const useNotificationCenter = (): NotificationContextType => {
   const context = useContext(NotificationContext);
   if (!context) {
-    throw new Error('useNotifications must be used within a NotificationProvider');
+    throw new Error('useNotificationCenter must be used within a NotificationProvider');
   }
   return context;
 };

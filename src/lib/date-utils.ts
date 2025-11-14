@@ -37,3 +37,26 @@ export function formatBookingDate(dateString: string, formatString: string = "PP
     return "Invalid Date";
   }
 }
+
+/**
+ * Devuelve la fecha por defecto para reservas. Si la hora actual es
+ * igual o posterior a las 16:00 (hora local), devuelve el siguiente día.
+ * En caso contrario, devuelve hoy.
+ *
+ * @param cutoffHour - Hora de corte en formato 24h (por defecto 16)
+ * @returns Date con la fecha seleccionada por defecto
+ */
+export function getDefaultBookingDate(cutoffHour: number = 16): Date {
+  const now = new Date();
+  const currentHour = now.getHours();
+
+  // Normalizamos a medianoche local para evitar problemas de horas
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (currentHour >= cutoffHour) {
+    // Siguiente día a medianoche local
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  }
+
+  return today;
+}

@@ -12,7 +12,7 @@ interface NotificationPayload {
   data?: Record<string, any>;
 }
 
-export function useNotifications() {
+export function usePushNotifications() {
   const [token, setToken] = useState<string | null>(null);
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const { toast } = useToast();
@@ -128,4 +128,4 @@ export function useNotifications() {
   };
 }
 
-export default useNotifications;
+export default usePushNotifications;

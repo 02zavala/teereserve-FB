@@ -117,9 +117,21 @@ function installDependencies() {
 function runLinting() {
   logStep('3', 'EJECUTANDO LINTING Y VERIFICACIONES');
   
-  // ESLint
-  if (!runCommand('npm run lint', 'ESLint')) {
-    log('⚠️  Advertencia: ESLint falló, continuando...', 'yellow');
+  // ESLint (evitar prompts interactivos si no hay configuración)
+  const eslintConfigs = [
+    '.eslintrc.js',
+    '.eslintrc.cjs',
+    '.eslintrc.json',
+    '.eslintrc.yml',
+    '.eslintrc.yaml'
+  ];
+  const hasEslintConfig = eslintConfigs.some(f => fs.existsSync(f));
+  if (hasEslintConfig) {
+    if (!runCommand('npm run lint', 'ESLint')) {
+      log('⚠️  Advertencia: ESLint falló, continuando...', 'yellow');
+    }
+  } else {
+    log('ℹ️  ESLint sin configuración detectada, saltando paso para evitar interacción.', 'yellow');
   }
   
   // TypeScript check

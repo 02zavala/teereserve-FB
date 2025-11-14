@@ -9,11 +9,12 @@ import { sendEmailVerification } from "firebase/auth";
 import { useRouter } from "next/navigation";
 
 interface VerifyEmailPageProps {
-  params: { lang: string };
+  params: Promise<{ lang: string }>;
 }
 
 export default function VerifyEmailPage({ params }: VerifyEmailPageProps) {
-  const lang = params?.lang === "en" ? "en" : "es";
+  const { lang: rawLang } = React.use(params);
+  const lang = rawLang === "en" ? "en" : "es";
   const { user } = useAuth();
   const [resending, setResending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);

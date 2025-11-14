@@ -19,7 +19,7 @@ import { Skeleton } from "./ui/skeleton"
 import { Textarea } from "./ui/textarea"
 import { Label } from "./ui/label"
 import { Separator } from "./ui/separator"
-import { dateLocales } from "@/lib/date-utils"
+import { dateLocales, getDefaultBookingDate } from "@/lib/date-utils"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
 
@@ -61,9 +61,20 @@ export function TeeTimePicker({ courseId, basePrice, teeTimeInterval, operatingH
         setIsClient(true);
         // Set date only on the client side to prevent hydration errors.
         if (!date) {
-            setDate(new Date());
+            // Ajustar hora de corte según horario de operación del campo (cierre)
+            let cutoffHour = 16;
+            const closing = operatingHours?.closingTime;
+            if (closing) {
+                const match = closing.match(/^(\d{1,2}):(\d{2})/);
+                if (match) {
+                    const h = parseInt(match[1], 10);
+                    // Usamos la hora de cierre como hora de corte
+                    if (!isNaN(h)) cutoffHour = h;
+                }
+            }
+            setDate(getDefaultBookingDate(cutoffHour));
         }
-    }, []);
+    }, [operatingHours]);
 
     useEffect(() => {
         if (!date || isGroupBooking) return;

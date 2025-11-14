@@ -36,6 +36,7 @@ import PaymentMethodSelector, { PaymentMethod } from '@/components/PaymentMethod
 import PaymentTermsCheckbox from '@/components/PaymentTermsCheckbox';
 import { useCardValidation } from '@/hooks/useCardValidation';
 import { handleStripeError } from '@/lib/payments/stripe-error-handler';
+import { useGuestAuth } from '@/hooks/useGuestAuth';
 
 import { fallbackService, withFallback } from '@/lib/fallback-service';
 
@@ -52,6 +53,7 @@ export default function CheckoutForm() {
     const { user, loading: authLoading } = useAuth();
     const { go } = useStableNavigation();
     const { fetchWithAbort } = useFetchWithAbort();
+    const { finalizeGuestBooking } = useGuestAuth();
 
     const [course, setCourse] = useState<GolfCourse | null>(null);
     const [event, setEvent] = useState<any | null>(null);
@@ -155,7 +157,9 @@ export default function CheckoutForm() {
                 players: parseInt(players),
                 holes: parseInt(holes),
                 basePrice: parseFloat(price),
-                promoCode
+                promoCode,
+                userId: user?.uid || undefined,
+                userEmail: (user?.email || guestInfo.email) || undefined,
             };
             
             const response = await fetch('/api/checkout/quote', {
@@ -291,7 +295,7 @@ export default function CheckoutForm() {
         setCouponMessage(null);
         startCouponTransition(async () => {
             const result = await handleAsyncError(async () => {
-                const coupon = await validateCoupon(couponCode);
+                const coupon = await validateCoupon(couponCode, { userId: user?.uid, userEmail: user?.email || guestInfo.email });
                 setAppliedCoupon(coupon);
                 setCouponMessage('Coupon applied successfully!');
                 return coupon;
@@ -353,7 +357,10 @@ export default function CheckoutForm() {
                 teeTimeId: teeTimeId || '',
                 comments: comments || '',
                 specialRequests: specialRequests || '',
-                couponCode: appliedCoupon?.code || ''
+                couponCode: appliedCoupon?.code || '',
+                paymentMethod: 'paypal',
+                paymentStatus: 'completed',
+                currency: 'USD'
             }, lang);
             
             console.log('✅ [PayPal] Reserva creada exitosamente. BookingId:', bookingId);
@@ -454,54 +461,57 @@ export default function CheckoutForm() {
                 }
 
                 try {
-                    // Create payment intent
-                    const response = await fetchWithAbort('/api/create-payment-intent', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            amount: priceDetails.total, // Enviar en dólares; el backend convierte a centavos
-                             currency: 'usd',
-                             courseId,
-                             courseName: course.name,
-                             date,
-                             time,
-                             players: parseInt(players),
-                             holes: holes ? parseInt(holes) : 18,
-                             teeTimeId,
-                             comments: comments || '',
-                             specialRequests: specialRequests || '',
-                             couponCode: appliedCoupon?.code || '',
-                             customerEmail: user?.email || guestInfo.email,
-                             customerName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
-                             savePaymentMethod: savePaymentMethod
-                         }),
-                    });
+                    // Use provided client_secret when present (guest flow), otherwise create intent
+                    let clientSecretToUse = clientSecret || null;
+                    if (!clientSecretToUse) {
+                        const response = await fetchWithAbort('/api/create-payment-intent', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                amount: priceDetails.total, // Enviar en dólares; el backend convierte a centavos
+                                currency: 'usd',
+                                courseId,
+                                courseName: course.name,
+                                date,
+                                time,
+                                players: parseInt(players),
+                                holes: holes ? parseInt(holes) : 18,
+                                teeTimeId,
+                                comments: comments || '',
+                                specialRequests: specialRequests || '',
+                                couponCode: appliedCoupon?.code || '',
+                                customerEmail: user?.email || guestInfo.email,
+                                customerName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
+                                savePaymentMethod: savePaymentMethod
+                            }),
+                        });
 
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Error al crear la intención de pago');
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || 'Error al crear la intención de pago');
+                        }
+
+                        const { clientSecret: generatedClientSecret } = await response.json();
+                        clientSecretToUse = generatedClientSecret;
                     }
 
-                    const { clientSecret } = await response.json();
-
-                     // Confirm payment
-                     const { error, paymentIntent } = await stripe.confirmPayment({
-                         elements,
-                        clientSecret: clientSecret,
-                         redirect: 'if_required',
-                         confirmParams: {
-                             return_url: `${window.location.origin}/${lang}/book/success`,
-                         },
-                     });
+                    // Confirm payment
+                    const { error, paymentIntent } = await stripe.confirmPayment({
+                        elements,
+                        clientSecret: clientSecretToUse!,
+                        redirect: 'if_required',
+                        confirmParams: {
+                            return_url: `${window.location.origin}/${lang}/book/success`,
+                        },
+                    });
 
                     if (error) {
                         const { userMessage, fallbacksAvailable, showRetryWithNewCard } = handleStripeError(error as StripeError);
                         setErrorMessage(userMessage);
                         setAvailableFallbacks(fallbacksAvailable);
-                        setShowRetryNewCard(showRetryWithNewCard);
-                        // No relanzamos el error para que el usuario pueda interactuar con los fallbacks
+                        setShowRetryWithNewCard(showRetryWithNewCard);
                         setIsProcessing(false); // Detener el spinner
                         return; // Detener la ejecución de handleSubmit
                     }
@@ -529,6 +539,27 @@ export default function CheckoutForm() {
                             } catch (error) {
                                 console.warn('Failed to save payment method:', error);
                                 // Don't fail the entire payment if saving fails
+                            }
+                        }
+
+                        // If this is a guest draft flow, finalize server-side first
+                        if (draftId) {
+                            try {
+                                const finalizeResult: any = await finalizeGuestBooking(draftId, paymentIntent.id);
+                                const redirectUrl = finalizeResult?.redirectUrl || `${window.location.origin}/${lang}/book/success`;
+                                const url = new URL(redirectUrl, window.location.origin);
+                                if (!finalizeResult?.redirectUrl && finalizeResult?.bookingId) {
+                                    url.searchParams.append('bookingId', finalizeResult.bookingId);
+                                }
+                                searchParams?.forEach((value, key) => url.searchParams.append(key, value));
+                                go(url.toString());
+                                setIsProcessing(false);
+                                return;
+                            } catch (finalizeErr) {
+                                console.error('Failed to finalize guest booking:', finalizeErr);
+                                setErrorMessage('Payment succeeded, but finalization failed. Please contact support.');
+                                setIsProcessing(false);
+                                return;
                             }
                         }
 
@@ -747,6 +778,18 @@ export default function CheckoutForm() {
                                 }
                             }
 
+                            if (draftId) {
+                                const finalizeResult: any = await finalizeGuestBooking(draftId, finalPaymentIntent.id);
+                                const redirectUrl = finalizeResult?.redirectUrl || `${window.location.origin}/${lang}/book/success`;
+                                const url = new URL(redirectUrl, window.location.origin);
+                                if (!finalizeResult?.redirectUrl && finalizeResult?.bookingId) {
+                                    url.searchParams.append('bookingId', finalizeResult.bookingId);
+                                }
+                                searchParams?.forEach((value, key) => url.searchParams.append(key, value));
+                                go(url.toString());
+                                return { success: true };
+                            }
+
                             const bookingId = await createBooking({
                                 userId: user?.uid || 'guest',
                                 userName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
@@ -824,6 +867,29 @@ export default function CheckoutForm() {
                                     description: "El pago fue exitoso pero no se pudo guardar la tarjeta.",
                                     variant: "destructive"
                                 });
+                            }
+                        }
+
+                        // Finalizar reserva de invitado si hay borrador
+                        if (draftId) {
+                            try {
+                                const finalizeResult: any = await finalizeGuestBooking(draftId, paymentIntent.id);
+                                const redirectUrl = finalizeResult?.redirectUrl || `${window.location.origin}/${lang}/book/success`;
+                                const url = new URL(redirectUrl, window.location.origin);
+                                searchParams?.forEach((value, key) => url.searchParams.append(key, value));
+                                if (!finalizeResult?.redirectUrl && finalizeResult?.bookingId) {
+                                    url.searchParams.append('bookingId', finalizeResult.bookingId);
+                                }
+                                // Activar nota FX si corresponde
+                                if (paymentIntent.currency === 'mxn') {
+                                    setShowFxNote(true);
+                                }
+                                go(url.toString());
+                                return { success: true };
+                            } catch (finalizeError) {
+                                console.error('Error finalizando reserva de invitado:', finalizeError);
+                                setErrorMessage('El pago fue exitoso, pero la finalización falló. Contacta soporte.');
+                                return { success: false };
                             }
                         }
 

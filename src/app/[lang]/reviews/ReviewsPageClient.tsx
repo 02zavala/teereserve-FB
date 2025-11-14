@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Review, ReviewFilter, UserReviewStats, GolfCourse } from '@/types';
+import { Review, ReviewFilter, UserReviewStats, GolfCourse, ReviewInput } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { StarRating } from '@/components/StarRating';
 import { Heart, MessageCircle, Share2, Filter, Trophy, CheckCircle, Camera, Video, Plus, User } from 'lucide-react';
-import { getUserReviewStats, getTopReviewers, getAllBadges, getFilteredReviews, getCourses } from '@/lib/data';
+import { getUserReviewStats, getTopReviewers, getAllBadges, getFilteredReviews, getCourses, likeReview, addReviewComment, getReviewComments, checkUserLikedReview, addReview } from '@/lib/data';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { Locale } from '@/i18n-config';
+import Link from 'next/link';
+import FeedTimeline from '@/components/social/FeedTimeline';
 
 interface ReviewsPageClientProps {
   dict: any;
@@ -44,6 +46,7 @@ export default function ReviewsPageClient({ dict, lang }: ReviewsPageClientProps
     courseId: '',
     experienceType: 'overall' as const
   });
+  const [likedByMe, setLikedByMe] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     loadReviews();
@@ -56,6 +59,25 @@ export default function ReviewsPageClient({ dict, lang }: ReviewsPageClientProps
       setLoading(true);
       const reviewsData = await getFilteredReviews(filter);
       setReviews(reviewsData);
+
+      // Pre-populate likedByMe for the current user
+      if (user && Array.isArray(reviewsData) && reviewsData.length > 0) {
+        try {
+          const entries = await Promise.all(
+            reviewsData.map(async (r) => {
+              const liked = await checkUserLikedReview(r.courseId, r.id, user.uid);
+              return [r.id, liked] as const;
+            })
+          );
+          setLikedByMe(prev => {
+            const copy = { ...prev };
+            entries.forEach(([id, liked]) => { copy[id] = liked; });
+            return copy;
+          });
+        } catch (e) {
+          console.warn('Failed to pre-populate likedByMe:', e);
+        }
+      }
     } catch (error) {
       console.error('Error loading reviews:', error);
       setReviews([]);
@@ -136,17 +158,42 @@ export default function ReviewsPageClient({ dict, lang }: ReviewsPageClientProps
     }
 
     try {
-      // TODO: Implement like functionality
-      // Update local state optimistically
-      setReviews(prev => prev.map(review => 
-        review.id === reviewId 
-          ? { ...review, likesCount: review.likesCount + 1 }
-          : review
-      ));
-      toast({ title: dict.reviewsPage?.success?.likeAdded || 'Like added', description: dict.reviewsPage?.success?.likeRegistered || 'Your like has been registered' });
+      const reviewObj = reviews.find(r => r.id === reviewId);
+      if (!reviewObj) return;
+
+      const prevLiked = typeof likedByMe[reviewId] === 'boolean'
+        ? likedByMe[reviewId]
+        : await checkUserLikedReview(reviewObj.courseId, reviewId, user.uid);
+
+      await likeReview(reviewObj.courseId, reviewId, user.uid, user.displayName || 'Usuario');
+      const postLiked = await checkUserLikedReview(reviewObj.courseId, reviewId, user.uid);
+      const delta = postLiked === prevLiked ? 0 : (postLiked ? 1 : -1);
+
+      setLikedByMe(prev => ({ ...prev, [reviewId]: postLiked }));
+      if (delta !== 0) {
+        setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, likesCount: (r.likesCount || 0) + delta } : r));
+      }
+
+      toast({
+        title: postLiked ? (dict.reviewsPage?.success?.likeAdded || 'Like added') : (dict.reviewsPage?.success?.likeRemoved || 'Like removed'),
+        description: postLiked ? (dict.reviewsPage?.success?.likeRegistered || 'Your like has been registered') : (dict.reviewsPage?.success?.likeUnregistered || 'Your like has been removed')
+      });
     } catch (error) {
       console.error('Error liking review:', error);
       toast({ title: dict.common?.error || 'Error', description: dict.reviewsPage?.errors?.addLike || 'Could not add like', variant: 'destructive' });
+    }
+  };
+
+  const toggleComments = async (review: Review) => {
+    const willShow = showComments === review.id ? null : review.id;
+    setShowComments(willShow);
+    if (willShow && (!review.comments || review.comments.length === 0)) {
+      try {
+        const comments = await getReviewComments(review.courseId, review.id);
+        setReviews(prev => prev.map(r => r.id === review.id ? { ...r, comments } : r));
+      } catch (error) {
+        console.error('Error loading comments:', error);
+      }
     }
   };
 
@@ -154,24 +201,21 @@ export default function ReviewsPageClient({ dict, lang }: ReviewsPageClientProps
     if (!user || !commentText.trim()) return;
 
     try {
-      // TODO: Implement comment functionality
-      const newComment = {
-        id: Date.now().toString(),
-        userId: user.uid,
-        userName: user.displayName || 'Usuario',
-        userAvatar: user.photoURL,
-        text: commentText,
-        createdAt: new Date().toISOString()
-      };
+      const reviewObj = reviews.find(r => r.id === reviewId);
+      if (!reviewObj) return;
 
-      setReviews(prev => prev.map(review => 
-        review.id === reviewId 
-          ? { 
-              ...review, 
-              comments: [...review.comments, newComment],
-              commentsCount: review.commentsCount + 1
-            }
-          : review
+      const added = await addReviewComment(
+        reviewObj.courseId,
+        reviewId,
+        user.uid,
+        user.displayName || 'Usuario',
+        user.photoURL || null,
+        commentText.trim()
+      );
+
+      setReviews(prev => prev.map(r => r.id === reviewId
+        ? { ...r, comments: [...(r.comments || []), added], commentsCount: (r.commentsCount || 0) + 1 }
+        : r
       ));
 
       setCommentText('');
@@ -213,24 +257,34 @@ export default function ReviewsPageClient({ dict, lang }: ReviewsPageClientProps
     }
 
     try {
-      // TODO: Implement review submission to Firebase
+      const reviewData: ReviewInput = {
+        userId: user.uid,
+        userName: user.displayName || 'Usuario',
+        rating: newReview.rating,
+        text: newReview.text.trim(),
+        media: [],
+        experienceType: newReview.experienceType
+      };
+
+      const newId = await addReview(newReview.courseId, reviewData);
       const course = courses.find(c => c.id === newReview.courseId);
+
       const reviewToAdd: Review = {
-        id: Date.now().toString(),
+        id: newId,
         userId: user.uid,
         userName: user.displayName || 'Usuario',
         userAvatar: user.photoURL,
         rating: newReview.rating,
-        text: newReview.text,
-        comment: newReview.text, // Alias for backward compatibility
+        text: newReview.text.trim(),
+        comment: newReview.text.trim(),
         courseId: newReview.courseId,
         courseName: course?.name || '',
         user: { name: user.displayName || 'Usuario', avatarUrl: user.photoURL || undefined },
         createdAt: new Date().toISOString(),
-        approved: null, // Pending approval
-        status: 'pending' as const,
+        approved: null,
+        status: 'pending',
         verified: false,
-        isVerifiedBooking: false, // TODO: Check if user has booking
+        isVerifiedBooking: false,
         likes: [],
         comments: [],
         likesCount: 0,
@@ -292,12 +346,16 @@ export default function ReviewsPageClient({ dict, lang }: ReviewsPageClientProps
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary to-primary/80 text-white py-16">
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-primary/80 text-white py-16">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Reseñas de Golfistas</h1>
-            <p className="text-xl opacity-90 max-w-2xl mx-auto mb-8">
-              Descubre las experiencias reales de nuestra comunidad de golfistas en Los Cabos
+            <h1 className="font-headline text-4xl md:text-5xl font-bold mb-4">
+              {dict.reviewsPage?.title || (lang === 'es' ? 'Reseñas de Golfistas' : 'Golfer Reviews')}
+            </h1>
+            <p className="text-lg md:text-xl opacity-95 max-w-3xl mx-auto mb-8">
+              {dict.reviewsPage?.subtitle || (lang === 'es'
+                ? 'Vive México a través de sus fairways: reseñas reales de nuestra comunidad en cada rincón del país'
+                : 'Experience Mexico through its fairways: real reviews from our community in every corner of the country')}
             </p>
             {user && (
               <Dialog open={showNewReviewDialog} onOpenChange={setShowNewReviewDialog}>
@@ -474,16 +532,18 @@ export default function ReviewsPageClient({ dict, lang }: ReviewsPageClientProps
                   <Card key={review.id} className="overflow-hidden hover:shadow-lg transition-shadow">
                     <CardContent className="p-6">
                       <div className="flex items-start space-x-4">
-                        <Avatar className="h-12 w-12">
-                          <AvatarImage src={review.userAvatar || ''} alt={review.userName} />
-                          <AvatarFallback>{review.userName.charAt(0)}</AvatarFallback>
-                        </Avatar>
+                        <Link href={`/${lang}/user/${review.userId}`} className="inline-flex">
+                          <Avatar className="h-12 w-12 hover:ring-2 hover:ring-primary/60 transition">
+                            <AvatarImage src={review.userAvatar || ''} alt={review.userName} />
+                            <AvatarFallback>{review.userName.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                        </Link>
                         
                         <div className="flex-1 space-y-3">
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="flex items-center gap-2">
-                                <h3 className="font-semibold">{review.userName}</h3>
+                                <Link href={`/${lang}/user/${review.userId}`} className="font-semibold hover:underline">{review.userName}</Link>
                                 {review.isVerifiedBooking && (
                                   <Badge variant="secondary" className="bg-green-100 text-green-800">
                                     <CheckCircle className="h-3 w-3 mr-1" />
@@ -536,7 +596,7 @@ export default function ReviewsPageClient({ dict, lang }: ReviewsPageClientProps
                                 variant="ghost" 
                                 size="sm" 
                                 onClick={() => handleLike(review.id)}
-                                className="flex items-center gap-1 hover:text-red-500 transition-colors"
+                                className={`flex items-center gap-1 transition-colors ${likedByMe[review.id] ? 'text-red-500' : 'hover:text-red-500'}`}
                               >
                                 <Heart className="h-4 w-4" />
                                 {review.likesCount}
@@ -545,7 +605,7 @@ export default function ReviewsPageClient({ dict, lang }: ReviewsPageClientProps
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                onClick={() => setShowComments(showComments === review.id ? null : review.id)}
+                                onClick={() => toggleComments(review)}
                                 className="flex items-center gap-1 hover:text-blue-500 transition-colors"
                               >
                                 <MessageCircle className="h-4 w-4" />
@@ -637,52 +697,7 @@ export default function ReviewsPageClient({ dict, lang }: ReviewsPageClientProps
                 <p className="text-muted-foreground">Las últimas actividades de nuestra comunidad de golfistas</p>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {/* Recent Activity Feed */}
-                  <div className="space-y-4">
-                    <div className="flex items-start space-x-3 p-4 rounded-lg bg-muted/30">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src="https://i.pravatar.cc/100?u=carlos" alt="Carlos" />
-                        <AvatarFallback>C</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="text-sm">
-                          <span className="font-medium">Carlos Mendoza</span> escribió una nueva reseña para 
-                          <span className="font-medium text-primary"> Palmilla Golf Club</span>
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">Hace 2 horas</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start space-x-3 p-4 rounded-lg bg-muted/30">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src="https://i.pravatar.cc/100?u=maria" alt="María" />
-                        <AvatarFallback>M</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="text-sm">
-                          <span className="font-medium">María González</span> obtuvo el badge 
-                          <span className="font-medium text-primary">🏌️ Explorador</span>
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">Hace 5 horas</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start space-x-3 p-4 rounded-lg bg-muted/30">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src="https://i.pravatar.cc/100?u=david" alt="David" />
-                        <AvatarFallback>D</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <p className="text-sm">
-                          <span className="font-medium">David Chen</span> reservó un tee time en 
-                          <span className="font-medium text-primary">Costa Palmas Golf Club</span>
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">Hace 1 día</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <FeedTimeline lang={lang} />
               </CardContent>
             </Card>
           </TabsContent>

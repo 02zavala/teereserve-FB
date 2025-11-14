@@ -248,9 +248,14 @@ if (isConfigValid) {
                 return null;
             });
             
+            const disableNotifications = process.env.NEXT_PUBLIC_DISABLE_NOTIFICATIONS === 'true';
             messaging = isMessagingSupported().then(async (yes) => {
                 if (yes) {
                     try {
+                        if (disableNotifications) {
+                            console.warn('Firebase Messaging disabled by NEXT_PUBLIC_DISABLE_NOTIFICATIONS');
+                            return null;
+                        }
                         return getMessaging(app as FirebaseApp);
                     } catch (error) {
                         console.warn('Failed to initialize Firebase Messaging:', error);

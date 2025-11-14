@@ -350,6 +350,27 @@ export interface SocialFeedItem {
   comments: ReviewComment[];
 }
 
+// Social Posts
+export interface PostInput {
+  userId: string;
+  userName: string;
+  userAvatar?: string | null;
+  text: string;
+  media?: ReviewMediaItem[];
+}
+
+export interface Post {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string | null;
+  text: string;
+  createdAt: string;
+  likes: ReviewLike[];
+  comments: ReviewComment[];
+  media?: ReviewMediaItem[];
+}
+
 // *** PRICING SYSTEM INTERFACES ***
 
 // Temporadas (alta/baja: fechas)
@@ -514,6 +535,8 @@ export interface QuoteRequest {
   holes: number;
   basePrice: number;
   promoCode?: string;
+  userId?: string;
+  userEmail?: string;
 }
 
 export interface QuoteResponse {

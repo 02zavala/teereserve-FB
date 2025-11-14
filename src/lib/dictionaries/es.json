@@ -275,6 +275,15 @@
         "cancel": "Cancelar",
         "savePreferences": "Guardar Preferencias"
     },
+    "exitIntent": {
+        "title": "¡Espera! Obtén ofertas exclusivas",
+        "subtitle": "Deja tu correo para recibir promociones, novedades y tips de golf.",
+        "placeholderEmail": "tu@correo.com",
+        "cta": "Quiero recibir novedades",
+        "skip": "No gracias",
+        "success": "¡Gracias! Nos pondremos en contacto muy pronto.",
+        "invalid": "Por favor, ingresa un correo válido."
+    },
      "aboutPage": {
         "hero": {
             "title": "Sobre Nosotros",
@@ -505,6 +514,8 @@
         }
     },
     "reviewsPage": {
+        "title": "Reseñas de Golfistas",
+        "subtitle": "Vive México a través de sus fairways: reseñas reales de nuestra comunidad en cada rincón del país",
         "writeNewReview": "Escribir Nueva Reseña",
         "golfCourse": "Campo de Golf",
         "selectCourse": "Selecciona un campo",

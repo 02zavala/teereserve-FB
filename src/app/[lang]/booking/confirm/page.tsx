@@ -237,7 +237,7 @@ function BookingConfirmContent() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Teléfono</p>
-                  <p className="font-medium">{booking.guest.phone}</p>
+                  <p className="font-medium">{booking.userPhone || 'Not provided'}</p>
                 </div>
               </div>
             </CardContent>

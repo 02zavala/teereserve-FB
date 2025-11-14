@@ -19,7 +19,7 @@ export default async function AdminLayout({
   return (
     <AdminAuthGuard>
       <SidebarProvider>
-          <div className="flex h-screen w-full">
+          <div className="flex min-h-screen w-full mt-16">
               <Sidebar>
                   <SidebarContent>
                       <SidebarHeader>
@@ -42,35 +42,11 @@ export default async function AdminLayout({
                                   </Link>
                               </SidebarMenuButton>
                           </SidebarMenuItem>
-                           <SidebarMenuItem>
-                              <SidebarMenuButton asChild tooltip="Site Content">
-                                  <Link href={`/${lang}/admin/content`}>
-                                      <FileText />
-                                      <span>Site Content</span>
-                                  </Link>
-                              </SidebarMenuButton>
-                          </SidebarMenuItem>
                           <SidebarMenuItem>
                               <SidebarMenuButton asChild tooltip="Bookings">
                                   <Link href={`/${lang}/admin/bookings`}>
                                       <BookMarked />
                                       <span>Bookings</span>
-                                  </Link>
-                              </SidebarMenuButton>
-                          </SidebarMenuItem>
-                           <SidebarMenuItem>
-                              <SidebarMenuButton asChild tooltip="Coupons">
-                                  <Link href={`/${lang}/admin/coupons`}>
-                                      <TicketPercent />
-                                      <span>Coupons</span>
-                                  </Link>
-                              </SidebarMenuButton>
-                          </SidebarMenuItem>
-                          <SidebarMenuItem>
-                              <SidebarMenuButton asChild tooltip="Reviews">
-                                  <Link href={`/${lang}/admin/reviews`}>
-                                      <MessageSquareQuote />
-                                      <span>Reviews</span>
                                   </Link>
                               </SidebarMenuButton>
                           </SidebarMenuItem>
@@ -82,6 +58,31 @@ export default async function AdminLayout({
                                   </Link>
                               </SidebarMenuButton>
                           </SidebarMenuItem>
+                          <SidebarMenuItem>
+                              <SidebarMenuButton asChild tooltip="Coupons">
+                                  <Link href={`/${lang}/admin/coupons`}>
+                                      <TicketPercent />
+                                      <span>Coupons</span>
+                                  </Link>
+                              </SidebarMenuButton>
+                          </SidebarMenuItem>
+                          <SidebarMenuItem>
+                              <SidebarMenuButton asChild tooltip="Content">
+                                  <Link href={`/${lang}/admin/content`}>
+                                      <FileText />
+                                      <span>Content</span>
+                                  </Link>
+                              </SidebarMenuButton>
+                          </SidebarMenuItem>
+                          <SidebarMenuItem>
+                              <SidebarMenuButton asChild tooltip="Reviews">
+                                  <Link href={`/${lang}/admin/reviews`}>
+                                      <MessageSquareQuote />
+                                      <span>Reviews</span>
+                                  </Link>
+                              </SidebarMenuButton>
+                          </SidebarMenuItem>
+                          
                           <SidebarMenuItem>
                               <SidebarMenuButton asChild tooltip="Telegram Alerts">
                                   <Link href={`/${lang}/admin/telegram-alerts`}>

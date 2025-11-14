@@ -30,10 +30,19 @@ function ConfirmPageContent() {
     // useMemo to prevent re-running on every render
     const params = useMemo(() => ({
       price: searchParams?.get('price'),
+      providedClientSecret: searchParams?.get('client_secret'),
     }), [searchParams]);
 
 
     useEffect(() => {
+        // If a client_secret was provided (guest flow), use it directly
+        if (params.providedClientSecret && !isInitialized) {
+            setClientSecret(params.providedClientSecret);
+            setIsInitialized(true);
+            return;
+        }
+
+        // Otherwise, create a new payment intent from price
         if (params.price && !isInitialized) {
             setIsInitialized(true);
             const subtotal = parseFloat(params.price);

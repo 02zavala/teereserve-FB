@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Bell, BellOff, Settings } from 'lucide-react';
-import { useNotifications } from '@/hooks/useNotifications';
+import { usePushNotifications } from '@/hooks/useNotifications';
 import { useToast } from '@/hooks/use-toast';
 
 interface NotificationManagerProps {
@@ -21,7 +21,7 @@ export function NotificationManager({ userId, className }: NotificationManagerPr
     getNotificationToken, 
     saveTokenToServer,
     isSupported 
-  } = useNotifications();
+  } = usePushNotifications();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 

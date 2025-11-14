@@ -15,6 +15,7 @@ import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es, enUS } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { getDefaultBookingDate } from '@/lib/date-utils';
 import { Locale } from '@/i18n-config';
 import { GolfCourse } from '@/types/index';
 import { doc, getDoc } from 'firebase/firestore';
@@ -58,6 +59,22 @@ export function BookingPageClient({ dictionary, lang, courseId }: BookingPageCli
     // Don't redirect anonymous users - they can book as guests
     // This allows the guest booking flow to work properly
   }, [user, router, lang, courseId]);
+
+  // Set default date following course operating hours (closing time) or 16:00 fallback
+  useEffect(() => {
+    if (!form.date) {
+      let cutoffHour = 16;
+      const closing = (course as any)?.operatingHours?.closingTime as string | undefined;
+      if (closing) {
+        const match = closing.match(/^(\d{1,2}):(\d{2})/);
+        if (match) {
+          const h = parseInt(match[1], 10);
+          if (!isNaN(h)) cutoffHour = h;
+        }
+      }
+      setForm(prev => ({ ...prev, date: getDefaultBookingDate(cutoffHour) }));
+    }
+  }, [form.date, course]);
 
   // Load course data if courseId is provided
   useEffect(() => {

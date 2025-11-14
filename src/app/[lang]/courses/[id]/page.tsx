@@ -30,6 +30,7 @@ export default function CourseDetailPage() {
     const [dictionary, setDictionary] = useState<any>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+    const [minPrice, setMinPrice] = useState<number | null>(null);
 
     const courseId = params ? (Array.isArray(params.id) ? params.id[0] : params.id) : null;
     const lang = (pathname?.split('/')[1] || 'en') as Locale;
@@ -53,6 +54,25 @@ export default function CourseDetailPage() {
         };
         fetchCourseAndDict();
     }, [courseId, lang]);
+
+    // Cargar precio mínimo derivado para asegurar consistencia con bandas horarias
+    useEffect(() => {
+        if (!courseId) return;
+        let mounted = true;
+        const loadMinPrice = async () => {
+            try {
+                const res = await fetch(`/api/pricing/min-price?courseId=${courseId}`, { cache: 'no-store' });
+                if (!res.ok) return;
+                const json = await res.json();
+                const value = json?.data?.minPrice;
+                if (mounted && typeof value === 'number' && !isNaN(value)) {
+                    setMinPrice(value);
+                }
+            } catch {}
+        };
+        loadMinPrice();
+        return () => { mounted = false; };
+    }, [courseId]);
 
     if (!course || !dictionary) {
         return (
@@ -143,7 +163,7 @@ export default function CourseDetailPage() {
                                 lng: course.latLng.lng,
                                 description: course.description,
                                 imageUrl: course.images?.[0],
-                                priceFromUSD: typeof course.basePrice === 'number' ? course.basePrice : course.priceFromUSD,
+                                priceFromUSD: typeof minPrice === 'number' ? minPrice : (typeof course.basePrice === 'number' ? course.basePrice : course.priceFromUSD),
                                 url: `/${lang}/courses/${course.slug ?? course.id}`
                             }]}
                             height="400px"
@@ -172,7 +192,7 @@ export default function CourseDetailPage() {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="text-center">
-                                        <p className="text-3xl font-bold text-primary">${course && typeof course.basePrice === 'number' && !isNaN(course.basePrice) ? course.basePrice : '—'}</p>
+                                        <p className="text-3xl font-bold text-primary">${typeof minPrice === 'number' ? minPrice : (course && typeof course.basePrice === 'number' && !isNaN(course.basePrice) ? course.basePrice : '—')}</p>
                                         <p className="text-sm text-muted-foreground">{dictionary.courseDetail?.perPlayer || 'per player'}</p>
                                     </div>
                                     <Button 

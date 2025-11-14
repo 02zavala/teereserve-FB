@@ -7,6 +7,7 @@ import { getSharedDictionary } from "@/lib/dictionaries/shared";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { Header } from '@/components/layout/Header';
 import { Footer } from '@/components/layout/Footer';
+import { ExitIntentModal } from '@/components/ExitIntentModal';
 
 export async function generateStaticParams() {
   return i18n.locales.map((locale) => ({ lang: locale }));
@@ -26,6 +27,7 @@ export default async function RootLayout({
   
   // Load only the cookieConsent section for CookieConsent component
   const cookieConsentDict = await getDictionarySection(params.lang, 'cookieConsent');
+  const exitIntentDict = await getDictionarySection(params.lang, 'exitIntent');
 
   return (
     <div className="relative flex min-h-screen flex-col">
@@ -34,6 +36,8 @@ export default async function RootLayout({
        <Footer dictionary={sharedDictionary} lang={params.lang} />
        <CookieConsent dictionary={cookieConsentDict} />
        <WhatsAppButton />
+       {/* Exit intent modal, client-side only */}
+       <ExitIntentModal lang={params.lang} dictionary={exitIntentDict} />
     </div>
   );
 }

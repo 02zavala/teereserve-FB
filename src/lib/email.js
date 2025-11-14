@@ -183,7 +183,7 @@ export async function sendWelcomeEmail(userEmail, userName) {
     }
   }
 
-export async function sendBookingConfirmation(userEmail, bookingDetails) {
+export async function sendBookingConfirmation(userEmail, bookingDetails, attachments = []) {
     const emailData = {
       from: process.env.EMAIL_FROM || 'noreply@teereserve.golf',
       to: [userEmail],
@@ -273,7 +273,7 @@ export async function sendBookingConfirmation(userEmail, bookingDetails) {
                         tax_cents: bookingDetails.pricing_snapshot.tax_cents,
                         discount_cents: bookingDetails.pricing_snapshot.discount_cents,
                         total_cents: bookingDetails.pricing_snapshot.total_cents,
-                        currency: bookingDetails.pricing_snapshot.currency || 'USD',
+                        currency: 'USD',
                         tax_rate: bookingDetails.pricing_snapshot.tax_rate || 0.16,
                         discount_code: bookingDetails.pricing_snapshot.promoCode
                       };
@@ -297,7 +297,7 @@ export async function sendBookingConfirmation(userEmail, bookingDetails) {
                         tax_cents,
                         discount_cents,
                         total_cents: totalCents,
-                        currency: 'MXN',
+                        currency: 'USD',
                         tax_rate: taxRate,
                         discount_code: couponCode
                       };
@@ -362,6 +362,10 @@ export async function sendBookingConfirmation(userEmail, bookingDetails) {
           </body>
           </html>
         `,
+        attachments: Array.isArray(attachments) && attachments.length > 0 ? attachments.map(att => ({
+          filename: att.filename,
+          content: att.content,
+        })) : undefined,
       });
 
       if (error) {
@@ -847,12 +851,18 @@ export async function resetEmailServiceError() {
 // Nueva función para notificación de reserva a administradores
 export async function sendAdminBookingNotification(adminEmail, bookingDetails) {
     const emailData = {
-      from: process.env.EMAIL_FROM || 'noreply@teereserve.golf',
+      from: process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM || 'TeeReserve Golf <noreply@teereserve.golf>',
       to: [adminEmail],
       subject: '🆕 Nueva Reserva Recibida - TeeReserve'
     };
     
     try {
+      const formattedTotal = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(Number(bookingDetails.totalPrice || bookingDetails.total_price || 0));
       const { data, error } = await resend.emails.send({
         ...emailData,
         html: `
@@ -938,7 +948,7 @@ export async function sendAdminBookingNotification(adminEmail, bookingDetails) {
                   
                   <div class="detail-row">
                     <span class="label">💰 Precio Total:</span>
-                    <span class="value">€${bookingDetails.totalPrice}</span>
+                    <span class="value">${formattedTotal}</span>
                   </div>
                   
                   <div class="detail-row">

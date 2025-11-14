@@ -47,7 +47,8 @@ export default async function RootLayout({
   params,
 }: RootLayoutProps) {
   const { lang } = await params;
-  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+  const gaId = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
+  const gaDisabled = process.env.NEXT_PUBLIC_DISABLE_ANALYTICS === 'true';
   
   return (
     <html lang={lang} suppressHydrationWarning>
@@ -59,7 +60,7 @@ export default async function RootLayout({
         )}
       >
         {/* Google Analytics */}
-        {gaId && <GoogleAnalytics gaId={gaId} />}
+        {gaId && !gaDisabled && <GoogleAnalytics gaId={gaId} />}
         
         {/* Visit Tracking - NUEVO */}
         <VisitTracker enabled={true} debounceMs={1000} />

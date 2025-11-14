@@ -1,6 +1,7 @@
-import type { GolfCourse, Review, TeeTime, Booking, BookingInput, ReviewInput, UserProfile, Scorecard, ScorecardInput, AchievementId, TeamMember, AboutPageContent, Coupon, CouponInput, ReviewLike, ReviewComment, ReviewBadge, UserReviewStats, CMSSection, CMSTemplate, EventTicket } from '@/types';
-import { db, storage } from './firebase';
-import { collection, getDocs, doc, getDoc, addDoc, updateDoc, query, where, setDoc, CollectionReference, writeBatch, serverTimestamp, orderBy, limit, deleteDoc, runTransaction, increment, QueryConstraint, getCountFromServer } from 'firebase/firestore';
+import type { GolfCourse, Review, TeeTime, Booking, BookingInput, ReviewInput, UserProfile, Scorecard, ScorecardInput, AchievementId, TeamMember, AboutPageContent, Coupon, CouponInput, ReviewLike, ReviewComment, ReviewBadge, UserReviewStats, CMSSection, CMSTemplate, EventTicket, Post, PostInput } from '@/types';
+import { db, storage, auth } from './firebase';
+import { logger } from './logger';
+import { collection, collectionGroup, getDocs, doc, getDoc, addDoc, updateDoc, query, where, setDoc, CollectionReference, writeBatch, serverTimestamp, orderBy, limit, deleteDoc, runTransaction, increment, QueryConstraint, getCountFromServer } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { format, startOfDay, subDays, isAfter, parse, set, isToday, isBefore, addMinutes } from 'date-fns';
 import { sendBookingConfirmationEmail } from '@/ai/flows/send-booking-confirmation-email';
@@ -419,6 +420,16 @@ export const uploadProfilePicture = async (userId: string, file: File): Promise<
     return getDownloadURL(snapshot.ref);
 };
 
+export const uploadPostImage = async (userId: string, file: File): Promise<string> => {
+    if (!storage) {
+        throw new Error("Firebase Storage is not initialized.");
+    }
+    const cleanFileName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
+    const storageRef = ref(storage, `posts/${userId}/${Date.now()}-${cleanFileName}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    return getDownloadURL(snapshot.ref);
+};
+
 
 // *** Firestore Data Functions ***
 
@@ -690,51 +701,113 @@ export const addCourse = async (courseData: CourseDataInput): Promise<string> =>
 
 export const updateCourse = async (courseId: string, courseData: CourseDataInput): Promise<void> => {
     if (!db) throw new Error("Firestore is not initialized.");
-    const { newImages, existingImageUrls, ...restOfData } = courseData;
-    const newImageUrls = await uploadImages(courseData.name, newImages);
-    
-    const allImageUrls = [...existingImageUrls, ...newImageUrls];
+    const operationId = `upd-${courseId}-${Date.now()}`;
+    const userId = auth?.currentUser?.uid || 'unknown';
+    const userEmail = auth?.currentUser?.email || undefined;
 
-    const courseDocRef = doc(db, 'courses', courseId);
-    
-    // Check if document exists, if not create it
-    const courseSnap = await getDoc(courseDocRef);
-    const courseUpdateData = removeUndefinedValues({
-        name: restOfData.name,
-        location: restOfData.location,
-        address: restOfData.address,
-        description: restOfData.description,
-        rules: restOfData.rules || "",
-        basePrice: restOfData.basePrice,
-        imageUrls: allImageUrls,
-        teeTimeInterval: restOfData.teeTimeInterval,
-        operatingHours: restOfData.operatingHours,
-        availableHoles: restOfData.availableHoles,
-        totalYards: restOfData.totalYards,
-        par: restOfData.par,
-        holeDetails: restOfData.holeDetails,
-        hidden: restOfData.hidden,
-        latLng: restOfData.latLng,
-        slug: restOfData.slug,
-    });
-    
-    if (courseSnap.exists()) {
-        await updateDoc(courseDocRef, {
-            ...courseUpdateData,
-            updatedAt: serverTimestamp()
+    try {
+        const { newImages, existingImageUrls, ...restOfData } = courseData;
+        const newImageUrls = await uploadImages(courseData.name, newImages);
+
+        const allImageUrls = [...existingImageUrls, ...newImageUrls];
+
+        const courseDocRef = doc(db, 'courses', courseId);
+        
+        // Check if document exists, if not create it
+        const courseSnap = await getDoc(courseDocRef);
+        const previousData = courseSnap.exists() ? courseSnap.data() : null;
+
+        const courseUpdateData = removeUndefinedValues({
+            name: restOfData.name,
+            location: restOfData.location,
+            address: restOfData.address,
+            description: restOfData.description,
+            rules: restOfData.rules || "",
+            basePrice: restOfData.basePrice,
+            imageUrls: allImageUrls,
+            teeTimeInterval: restOfData.teeTimeInterval,
+            operatingHours: restOfData.operatingHours,
+            availableHoles: restOfData.availableHoles,
+            totalYards: restOfData.totalYards,
+            par: restOfData.par,
+            holeDetails: restOfData.holeDetails,
+            hidden: restOfData.hidden,
+            latLng: restOfData.latLng,
+            slug: restOfData.slug,
         });
-    } else {
-        // If document doesn't exist, create it with setDoc
-        // Find the static course data to get additional fields like latLng
-        const staticCourse = initialCourses.find(c => c.id === courseId);
-        const cleanedSetDocData = removeUndefinedValues({
-            id: courseId,
-            ...courseUpdateData,
-            latLng: staticCourse?.latLng || { lat: 0, lng: 0 },
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
+
+        // Compute shallow changes for audit
+        const fieldChanges: Record<string, { from: any; to: any }> = {};
+        const keys = Object.keys(courseUpdateData);
+        for (const key of keys) {
+            const prev = previousData ? (previousData as any)[key] : undefined;
+            const next = (courseUpdateData as any)[key];
+            if (JSON.stringify(prev) !== JSON.stringify(next)) {
+                fieldChanges[key] = { from: prev ?? null, to: next };
+            }
+        }
+
+        const basePriceChange = fieldChanges['basePrice'];
+
+        if (courseSnap.exists()) {
+            await updateDoc(courseDocRef, {
+                ...courseUpdateData,
+                updatedAt: serverTimestamp()
+            });
+        } else {
+            // If document doesn't exist, create it with setDoc
+            // Find the static course data to get additional fields like latLng
+            const staticCourse = initialCourses.find(c => c.id === courseId);
+            const cleanedSetDocData = removeUndefinedValues({
+                id: courseId,
+                ...courseUpdateData,
+                latLng: staticCourse?.latLng || { lat: 0, lng: 0 },
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+            await setDoc(courseDocRef, cleanedSetDocData);
+        }
+
+        // Structured log
+        logger.info('Course updated', {
+            operationId,
+            courseId,
+            userId,
+            userEmail,
+            basePriceChange,
+            changedFields: Object.keys(fieldChanges),
         });
-        await setDoc(courseDocRef, cleanedSetDocData);
+
+        // Firestore audit record
+        try {
+            await addDoc(collection(db, 'admin_audit_logs'), {
+                type: courseSnap.exists() ? 'update_course' : 'create_course',
+                operationId,
+                courseId,
+                userId,
+                userEmail,
+                timestamp: serverTimestamp(),
+                changes: fieldChanges,
+            });
+        } catch (auditErr) {
+            // Do not block operation if audit fails
+            logger.warn('Failed to write admin audit log', { operationId, courseId, error: String(auditErr) });
+        }
+    } catch (error) {
+        // Error log and audit
+        logger.error('Failed to update course', { operationId, courseId, error: String(error) });
+        try {
+            await addDoc(collection(db, 'admin_audit_logs'), {
+                type: 'update_course_failed',
+                operationId,
+                courseId,
+                userId,
+                userEmail,
+                timestamp: serverTimestamp(),
+                error: String(error),
+            });
+        } catch {}
+        throw error;
     }
 }
 
@@ -808,7 +881,7 @@ const generateDefaultTeeTimes = (basePrice: number, course?: GolfCourse, date?: 
         times.push({
             time: formattedTime,
             status,
-            price: Math.round(basePrice),
+            price: basePrice,
             maxPlayers: 4, // Máximo estándar de 4 jugadores por tee time
             bookedPlayers: 0, // Inicialmente sin jugadores reservados
             availableSpots: 4, // Todos los espacios disponibles inicialmente
@@ -835,6 +908,11 @@ export const getTeeTimesForCourse = async (courseId: string, date: Date, basePri
     
     // Get course information for interval and operating hours
     const course = await getCourseById(courseId);
+
+    // If the course is hidden, do not expose any availability
+    if (course?.hidden) {
+        return [];
+    }
 
     // Daily cutoff logic
     if (isRequestForToday) {
@@ -904,20 +982,51 @@ export const getTeeTimesForCourse = async (courseId: string, date: Date, basePri
             teeTimesResult = newTimesWithIds;
         } else {
             teeTimesResult = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as TeeTime));
-            // Force basePrice for display — ignore stored price variants
-            teeTimesResult = teeTimesResult.map(t => ({ ...t, price: Math.round(basePrice) }));
         }
 
+        // Apply dynamic pricing per tee time using the quote API (players: 1, holes: 18)
+        // This ensures displayed prices respect current bands and rules.
+        const dateStringForApi = dateString;
+        const enrichedTimes = await Promise.all(
+            teeTimesResult.map(async (t) => {
+                try {
+                    const response = await fetch('/api/checkout/quote', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            courseId,
+                            date: dateStringForApi,
+                            time: t.time,
+                            players: 1,
+                            holes: 18,
+                            basePrice: basePrice
+                        }),
+                    });
+                    if (!response.ok) {
+                        // Fallback to basePrice when quote fails
+                        return { ...t, price: basePrice } as TeeTime;
+                    }
+                    const quote = await response.json();
+                    const perPlayerUsd = (quote.subtotal_cents || 0) / 100; // players=1, holes=18
+                    return { ...t, price: perPlayerUsd } as TeeTime;
+                } catch (err) {
+                    console.warn('Quote failed for time', t.time, err);
+                    return { ...t, price: basePrice } as TeeTime;
+                }
+            })
+        );
+
         // Filter for today's available times after fetching/creating
+        let filteredTimes = enrichedTimes;
         if (isRequestForToday) {
             const minLeadTime = addMinutes(now, 30);
-            teeTimesResult = teeTimesResult.filter(t => {
+            filteredTimes = filteredTimes.filter(t => {
                 const teeDateTime = parse(t.time, 'HH:mm', date);
                 return isAfter(teeDateTime, minLeadTime);
             });
         }
         
-        return teeTimesResult.sort((a,b) => a.time.localeCompare(b.time));
+        return filteredTimes.sort((a,b) => a.time.localeCompare(b.time));
 
     } catch (error) {
         console.error("Error getting or creating tee times: ", error);
@@ -1042,6 +1151,41 @@ export async function createBooking(bookingData: BookingInput, lang: Locale): Pr
     const confirmationNumber = generateConfirmationNumber();
     const isGuestBooking = bookingData.userId === 'guest';
 
+    // Enforce first-reservation restriction for WELCOME coupon
+    const isWelcomeCoupon = (bookingData.couponCode || '').toUpperCase() === 'WELCOME';
+    if (isWelcomeCoupon) {
+        let hasPriorBooking = false;
+        try {
+            if (!isGuestBooking) {
+                // Check user achievements and prior bookings by userId
+                const preUserDocRef = doc(dbInstance, 'users', bookingData.userId);
+                const preUserDoc = await getDoc(preUserDocRef);
+                if (preUserDoc.exists()) {
+                    const profile = preUserDoc.data() as UserProfile;
+                    userProfile = profile; // reuse later
+                    if (Array.isArray(profile.achievements) && profile.achievements.includes('firstBooking')) {
+                        hasPriorBooking = true;
+                    }
+                }
+                if (!hasPriorBooking) {
+                    const priorByUserId = query(collection(dbInstance, 'bookings'), where('userId', '==', bookingData.userId), limit(1));
+                    const priorByUserSnap = await getDocs(priorByUserId);
+                    if (priorByUserSnap.size > 0) hasPriorBooking = true;
+                }
+            } else if (bookingData.userEmail) {
+                // Check prior bookings by email for guest bookings
+                const priorByEmail = query(collection(dbInstance, 'bookings'), where('userEmail', '==', bookingData.userEmail), limit(1));
+                const priorByEmailSnap = await getDocs(priorByEmail);
+                if (priorByEmailSnap.size > 0) hasPriorBooking = true;
+            }
+        } catch (e) {
+            console.warn('Failed to verify WELCOME eligibility:', e);
+        }
+        if (hasPriorBooking) {
+            throw new Error("WELCOME coupon is only valid for your first reservation.");
+        }
+    }
+
     const bookingId = await runTransaction(dbInstance, async (transaction) => {
         const teeTimeDoc = await transaction.get(teeTimeDocRef);
 
@@ -1084,7 +1228,11 @@ export async function createBooking(bookingData: BookingInput, lang: Locale): Pr
             if (coupon.expiresAt && isBefore(new Date(coupon.expiresAt), new Date())) {
                 throw new Error("This coupon has expired.");
             }
-            // Add other validation logic here (usage limits, etc.)
+            // Usage limit validation
+            const currentUses = coupon.timesUsed ?? 0;
+            if (coupon.usageLimit && currentUses >= coupon.usageLimit) {
+                throw new Error("This coupon has reached its usage limit.");
+            }
 
             transaction.update(couponRef, { timesUsed: increment(1) });
         }
@@ -1134,24 +1282,23 @@ export async function createBooking(bookingData: BookingInput, lang: Locale): Pr
     const emailToUse = (userProfile as UserProfile | undefined)?.email || bookingData.userEmail;
     if (bookingId && emailToUse) {
         try {
-            
-            const response = await fetch('/api/guest-booking-confirmation', {
+            const response = await fetch('/api/send-booking-receipt', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    userEmail: emailToUse,
+                    recipientEmail: emailToUse,
                     bookingDetails: {
                         confirmationNumber: confirmationNumber,
-                        userName: bookingData.userName,
+                        playerName: bookingData.userName,
                         courseName: bookingData.courseName,
+                        courseLocation: (bookingData as any).courseLocation,
                         date: bookingData.date,
                         time: bookingData.time,
                         players: bookingData.players,
-                        totalPrice: bookingData.totalPrice.toString(),
-                        discountCode: bookingData.couponCode,
-                        discountAmount: 0, // Por ahora 0, se calculará en el backend
+                        holes: (bookingData as any).holes,
+                        totalPrice: bookingData.totalPrice,
                         // Include pricing_snapshot if available
                         ...((bookingData as any).pricing_snapshot ? { pricing_snapshot: (bookingData as any).pricing_snapshot } : {})
                     }
@@ -1207,7 +1354,7 @@ export async function createBooking(bookingData: BookingInput, lang: Locale): Pr
         try {
             const { sendAdminBookingAlert } = await import('./admin-alerts-service');
             
-            const adminAlertData = {
+            const adminAlertData: any = {
                 bookingId: bookingId,
                 courseName: bookingData.courseName,
                 customerName: bookingData.userName,
@@ -1217,12 +1364,35 @@ export async function createBooking(bookingData: BookingInput, lang: Locale): Pr
                 time: bookingData.time,
                 players: bookingData.players,
                 totalAmount: bookingData.totalPrice,
-                currency: 'EUR', // Default currency, could be made configurable
-                paymentMethod: 'stripe', // Default payment method, should be passed from booking data
-                transactionId: (bookingData as any).transactionId,
+                currency: ((bookingData as any).currency || 'USD'),
+                paymentMethod: ((bookingData as any).paymentMethod || 'stripe'),
+                transactionId: ((bookingData as any).paymentIntentId || (bookingData as any).transactionId),
                 bookingUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://teereserve.golf'}/booking/${bookingId}`,
                 createdAt: new Date()
             };
+
+            // Enriquecer con últimos 4 dígitos de tarjeta si es Stripe
+            try {
+                const pm = (bookingData as any).paymentMethod;
+                const piId = (bookingData as any).paymentIntentId;
+                if (pm === 'stripe' && piId) {
+                    const { stripe } = await import('./stripe');
+                    const pi = await stripe.paymentIntents.retrieve(piId, { expand: ['payment_method'] });
+                    const paymentMethod = pi.payment_method as any;
+                    if (paymentMethod && paymentMethod.card) {
+                        adminAlertData.cardLast4 = paymentMethod.card.last4;
+                        adminAlertData.cardBrand = paymentMethod.card.brand;
+                    } else if (pi.payment_method && typeof pi.payment_method === 'string') {
+                        const pmObj = await stripe.paymentMethods.retrieve(pi.payment_method);
+                        if (pmObj && pmObj.card) {
+                            adminAlertData.cardLast4 = pmObj.card.last4;
+                            adminAlertData.cardBrand = pmObj.card.brand;
+                        }
+                    }
+                }
+            } catch (stripeInfoError) {
+                console.warn('Unable to enrich admin alert with card last4:', stripeInfoError);
+            }
 
             await sendAdminBookingAlert(adminAlertData);
             console.log(`Admin alerts sent for confirmed booking: ${bookingId}`);
@@ -1525,6 +1695,121 @@ export async function updateUserProfile(uid: string, data: Partial<UserProfile>)
     const dbInstance = db; // Create a non-null reference
     const userDocRef = doc(dbInstance, 'users', uid);
     await updateDoc(userDocRef, data);
+}
+
+// User Profile retrieval
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+    if (!db) throw new Error('Firestore is not initialized.');
+    const userDocRef = doc(db, 'users', uid);
+    const snap = await getDoc(userDocRef);
+    if (!snap.exists()) return null;
+    return snap.data() as UserProfile;
+}
+
+// Social Posts
+export async function getUserPosts(userId: string): Promise<Post[]> {
+    if (!db) return [];
+    const postsCol = collection(db, 'users', userId, 'posts');
+    const q = query(postsCol, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Post));
+}
+
+export async function addUserPost(input: PostInput): Promise<string> {
+    if (!db) throw new Error('Firestore is not initialized.');
+    const postsCol = collection(db, 'users', input.userId, 'posts');
+    const docRef = await addDoc(postsCol, {
+        ...input,
+        createdAt: new Date().toISOString(),
+        likes: [],
+        comments: [],
+        likesCount: 0,
+        commentsCount: 0
+    });
+    return docRef.id;
+}
+
+// Post Social Features
+export async function likePost(postOwnerId: string, postId: string, userId: string, userName: string): Promise<void> {
+    if (!db) throw new Error('Database not initialized');
+
+    const postRef = doc(db, 'users', postOwnerId, 'posts', postId);
+    const likesRef = collection(postRef, 'likes');
+    const likeRef = doc(likesRef, userId);
+
+    await runTransaction(db, async (transaction) => {
+        const likeDoc = await transaction.get(likeRef);
+
+        if (likeDoc.exists()) {
+            // Unlike
+            transaction.delete(likeRef);
+            transaction.update(postRef, { likesCount: increment(-1) });
+        } else {
+            // Like
+            const likeData: ReviewLike = {
+                userId,
+                userName,
+                createdAt: new Date().toISOString()
+            };
+            transaction.set(likeRef, likeData);
+            transaction.update(postRef, { likesCount: increment(1) });
+        }
+    });
+}
+
+export async function addPostComment(postOwnerId: string, postId: string, userId: string, userName: string, userAvatar: string | null, text: string): Promise<ReviewComment> {
+    if (!db) throw new Error('Database not initialized');
+
+    const postRef = doc(db, 'users', postOwnerId, 'posts', postId);
+    const commentsRef = collection(postRef, 'comments');
+
+    const commentData: Omit<ReviewComment, 'id'> = {
+        userId,
+        userName,
+        userAvatar,
+        text,
+        createdAt: new Date().toISOString()
+    };
+
+    const commentDocRef = await addDoc(commentsRef, commentData);
+
+    await updateDoc(postRef, { commentsCount: increment(1) });
+
+    return { id: commentDocRef.id, ...commentData };
+}
+
+export async function getPostLikes(postOwnerId: string, postId: string): Promise<ReviewLike[]> {
+    if (!db) throw new Error('Database not initialized');
+
+    const likesRef = collection(db, 'users', postOwnerId, 'posts', postId, 'likes');
+    const likesSnapshot = await getDocs(likesRef);
+    return likesSnapshot.docs.map(doc => doc.data() as ReviewLike);
+}
+
+export async function getPostComments(postOwnerId: string, postId: string): Promise<ReviewComment[]> {
+    if (!db) throw new Error('Database not initialized');
+
+    const commentsRef = collection(db, 'users', postOwnerId, 'posts', postId, 'comments');
+    const commentsQuery = query(commentsRef, orderBy('createdAt', 'asc'));
+    const commentsSnapshot = await getDocs(commentsQuery);
+
+    return commentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ReviewComment));
+}
+
+export async function checkUserLikedPost(postOwnerId: string, postId: string, userId: string): Promise<boolean> {
+    if (!db) throw new Error('Database not initialized');
+
+    const likeRef = doc(db, 'users', postOwnerId, 'posts', postId, 'likes', userId);
+    const likeDoc = await getDoc(likeRef);
+    return likeDoc.exists();
+}
+
+export async function getGlobalPosts(limitCount: number = 50): Promise<Post[]> {
+    if (!db) return [];
+
+    const postsQuery = query(collectionGroup(db, 'posts'), orderBy('createdAt', 'desc'), limit(limitCount));
+    const snapshot = await getDocs(postsQuery);
+    return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Post));
 }
 
 
@@ -1860,7 +2145,7 @@ export async function deleteCoupon(code: string): Promise<void> {
     await deleteDoc(couponRef);
 }
 
-export async function validateCoupon(code: string): Promise<Coupon> {
+export async function validateCoupon(code: string, opts?: { userId?: string; userEmail?: string }): Promise<Coupon> {
     if (!db) throw new Error("Firestore is not initialized.");
     const couponRef = doc(db, 'coupons', code);
     const docSnap = await getDoc(couponRef);
@@ -1873,6 +2158,44 @@ export async function validateCoupon(code: string): Promise<Coupon> {
 
     if (coupon.expiresAt && isBefore(new Date(coupon.expiresAt), new Date())) {
         throw new Error("This coupon has expired.");
+    }
+
+    // Usage limit validation
+    const currentUses = coupon.timesUsed ?? 0;
+    if (coupon.usageLimit && currentUses >= coupon.usageLimit) {
+        throw new Error("This coupon has reached its usage limit.");
+    }
+
+    // Enforce first-reservation eligibility for WELCOME during validation when identity is provided
+    const isWelcomeCoupon = code.toUpperCase() === 'WELCOME';
+    if (isWelcomeCoupon) {
+        let hasPriorBooking = false;
+        try {
+            if (opts?.userId && opts.userId !== 'guest') {
+                const userDocRef = doc(db, 'users', opts.userId);
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists()) {
+                    const profile = userDoc.data() as any;
+                    if (Array.isArray(profile.achievements) && profile.achievements.includes('firstBooking')) {
+                        hasPriorBooking = true;
+                    }
+                }
+                if (!hasPriorBooking) {
+                    const priorByUserId = query(collection(db, 'bookings'), where('userId', '==', opts.userId), limit(1));
+                    const priorByUserSnap = await getDocs(priorByUserId);
+                    if (priorByUserSnap.size > 0) hasPriorBooking = true;
+                }
+            } else if (opts?.userEmail) {
+                const priorByEmail = query(collection(db, 'bookings'), where('userEmail', '==', opts.userEmail), limit(1));
+                const priorByEmailSnap = await getDocs(priorByEmail);
+                if (priorByEmailSnap.size > 0) hasPriorBooking = true;
+            }
+        } catch (e) {
+            console.warn('Failed to verify WELCOME eligibility during validation:', e);
+        }
+        if (hasPriorBooking) {
+            throw new Error("WELCOME coupon is only valid for your first reservation.");
+        }
     }
 
     return coupon;

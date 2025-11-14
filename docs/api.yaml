@@ -1,0 +1,364 @@
+openapi: 3.1.0
+info:
+  title: TeeReserve Wireframe API v1
+  version: 1.0.0
+  description: API canónico con endpoints de cursos, disponibilidad, tarifas, pagos, reservas y recibos.
+servers:
+  - url: http://localhost:3002/api/v1
+paths:
+  /courses:
+    get:
+      summary: Lista de cursos
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Course'
+  /courses/{id}:
+    get:
+      summary: Detalle de curso
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Course'
+        '404':
+          description: No encontrado
+  /courses/{id}/availability:
+    get:
+      summary: Disponibilidad de tee times
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Fecha YYYY-MM-DD
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AvailabilitySlot'
+  /courses/{id}/rates:
+    get:
+      summary: Tarifas de un curso
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Rate'
+  /payments/intent:
+    post:
+      summary: Crear intento de pago (mock)
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentIntentRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/PaymentIntent'
+  /bookings:
+    post:
+      summary: Crear reserva (mock)
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingInput'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Booking'
+  /bookings/{id}:
+    get:
+      summary: Consultar reserva
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Booking'
+        '404':
+          description: No encontrado
+  /bookings/{id}/cancel:
+    post:
+      summary: Cancelar reserva
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /receipts:
+    post:
+      summary: Generar recibo PDF
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiptRequest'
+      responses:
+        '200':
+          description: PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+components:
+  schemas:
+    Course:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        location:
+          type: string
+        description:
+          type: string
+        basePrice:
+          type: number
+        currency:
+          type: string
+        teeTimeInterval:
+          type: number
+        operatingHours:
+          type: object
+          properties:
+            openingTime:
+              type: string
+            closingTime:
+              type: string
+    AvailabilitySlot:
+      type: object
+      properties:
+        date:
+          type: string
+        teeTime:
+          type: string
+        playersMin:
+          type: number
+        playersMax:
+          type: number
+        publicPriceUSD:
+          type: number
+        currency:
+          type: string
+    Rate:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        publicPriceUSD:
+          type: number
+        currency:
+          type: string
+    BookingInput:
+      type: object
+      required: [courseId, teeTime, playerCount, pricePublicUSD]
+      properties:
+        courseId:
+          type: string
+        teeTime:
+          type: string
+        playerCount:
+          type: number
+        pricePublicUSD:
+          type: number
+        currency:
+          type: string
+        channel:
+          type: string
+        conciergeId:
+          type: string
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+        courseId:
+          type: string
+        teeTime:
+          type: string
+        playerCount:
+          type: number
+        pricePublicUSD:
+          type: number
+        currency:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+        economics:
+          type: object
+          properties:
+            priceNetToCourseUSD:
+              type: number
+            grossMarginUSD:
+              type: number
+            conciergeCommissionUSD:
+              type: number
+            platformCommissionUSD:
+              type: number
+    PaymentIntentRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+    PaymentIntent:
+      type: object
+      properties:
+        id:
+          type: string
+        clientSecret:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+    ReceiptRequest:
+      type: object
+      properties:
+        bookingId:
+          type: string
+        confirmationNumber:
+          type: string
+        courseName:
+          type: string
+        courseLocation:
+          type: string
+        date:
+          type: string
+        time:
+          type: string
+        players:
+          type: number
+        holes:
+          type: number
+        totalPrice:
+          type: number
+        customerName:
+          type: string
+        customerEmail:
+          type: string
