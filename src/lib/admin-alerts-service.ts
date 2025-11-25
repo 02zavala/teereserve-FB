@@ -93,10 +93,14 @@ class AdminAlertsService {
           amount: data.totalAmount,
           currency: data.currency,
           customerEmail: data.customerEmail,
-          customerName: data.customerName
+          customerName: data.customerName,
+          customerPhone: data.customerPhone,
+          cardLast4: (data as any).cardLast4,
+          cardBrand: (data as any).cardBrand
         };
 
-        telegramService.updateConfig({ chatId: this.config.telegram.chatId });
+        // Asegura que el servicio de Telegram esté habilitado y use el chat del admin
+        telegramService.updateConfig({ chatId: this.config.telegram.chatId, enabled: true });
         const success = await telegramService.sendBookingAlert(alert);
         results.push({ channel: 'telegram', success });
       } catch (error) {
@@ -340,7 +344,7 @@ Enviado el ${new Date().toLocaleString('es-ES')}
       time: '10:00',
       players: 2,
       totalAmount: 50,
-      currency: 'EUR',
+      currency: 'USD',
       paymentMethod: 'stripe',
       transactionId: 'test_transaction_123',
       createdAt: new Date()
@@ -349,7 +353,9 @@ Enviado el ${new Date().toLocaleString('es-ES')}
     // Telegram
     if (this.config.telegram.enabled && this.config.telegram.chatId) {
       try {
-        const success = await telegramService.sendTestAlert(this.config.telegram.chatId);
+        // Asegura habilitación y chat admin antes de enviar prueba
+        telegramService.updateConfig({ chatId: this.config.telegram.chatId, enabled: true });
+        const success = await telegramService.sendTestAlert();
         results.push({ channel: 'telegram', success });
       } catch (error) {
         results.push({ channel: 'telegram', success: false, error: error instanceof Error ? error.message : 'Unknown error' });

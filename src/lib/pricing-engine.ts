@@ -1220,25 +1220,17 @@ export class PricingEngine {
 
       const { seasons, timeBands, priceRules, specialOverrides, baseProduct } = result.data;
 
-      // Load data into memory
-      if (seasons && seasons.length > 0) {
-        this.seasons.set(courseId, seasons);
-      }
-      
-      if (timeBands && timeBands.length > 0) {
-        this.timeBands.set(courseId, timeBands);
-      }
-      
-      if (priceRules && priceRules.length > 0) {
-        this.priceRules.set(courseId, priceRules);
-      }
-      
-      if (specialOverrides && specialOverrides.length > 0) {
-        // Filter overrides for this course and merge with existing
-        const courseOverrides = specialOverrides.filter((o: any) => o.courseId === courseId);
-        const otherOverrides = this.specialOverrides.filter(o => o.courseId !== courseId);
-        this.specialOverrides = [...otherOverrides, ...courseOverrides];
-      }
+      // Load data into memory (replace even when empty to reflect deletions)
+      this.seasons.set(courseId, Array.isArray(seasons) ? seasons : []);
+      this.timeBands.set(courseId, Array.isArray(timeBands) ? timeBands : []);
+      this.priceRules.set(courseId, Array.isArray(priceRules) ? priceRules : []);
+
+      // Replace overrides for this course
+      const courseOverrides = Array.isArray(specialOverrides)
+        ? specialOverrides.filter((o: any) => o.courseId === courseId)
+        : [];
+      const otherOverrides = this.specialOverrides.filter(o => o.courseId !== courseId);
+      this.specialOverrides = [...otherOverrides, ...courseOverrides];
       
       if (baseProduct) {
         const mappedBaseProduct: BaseProduct = {
@@ -1385,6 +1377,347 @@ export class PricingEngine {
     const updated = this.updateBaseProduct(courseId, updates);
     await this.savePricingData(courseId);
     return updated;
+  }
+
+  // Deletion with persistence helpers
+  async deleteSeasonWithPersistence(id: string): Promise<boolean> {
+    let courseId: string | null = null;
+    for (const [cid, seasons] of this.seasons.entries()) {
+      if (seasons.some(s => s.id === id)) {
+        courseId = cid;
+        break;
+      }
+    }
+    const ok = this.deleteSeason(id);
+    if (!ok || !courseId) return false;
+    const saveOk = await this.savePricingData(courseId);
+    return ok && saveOk;
+  }
+
+  async deleteTimeBandWithPersistence(id: string): Promise<boolean> {
+    let courseId: string | null = null;
+    for (const [cid, timeBands] of this.timeBands.entries()) {
+      if (timeBands.some(t => t.id === id)) {
+        courseId = cid;
+        break;
+      }
+    }
+    const ok = this.deleteTimeBand(id);
+    if (!ok || !courseId) return false;
+    const saveOk = await this.savePricingData(courseId);
+    return ok && saveOk;
+  }
+
+  async deletePriceRuleWithPersistence(id: string): Promise<boolean> {
+    let courseId: string | null = null;
+    for (const [cid, rules] of this.priceRules.entries()) {
+      if (rules.some(r => r.id === id)) {
+        courseId = cid;
+        break;
+      }
+    }
+    const ok = this.deletePriceRule(id);
+    if (!ok || !courseId) return false;
+    const saveOk = await this.savePricingData(courseId);
+    return ok && saveOk;
+  }
+
+  // Deduplication helpers
+  dedupeTimeBands(courseId: string): number {
+    const bands = this.getTimeBands(courseId);
+    if (!bands || bands.length === 0) return 0;
+    
+    // Para Puerto Los Cabos, mantener solo las 3 bandas principales
+    if (courseId === 'puerto-los-cabos') {
+      const targetBands = [
+        { startTime: '07:00', endTime: '11:50', label: '07:00–11:50' },
+        { startTime: '12:00', endTime: '13:20', label: '12:00–13:20' },
+        { startTime: '13:30', endTime: '19:00', label: '13:30–19:00' }
+      ];
+      
+      const unique: TimeBand[] = [];
+      for (const target of targetBands) {
+        // Buscar la primera banda que coincida con este horario
+        const match = bands.find(b => 
+          b.startTime === target.startTime && 
+          b.endTime === target.endTime
+        );
+        if (match) {
+          // Actualizar el label si es necesario
+          unique.push({
+            ...match,
+            label: target.label
+          });
+        }
+      }
+      
+      const removed = bands.length - unique.length;
+      this.timeBands.set(courseId, unique);
+      this.invalidateCache(courseId);
+      return removed;
+    }
+    
+    // Para otros cursos, usar la lógica original
+    const seen = new Set<string>();
+    const unique: TimeBand[] = [];
+    for (const b of bands) {
+      const key = `${(b.label || '').trim().toLowerCase()}|${b.startTime}|${b.endTime}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(b);
+      }
+    }
+    const removed = bands.length - unique.length;
+    this.timeBands.set(courseId, unique);
+    this.invalidateCache(courseId);
+    return removed;
+  }
+
+  dedupePriceRules(courseId: string): number {
+    const rules = this.getPriceRules(courseId);
+    if (!rules || rules.length === 0) return 0;
+    
+    // Para Puerto Los Cabos, mantener solo una regla por banda horaria (la de mayor prioridad)
+    if (courseId === 'puerto-los-cabos') {
+      const timeBands = this.getTimeBands(courseId);
+      const unique: PriceRule[] = [];
+      
+      // Agrupar reglas por timeBandId
+      const rulesByTimeBand = new Map<string, PriceRule[]>();
+      for (const rule of rules) {
+        if (rule.timeBandId) {
+          if (!rulesByTimeBand.has(rule.timeBandId)) {
+            rulesByTimeBand.set(rule.timeBandId, []);
+          }
+          rulesByTimeBand.get(rule.timeBandId)!.push(rule);
+        } else {
+          // Reglas sin timeBandId se mantienen (reglas generales)
+          unique.push(rule);
+        }
+      }
+      
+      // Para cada banda horaria, mantener solo la regla de mayor prioridad
+      for (const [timeBandId, bandRules] of rulesByTimeBand.entries()) {
+        if (bandRules.length > 0) {
+          // Ordenar por prioridad (mayor primero) y luego por fecha de actualización
+          const bestRule = bandRules.sort((a, b) => {
+            if (b.priority !== a.priority) return b.priority - a.priority;
+            const aUpdated = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+            const bUpdated = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+            return bUpdated - aUpdated;
+          })[0];
+          unique.push(bestRule);
+        }
+      }
+      
+      const removed = rules.length - unique.length;
+      this.priceRules.set(courseId, unique);
+      this.invalidateCache(courseId);
+      return removed;
+    }
+    
+    // Para otros cursos, usar la lógica original
+    const seen = new Set<string>();
+    const unique: PriceRule[] = [];
+    for (const r of rules) {
+      const keyParts = [
+        (r.name || '').trim().toLowerCase(),
+        r.seasonId || '',
+        r.timeBandId || '',
+        (r.dow || []).join(','),
+        String(r.leadTimeMin ?? ''),
+        String(r.leadTimeMax ?? ''),
+        String(r.occupancyMin ?? ''),
+        String(r.occupancyMax ?? ''),
+        String(r.playersMin ?? ''),
+        String(r.playersMax ?? ''),
+        r.priceType,
+        String(r.priceValue),
+        String(r.priority),
+        String(r.active),
+        r.effectiveFrom || '',
+        r.effectiveTo || '',
+        String(r.minPrice ?? ''),
+        String(r.maxPrice ?? ''),
+        String(r.roundTo ?? '')
+      ];
+      const key = keyParts.join('|');
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(r);
+      }
+    }
+    const removed = rules.length - unique.length;
+    this.priceRules.set(courseId, unique);
+    this.invalidateCache(courseId);
+    return removed;
+  }
+
+  // Deduplicate by rule name only. Keeps one per name using strategy.
+  dedupePriceRulesByName(courseId: string, strategy: 'highest_priority' | 'latest' = 'highest_priority'): number {
+    const rules = this.getPriceRules(courseId);
+    if (!rules || rules.length === 0) return 0;
+    const groups = new Map<string, PriceRule[]>();
+    for (const r of rules) {
+      const key = (r.name || '').trim().toLowerCase();
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(r);
+    }
+    const selected: PriceRule[] = [];
+    for (const [, list] of groups.entries()) {
+      if (list.length === 1) {
+        selected.push(list[0]);
+      } else {
+        let keep: PriceRule = list[0];
+        if (strategy === 'highest_priority') {
+          keep = list.reduce((acc, cur) => {
+            if (cur.priority > acc.priority) return cur;
+            if (cur.priority === acc.priority) {
+              const accUpdated = acc.updatedAt ? new Date(acc.updatedAt).getTime() : 0;
+              const curUpdated = cur.updatedAt ? new Date(cur.updatedAt).getTime() : 0;
+              return curUpdated > accUpdated ? cur : acc;
+            }
+            return acc;
+          }, list[0]);
+        } else {
+          keep = list.reduce((acc, cur) => {
+            const accUpdated = acc.updatedAt ? new Date(acc.updatedAt).getTime() : 0;
+            const curUpdated = cur.updatedAt ? new Date(cur.updatedAt).getTime() : 0;
+            return curUpdated > accUpdated ? cur : acc;
+          }, list[0]);
+        }
+        selected.push(keep);
+      }
+    }
+    const removed = rules.length - selected.length;
+    this.priceRules.set(courseId, selected);
+    this.invalidateCache(courseId);
+    return removed;
+  }
+
+  async dedupePriceRulesByNameWithPersistence(courseId: string, strategy: 'highest_priority' | 'latest' = 'highest_priority'): Promise<number> {
+    const removed = this.dedupePriceRulesByName(courseId, strategy);
+    const saveOk = await this.savePricingData(courseId);
+    if (!saveOk) {
+      console.error('Failed to persist price rule name deduplication');
+    }
+    return removed;
+  }
+
+  async dedupeAllPricingWithPersistence(courseId: string): Promise<{removedBands: number, removedRules: number}> {
+    const removedBands = this.dedupeTimeBands(courseId);
+    const removedRules = this.dedupePriceRules(courseId);
+    const saveOk = await this.savePricingData(courseId);
+    if (!saveOk) {
+      console.error('Failed to persist deduplication');
+    }
+    return { removedBands, removedRules };
+  }
+
+  // Nuevas funciones para eliminar duplicados directamente en Firestore
+  async dedupeTimeBandsInFirestore(courseId: string): Promise<number> {
+    if (!this.authToken) {
+      throw new Error('Authentication token required');
+    }
+
+    const response = await fetch('/api/admin/pricing/dedupe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.authToken}`
+      },
+      body: JSON.stringify({
+        courseId,
+        type: 'timeBands'
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to dedupe time bands in Firestore');
+    }
+
+    const result = await response.json();
+    return result.removedCount;
+  }
+
+  async dedupePriceRulesInFirestore(courseId: string): Promise<number> {
+    if (!this.authToken) {
+      throw new Error('Authentication token required');
+    }
+
+    const response = await fetch('/api/admin/pricing/dedupe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.authToken}`
+      },
+      body: JSON.stringify({
+        courseId,
+        type: 'priceRules'
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to dedupe price rules in Firestore');
+    }
+
+    const result = await response.json();
+    return result.removedCount;
+  }
+
+  async dedupePriceRulesByNameInFirestore(courseId: string, strategy: 'highest_priority' | 'latest' = 'highest_priority'): Promise<number> {
+    if (!this.authToken) {
+      throw new Error('Authentication token required');
+    }
+
+    const response = await fetch('/api/admin/pricing/dedupe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.authToken}`
+      },
+      body: JSON.stringify({
+        courseId,
+        type: 'priceRulesByName',
+        strategy
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to dedupe price rules by name in Firestore');
+    }
+
+    const result = await response.json();
+    return result.removedCount;
+  }
+
+  async dedupeAllPricingInFirestore(courseId: string): Promise<{removedCount: number}> {
+    if (!this.authToken) {
+      throw new Error('Authentication token required');
+    }
+
+    const response = await fetch('/api/admin/pricing/dedupe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.authToken}`
+      },
+      body: JSON.stringify({
+        courseId,
+        type: 'all'
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to dedupe pricing data in Firestore');
+    }
+
+    const result = await response.json();
+    return { removedCount: result.removedCount };
   }
 }
 

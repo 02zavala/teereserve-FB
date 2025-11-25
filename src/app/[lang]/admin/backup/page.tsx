@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
 import { LazyBackupManager } from '@/components/admin/LazyAdminPage';
 import { AdminAuthGuard } from '@/components/auth/AdminAuthGuard';
-import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: 'Backup Management | TeeReserve Admin',
@@ -19,18 +18,7 @@ export default function BackupPage() {
           </p>
         </div>
         
-        <Suspense fallback={
-          <div className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
-              ))}
-            </div>
-            <div className="h-96 bg-muted animate-pulse rounded-lg" />
-          </div>
-        }>
-          <LazyBackupManager />
-        </Suspense>
+        <LazyBackupManager />
       </div>
     </AdminAuthGuard>
   );

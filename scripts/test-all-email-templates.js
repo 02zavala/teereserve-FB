@@ -1,16 +1,24 @@
 require('dotenv').config({ path: '.env.local' });
 
-// Importar EmailService usando require para módulos ES6
-const importEmailService = async () => {
-  const module = await import('../lib/email.js');
-  return module.default;
+// Importar funciones de email desde la implementación activa en src/lib
+const importEmailFns = async () => {
+  const module = await import('../src/lib/email.js');
+  return module;
 };
 
-let EmailService;
+let sendWelcomeEmail, sendBookingConfirmation, sendBookingReminder, sendBookingCancellation, sendPasswordResetEmail, sendContactFormNotification;
 
 async function testAllEmailTemplates() {
-  // Inicializar EmailService
-  EmailService = await importEmailService();
+  // Inicializar funciones de email
+  const emailModule = await importEmailFns();
+  ({
+    sendWelcomeEmail,
+    sendBookingConfirmation,
+    sendBookingReminder,
+    sendBookingCancellation,
+    sendPasswordResetEmail,
+    sendContactFormNotification,
+  } = emailModule);
   
   console.log('🧪 Iniciando pruebas de todas las plantillas de email...');
   console.log('📧 Enviando a: oscraramon@gmail.com');
@@ -35,7 +43,7 @@ async function testAllEmailTemplates() {
   try {
     // 1. Email de Bienvenida
     console.log('\n1️⃣ Enviando email de bienvenida...');
-    const welcomeResult = await EmailService.sendWelcomeEmail(testEmail, testUser);
+    const welcomeResult = await sendWelcomeEmail(testEmail, testUser);
     if (welcomeResult.success) {
       console.log('✅ Email de bienvenida enviado exitosamente');
     } else {
@@ -44,7 +52,7 @@ async function testAllEmailTemplates() {
 
     // 2. Confirmación de Reserva
     console.log('\n2️⃣ Enviando confirmación de reserva...');
-    const bookingResult = await EmailService.sendBookingConfirmation(testEmail, testUser, bookingDetails);
+    const bookingResult = await sendBookingConfirmation(testEmail, bookingDetails);
     if (bookingResult.success) {
       console.log('✅ Confirmación de reserva enviada exitosamente');
     } else {
@@ -53,7 +61,7 @@ async function testAllEmailTemplates() {
 
     // 3. Recordatorio de Reserva
     console.log('\n3️⃣ Enviando recordatorio de reserva...');
-    const reminderResult = await EmailService.sendBookingReminder(testEmail, testUser, bookingDetails);
+    const reminderResult = await sendBookingReminder(testEmail, testUser, bookingDetails);
     if (reminderResult.success) {
       console.log('✅ Recordatorio de reserva enviado exitosamente');
     } else {
@@ -62,7 +70,7 @@ async function testAllEmailTemplates() {
 
     // 4. Cancelación de Reserva
     console.log('\n4️⃣ Enviando notificación de cancelación...');
-    const cancellationResult = await EmailService.sendBookingCancellation(testEmail, testUser, bookingDetails);
+    const cancellationResult = await sendBookingCancellation(testEmail, testUser, bookingDetails);
     if (cancellationResult.success) {
       console.log('✅ Notificación de cancelación enviada exitosamente');
     } else {
@@ -72,7 +80,7 @@ async function testAllEmailTemplates() {
     // 5. Restablecimiento de Contraseña
     console.log('\n5️⃣ Enviando email de restablecimiento de contraseña...');
     const resetLink = 'https://teereserve.golf/reset-password?token=test-token-123';
-    const passwordResult = await EmailService.sendPasswordResetEmail(testEmail, resetLink);
+    const passwordResult = await sendPasswordResetEmail(testEmail, resetLink);
     if (passwordResult.success) {
       console.log('✅ Email de restablecimiento enviado exitosamente');
     } else {
@@ -89,7 +97,7 @@ async function testAllEmailTemplates() {
       message: 'Hola, me gustaría saber más sobre las nuevas plantillas de email implementadas en TeeReserve. Las plantillas se ven muy profesionales y consistentes. ¡Excelente trabajo!'
     };
     
-    const contactResult = await EmailService.sendContactFormNotification(contactData);
+    const contactResult = await sendContactFormNotification(contactData);
     if (contactResult.success) {
       console.log('✅ Notificación de contacto enviada exitosamente');
     } else {

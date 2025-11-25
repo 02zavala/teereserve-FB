@@ -36,7 +36,7 @@ import { getCourseLocations } from "@/lib/data"
 import { useEffect, useState } from "react"
 import { getDictionary } from "@/lib/get-dictionary"
 import type { Locale } from "@/i18n-config"
-import { dateLocales } from "@/lib/date-utils";
+import { dateLocales, getDefaultBookingDate } from "@/lib/date-utils";
 
 
 const formSchema = z.object({
@@ -81,7 +81,7 @@ export function CourseSearchForm({ dictionary }: CourseSearchFormProps) {
     useEffect(() => {
         // Set default date only on the client to avoid hydration mismatch
         if (isClient) {
-            form.setValue('date', new Date());
+            form.setValue('date', getDefaultBookingDate());
         }
     }, [isClient, form]);
 

@@ -52,11 +52,13 @@ export async function POST(request: NextRequest) {
         time: bookingData.time || '10:00',
         players: bookingData.players || 2,
         totalAmount: bookingData.totalAmount || 50,
-        currency: bookingData.currency || 'EUR',
+        currency: bookingData.currency || 'USD',
         paymentMethod: bookingData.paymentMethod || 'stripe',
         transactionId: bookingData.transactionId || 'test_transaction_' + Date.now(),
         bookingUrl: bookingData.bookingUrl || `${process.env.NEXT_PUBLIC_BASE_URL}/booking/test`,
-        createdAt: new Date()
+        createdAt: new Date(),
+        cardLast4: bookingData.cardLast4,
+        cardBrand: bookingData.cardBrand
       };
 
       const results = await adminAlertsService.sendBookingConfirmedAlert(testBookingData);

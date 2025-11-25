@@ -9,13 +9,16 @@ export function useCSRF() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const abortController = new AbortController();
+
     // Obtener CSRF token del cookie o generar uno nuevo
     const getCSRFToken = async () => {
       try {
         // Intentar obtener token existente
         const response = await fetch('/api/csrf-token', {
           method: 'GET',
-          credentials: 'include'
+          credentials: 'include',
+          signal: abortController.signal,
         });
         
         if (response.ok) {
@@ -26,8 +29,11 @@ export function useCSRF() {
           const newToken = SecurityUtils.generateCSRFToken();
           setCSRFToken(newToken);
         }
-      } catch (error) {
-        console.error('Error obteniendo CSRF token:', error);
+      } catch (error: any) {
+        // Ignorar cancelaciones/aborts para evitar ruido en consola
+        if (error?.name === 'AbortError') {
+          return;
+        }
         // Generar token local como fallback
         const newToken = SecurityUtils.generateCSRFToken();
         setCSRFToken(newToken);
@@ -37,6 +43,10 @@ export function useCSRF() {
     };
 
     getCSRFToken();
+
+    return () => {
+      abortController.abort();
+    };
   }, []);
 
   // Función para hacer requests seguros con CSRF token
@@ -49,7 +59,7 @@ export function useCSRF() {
       'Content-Type': 'application/json',
       'X-CSRF-Token': csrfToken,
       ...options.headers
-    };
+    } as Record<string, string>;
 
     return fetch(url, {
       ...options,

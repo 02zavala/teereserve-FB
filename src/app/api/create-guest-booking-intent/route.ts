@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       teeTime,
       players,
       amount: amount / 100, // Store in dollars
-      currency: 'usd',
+      currency: 'USD',
       guest,
       status: 'requires_payment',
       createdByUid: decodedToken.uid,

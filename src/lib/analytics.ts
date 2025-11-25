@@ -69,7 +69,7 @@ export const trackEvent = {
     const eventData = {
       transaction_id: reservationId,
       value: amount,
-      currency: 'EUR',
+      currency: 'USD',
       items: [{
         item_id: courseId,
         item_name: 'Golf Reservation',
@@ -217,6 +217,59 @@ export const trackEvent = {
     }
   },
 
+  // Exit-intent interactions
+  exitIntentModalOpened: () => {
+    const eventData = { timestamp: new Date().toISOString() };
+    try {
+      if (analytics) {
+        logEvent(analytics, 'exit_intent_opened', eventData);
+      } else {
+        handleTrackingError('exit_intent_opened', new Error('Analytics not available'), eventData);
+      }
+    } catch (error) {
+      handleTrackingError('exit_intent_opened', error, eventData);
+    }
+  },
+
+  exitIntentLeadSubmitted: (hasEmail: boolean) => {
+    const eventData = { has_email: hasEmail, timestamp: new Date().toISOString() };
+    try {
+      if (analytics) {
+        logEvent(analytics, 'exit_intent_submitted', eventData);
+      } else {
+        handleTrackingError('exit_intent_submitted', new Error('Analytics not available'), eventData);
+      }
+    } catch (error) {
+      handleTrackingError('exit_intent_submitted', error, eventData);
+    }
+  },
+
+  exitIntentLeadSuccess: () => {
+    const eventData = { timestamp: new Date().toISOString() };
+    try {
+      if (analytics) {
+        logEvent(analytics, 'exit_intent_success', eventData);
+      } else {
+        handleTrackingError('exit_intent_success', new Error('Analytics not available'), eventData);
+      }
+    } catch (error) {
+      handleTrackingError('exit_intent_success', error, eventData);
+    }
+  },
+
+  exitIntentLeadFailed: (errorMessage: string) => {
+    const eventData = { error: errorMessage, timestamp: new Date().toISOString() };
+    try {
+      if (analytics) {
+        logEvent(analytics, 'exit_intent_failed', eventData);
+      } else {
+        handleTrackingError('exit_intent_failed', new Error('Analytics not available'), eventData);
+      }
+    } catch (error) {
+      handleTrackingError('exit_intent_failed', error, eventData);
+    }
+  },
+
   // Eventos de error
   errorOccurred: (errorType: string, errorMessage: string, page: string) => {
     const eventData = {
@@ -300,121 +353,121 @@ let ga4Error: string | null = null;
 
 // Inicializar Google Analytics 4
 export const initGA4 = () => {
-  if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID) {
-    try {
-      // Verificar si ya existe el script
-      const existingScript = document.querySelector(`script[src*="googletagmanager.com/gtag/js"]`);
-      if (existingScript) {
-        console.log('✅ Google Analytics script ya cargado');
-        ga4Initialized = true;
-        return;
-      }
+  if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID && process.env.NEXT_PUBLIC_DISABLE_ANALYTICS !== 'true') {
+     try {
+       // Verificar si ya existe el script
+       const existingScript = document.querySelector(`script[src*="googletagmanager.com/gtag/js"]`);
+       if (existingScript) {
+         console.log('✅ Google Analytics script ya cargado');
+         ga4Initialized = true;
+         return;
+       }
 
-      // Verificar conectividad antes de cargar
-      if (typeof window !== 'undefined' && !navigator.onLine) {
-        const offlineError = 'Cannot initialize GA4: device is offline';
-        ga4Error = offlineError;
-        logger.warn(offlineError, 'analytics', {
-          fallbackAvailable: true,
-          retryOnReconnect: true
-        });
-        return;
-      }
+       // Verificar conectividad antes de cargar
+       if (typeof window !== 'undefined' && !navigator.onLine) {
+         const offlineError = 'Cannot initialize GA4: device is offline';
+         ga4Error = offlineError;
+         logger.warn(offlineError, 'analytics', {
+           fallbackAvailable: true,
+           retryOnReconnect: true
+         });
+         return;
+       }
 
-      // Configurar dataLayer primero
-      window.dataLayer = window.dataLayer || [];
-      window.gtag = function() {
-        window.dataLayer.push(arguments);
-      };
+       // Configurar dataLayer primero
+       window.dataLayer = window.dataLayer || [];
+       window.gtag = function() {
+         window.dataLayer.push(arguments);
+       };
 
-      // Cargar gtag script con manejo de errores mejorado
-      const script = document.createElement('script');
-      script.async = true;
-      script.src = `https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID}`;
-      
-      // Timeout para evitar bloqueos prolongados
-      const timeout = setTimeout(() => {
-        const timeoutError = 'Google Analytics script loading timeout';
-        ga4Error = timeoutError;
-        console.warn('⚠️ Google Analytics: Timeout al cargar el script');
-        logger.warn(timeoutError, 'analytics', {
-          timeout: '10s',
-          fallbackAvailable: true,
-          networkStatus: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline'
-        });
-        script.remove();
-      }, 10000); // 10 segundos timeout
-      
-      script.onload = () => {
-        clearTimeout(timeout);
-        try {
-          // Configurar GA4 después de que el script se cargue
-          window.gtag('js', new Date());
-          window.gtag('config', process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID, {
-            page_title: 'TeeReserve - Golf Course Reservations',
-            page_location: window.location.href,
-            send_page_view: true,
-            // Configuraciones de privacidad
-            anonymize_ip: true,
-            allow_google_signals: false,
-            allow_ad_personalization_signals: false,
-            // Configuraciones para desarrollo
-            debug_mode: process.env.NODE_ENV === 'development',
-            transport_type: 'beacon'
-          });
-          ga4Initialized = true;
-          ga4Error = null;
-          console.log('✅ Google Analytics 4 inicializado correctamente');
-          logger.info('Google Analytics 4 initialized successfully', 'analytics');
-        } catch (configError) {
-          const errorMessage = configError instanceof Error ? configError.message : 'Unknown config error';
-          ga4Error = errorMessage;
-          console.warn('⚠️ Error configurando Google Analytics:', configError);
-          logger.error('Failed to configure Google Analytics', configError as Error, 'analytics', {
-            fallbackAvailable: true
-          });
-        }
-      };
+       // Cargar gtag script con manejo de errores mejorado
+       const script = document.createElement('script');
+       script.async = true;
+       script.src = `https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID}`;
+       
+       // Timeout para evitar bloqueos prolongados
+       const timeout = setTimeout(() => {
+         const timeoutError = 'Google Analytics script loading timeout';
+         ga4Error = timeoutError;
+         console.warn('⚠️ Google Analytics: Timeout al cargar el script');
+         logger.warn(timeoutError, 'analytics', {
+           timeout: '10s',
+           fallbackAvailable: true,
+           networkStatus: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline'
+         });
+         script.remove();
+       }, 10000); // 10 segundos timeout
+       
+       script.onload = () => {
+         clearTimeout(timeout);
+         try {
+           // Configurar GA4 después de que el script se cargue
+           window.gtag('js', new Date());
+           window.gtag('config', process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID, {
+             page_title: 'TeeReserve - Golf Course Reservations',
+             page_location: window.location.href,
+             send_page_view: true,
+             // Configuraciones de privacidad
+             anonymize_ip: true,
+             allow_google_signals: false,
+             allow_ad_personalization_signals: false,
+             // Configuraciones para desarrollo
+             debug_mode: process.env.NODE_ENV === 'development',
+             transport_type: 'beacon'
+           });
+           ga4Initialized = true;
+           ga4Error = null;
+           console.log('✅ Google Analytics 4 inicializado correctamente');
+           logger.info('Google Analytics 4 initialized successfully', 'analytics');
+         } catch (configError) {
+           const errorMessage = configError instanceof Error ? configError.message : 'Unknown config error';
+           ga4Error = errorMessage;
+           console.warn('⚠️ Error configurando Google Analytics:', configError);
+           logger.error('Failed to configure Google Analytics', configError as Error, 'analytics', {
+             fallbackAvailable: true
+           });
+         }
+       };
 
-      script.onerror = (error) => {
-        clearTimeout(timeout);
-        const errorMessage = 'Failed to load Google Analytics script';
-        ga4Error = errorMessage;
-        console.warn('⚠️ Error cargando Google Analytics - La aplicación continuará funcionando normalmente:', error);
-        logger.error(errorMessage, new Error(errorMessage), 'analytics', {
-          networkStatus: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline',
-          fallbackAvailable: true,
-          scriptSrc: script.src
-        });
-        // Remover el script fallido para evitar errores adicionales
-        script.remove();
-        // No bloquear la aplicación si GA4 falla
-      };
+       script.onerror = (error) => {
+         clearTimeout(timeout);
+         const errorMessage = 'Failed to load Google Analytics script';
+         ga4Error = errorMessage;
+         console.warn('⚠️ Error cargando Google Analytics - La aplicación continuará funcionando normalmente:', error);
+         logger.error(errorMessage, new Error(errorMessage), 'analytics', {
+           networkStatus: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline',
+           fallbackAvailable: true,
+           scriptSrc: script.src
+         });
+         // Remover el script fallido para evitar errores adicionales
+         script.remove();
+         // No bloquear la aplicación si GA4 falla
+       };
 
-      // Agregar el script al head con manejo de errores
-      try {
-        document.head.appendChild(script);
-      } catch (appendError) {
-        clearTimeout(timeout);
-        const errorMessage = appendError instanceof Error ? appendError.message : 'Unknown DOM error';
-        ga4Error = errorMessage;
-        console.warn('⚠️ Error agregando script de Google Analytics al DOM:', appendError);
-        logger.error('Failed to append Google Analytics script to DOM', appendError as Error, 'analytics', {
-          fallbackAvailable: true
-        });
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown initialization error';
-      ga4Error = errorMessage;
-      console.warn('⚠️ Error inicializando Google Analytics - La aplicación continuará funcionando normalmente:', error);
-      logger.error('Failed to initialize Google Analytics', error as Error, 'analytics', {
-        fallbackAvailable: true,
-        networkStatus: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline'
-      });
-    }
-  } else {
-    console.log('ℹ️ Google Analytics no inicializado: falta MEASUREMENT_ID o no está en el cliente');
-  }
+       // Agregar el script al head con manejo de errores
+       try {
+         document.head.appendChild(script);
+       } catch (appendError) {
+         clearTimeout(timeout);
+         const errorMessage = appendError instanceof Error ? appendError.message : 'Unknown DOM error';
+         ga4Error = errorMessage;
+         console.warn('⚠️ Error agregando script de Google Analytics al DOM:', appendError);
+         logger.error('Failed to append Google Analytics script to DOM', appendError as Error, 'analytics', {
+           fallbackAvailable: true
+         });
+       }
+     } catch (error) {
+       const errorMessage = error instanceof Error ? error.message : 'Unknown initialization error';
+       ga4Error = errorMessage;
+       console.warn('⚠️ Error inicializando Google Analytics - La aplicación continuará funcionando normalmente:', error);
+       logger.error('Failed to initialize Google Analytics', error as Error, 'analytics', {
+         fallbackAvailable: true,
+         networkStatus: typeof window !== 'undefined' && navigator?.onLine ? 'online' : 'offline'
+       });
+     }
+   } else {
+     console.log('ℹ️ Google Analytics no inicializado: deshabilitado o falta MEASUREMENT_ID');
+   }
 };
 
 // Hook para usar en componentes React

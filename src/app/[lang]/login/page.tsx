@@ -3,13 +3,13 @@ import Link from "next/link";
 import LoginFormClient from "./LoginFormClient";
 
 interface LoginPageProps {
-    params: {
+    params: Promise<{
         lang: string;
-    };
+    }>;
 }
 
-export default function LoginPage({ params }: LoginPageProps) {
-    const { lang } = params;
+export default async function LoginPage({ params: paramsProp }: LoginPageProps) {
+    const { lang } = await paramsProp;
     
     return (
         <div className="container mx-auto flex min-h-[80vh] items-center justify-center">

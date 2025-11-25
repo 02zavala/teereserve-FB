@@ -266,6 +266,30 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
         throw new ValidationError('La hora de fin debe ser posterior a la hora de inicio');
       }
 
+      // Validar duplicado exacto (misma etiqueta y mismo rango)
+      const isDuplicate = timeBands.some(tb =>
+        (!editingTimeBand || tb.id !== editingTimeBand.id) &&
+        tb.label.trim().toLowerCase() === label.trim().toLowerCase() &&
+        tb.startTime === startTime &&
+        tb.endTime === endTime
+      );
+      if (isDuplicate) {
+        throw new ValidationError('La banda horaria ya existe con la misma etiqueta y horario');
+      }
+
+      // Validar solapamientos: no se pueden cruzar horarios
+      const overlaps = timeBands.some(tb => {
+        if (editingTimeBand && tb.id === editingTimeBand.id) return false;
+        const [sH, sM] = tb.startTime.split(':').map(Number);
+        const [eH, eM] = tb.endTime.split(':').map(Number);
+        const tbStart = sH * 60 + sM;
+        const tbEnd = eH * 60 + eM;
+        return startMinutes < tbEnd && endMinutes > tbStart;
+      });
+      if (overlaps) {
+        throw new ValidationError('Los horarios se cruzan con otra banda existente. Ajuste el rango.');
+      }
+
       const timeBandData = {
         courseId,
         label,
@@ -347,6 +371,15 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
       const priorityNum = parseInt(priority);
       if (isNaN(priorityNum) || priorityNum < 1 || priorityNum > 100) {
         throw new ValidationError('La prioridad debe ser un número entre 1 y 100');
+      }
+
+      // Validar duplicado por nombre (según tu criterio)
+      const nameExists = priceRules.some(r =>
+        (!editingPriceRule || r.id !== editingPriceRule.id) &&
+        r.name.trim().toLowerCase() === name.trim().toLowerCase()
+      );
+      if (nameExists) {
+        throw new ValidationError('Ya existe una regla con el mismo nombre');
       }
 
       // Validación de rangos opcionales
@@ -673,11 +706,17 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
         }
 
         console.log('Eliminando temporada:', id);
-        
-        pricingEngine.deleteSeason(id);
+        // Asegurar autenticación y persistir
+        if (!user) {
+          throw new ValidationError('Debe iniciar sesión como administrador para eliminar');
+        }
+        const token = await user.getIdToken();
+        pricingEngine.setAuthToken(token);
+
+        const ok = await pricingEngine.deleteSeasonWithPersistence(id);
+        if (!ok) throw new ValidationError('No se pudo eliminar la temporada');
         loadData();
-        
-        toast({ title: 'Éxito', description: 'Temporada eliminada correctamente' });
+        toast({ title: 'Éxito', description: 'Temporada eliminada y guardada' });
       }, { defaultMessage: 'Error al eliminar la temporada' });
     }
   };
@@ -690,21 +729,49 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
         }
 
         console.log('Eliminando banda horaria:', id);
-        
-        pricingEngine.deleteTimeBand(id);
-        loadData();
-        
-        toast({ title: 'Éxito', description: 'Banda horaria eliminada correctamente' });
+        // Asegurar autenticación y persistir
+        if (!user) {
+          throw new ValidationError('Debe iniciar sesión como administrador para eliminar');
+        }
+        const token = await user.getIdToken();
+        pricingEngine.setAuthToken(token);
+
+        const ok = await pricingEngine.deleteTimeBandWithPersistence(id);
+        if (!ok) throw new ValidationError('No se pudo eliminar la banda horaria');
+        await loadData();
+        toast({ title: 'Éxito', description: 'Banda horaria eliminada y guardada' });
       }, { defaultMessage: 'Error al eliminar la banda horaria' });
     }
   };
 
   const deletePriceRule = (id: string) => {
     if (confirm('¿Estás seguro de que quieres eliminar esta regla de precio?')) {
-      pricingEngine.deletePriceRule(id);
-      loadData();
-      toast({ title: 'Éxito', description: 'Regla de precio eliminada correctamente' });
+      handleAsyncError(async () => {
+        if (!user) {
+          throw new ValidationError('Debe iniciar sesión como administrador para eliminar');
+        }
+        const token = await user.getIdToken();
+        pricingEngine.setAuthToken(token);
+
+        const ok = await pricingEngine.deletePriceRuleWithPersistence(id);
+        if (!ok) throw new ValidationError('No se pudo eliminar la regla de precio');
+        await loadData();
+        toast({ title: 'Éxito', description: 'Regla de precio eliminada y guardada' });
+      }, { defaultMessage: 'Error al eliminar la regla de precio' });
     }
+  };
+
+  const dedupePricing = () => {
+    handleAsyncError(async () => {
+      if (!user) {
+        throw new ValidationError('Debe iniciar sesión como administrador para ejecutar deduplicación');
+      }
+      const token = await user.getIdToken();
+      pricingEngine.setAuthToken(token);
+      const { removedBands, removedRules } = await pricingEngine.dedupeAllPricingWithPersistence(courseId);
+      await loadData();
+      toast({ title: 'Duplicados eliminados', description: `Bandas: ${removedBands}, Reglas: ${removedRules}` });
+    }, { defaultMessage: 'Error al eliminar duplicados' });
   };
 
   if (isLoading) {
@@ -951,6 +1018,26 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
                       Nueva Banda Horaria
                     </Button>
                   </DialogTrigger>
+                  <Button variant="outline" onClick={dedupePricing} className="ml-2">
+                    Eliminar duplicados
+                  </Button>
+                  <Button variant="destructive" onClick={() => {
+                    handleAsyncError(async () => {
+                      if (!user) {
+                        throw new ValidationError('Debe iniciar sesión como administrador para ejecutar deduplicación');
+                      }
+                      const token = await user.getIdToken();
+                      pricingEngine.setAuthToken(token);
+                      const removedCount = await pricingEngine.dedupeTimeBandsInFirestore(courseId);
+                      await loadData();
+                      toast({ 
+                        title: 'Duplicados eliminados en Firestore', 
+                        description: `Bandas horarias eliminadas: ${removedCount}` 
+                      });
+                    }, { defaultMessage: 'Error al eliminar duplicados en Firestore' });
+                  }} className="ml-2">
+                    Eliminar duplicados en Firestore
+                  </Button>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>
@@ -1110,6 +1197,37 @@ export function PricingManager({ courseId, courseName }: PricingManagerProps) {
                       Nueva Regla
                     </Button>
                   </DialogTrigger>
+                  <Button variant="outline" onClick={() => {
+                    handleAsyncError(async () => {
+                      if (!user) {
+                        throw new ValidationError('Debe iniciar sesión como administrador para ejecutar deduplicación');
+                      }
+                      const token = await user.getIdToken();
+                      pricingEngine.setAuthToken(token);
+                      const removed = await pricingEngine.dedupePriceRulesByNameInFirestore(courseId, 'highest_priority');
+                      await loadData();
+                      toast({ title: 'Duplicados por nombre', description: `Reglas eliminadas: ${removed}` });
+                    }, { defaultMessage: 'Error al eliminar duplicados por nombre' });
+                  }} className="ml-2">
+                    Eliminar duplicados por nombre
+                  </Button>
+                  <Button variant="destructive" onClick={() => {
+                    handleAsyncError(async () => {
+                      if (!user) {
+                        throw new ValidationError('Debe iniciar sesión como administrador para ejecutar deduplicación');
+                      }
+                      const token = await user.getIdToken();
+                      pricingEngine.setAuthToken(token);
+                      const removedCount = await pricingEngine.dedupePriceRulesInFirestore(courseId);
+                      await loadData();
+                      toast({ 
+                        title: 'Duplicados eliminados en Firestore', 
+                        description: `Reglas de precios eliminadas: ${removedCount}` 
+                      });
+                    }, { defaultMessage: 'Error al eliminar duplicados en Firestore' });
+                  }} className="ml-2">
+                    Eliminar duplicados en Firestore
+                  </Button>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
                       <DialogTitle>

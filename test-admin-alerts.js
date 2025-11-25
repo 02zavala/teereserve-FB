@@ -2,7 +2,7 @@
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 async function testAdminAlerts() {
-  const baseUrl = 'http://localhost:3001';
+  const baseUrl = 'http://localhost:3002';
   const apiKey = 'test-admin-key-123';
   
   console.log('🧪 Iniciando pruebas de alertas de admin...\n');
@@ -70,10 +70,7 @@ async function testAdminAlerts() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify({ 
-        type: 'booking',
-        bookingData: bookingData
-      })
+      body: JSON.stringify({ type: 'booking', bookingData })
     });
     
     if (bookingResponse.ok) {
@@ -82,13 +79,9 @@ async function testAdminAlerts() {
     } else {
       console.log('❌ Error en alerta de reserva:', bookingResponse.status, bookingResponse.statusText);
     }
-    
   } catch (error) {
-    console.error('❌ Error durante las pruebas:', error.message);
+    console.error('🔥 Error durante las pruebas:', error);
   }
-  
-  console.log('\n🏁 Pruebas completadas.');
 }
 
-// Ejecutar las pruebas
 testAdminAlerts();

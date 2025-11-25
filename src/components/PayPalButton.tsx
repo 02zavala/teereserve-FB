@@ -1,6 +1,6 @@
 "use client";
 
-import { PayPalButtons, PayPalScriptProvider } from '@paypal/react-paypal-js';
+import { PayPalButtons, PayPalScriptProvider, usePayPalScriptReducer } from '@paypal/react-paypal-js';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
@@ -16,10 +16,11 @@ interface PayPalButtonProps {
 }
 
 const paypalOptions = {
-  clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || '',
+  'client-id': process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || '',
   currency: 'USD',
   intent: 'capture',
   components: 'buttons',
+  'data-namespace': 'paypal',
   'enable-funding': 'venmo,paylater',
   'disable-funding': 'credit,card'
 };
@@ -135,19 +136,12 @@ export function PayPalButton({
       )}
       
       <PayPalScriptProvider options={paypalOptions}>
-        <PayPalButtons
-          style={{
-            layout: 'vertical',
-            color: 'blue',
-            shape: 'rect',
-            label: 'paypal',
-            height: 45
-          }}
+        <ButtonsWhenReady
+          disabled={disabled || isLoading}
           createOrder={createOrder}
           onApprove={onApprove}
-          onError={onErrorHandler}
+          onErrorHandler={onErrorHandler}
           onCancel={onCancel}
-          disabled={disabled || isLoading}
         />
       </PayPalScriptProvider>
     </div>
@@ -155,3 +149,62 @@ export function PayPalButton({
 }
 
 export default PayPalButton;
+
+function ButtonsWhenReady({
+  disabled,
+  createOrder,
+  onApprove,
+  onErrorHandler,
+  onCancel,
+}: {
+  disabled: boolean;
+  createOrder: (data: any, actions: any) => Promise<string> | string;
+  onApprove: (data: any, actions: any) => Promise<void>;
+  onErrorHandler: (error: any) => void;
+  onCancel: (data: any) => void;
+}) {
+  const [{ isPending, isResolved }] = usePayPalScriptReducer();
+  const paypalGlobal = typeof window !== 'undefined' ? (window as any).paypal : undefined;
+  const buttonsAvailable = !!(paypalGlobal && paypalGlobal.Buttons);
+
+  if (isPending) {
+    return (
+      <div className="flex items-center justify-center h-12">
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isResolved) {
+    return (
+      <div className="text-sm text-red-600">
+        No se pudo cargar el SDK de PayPal.
+      </div>
+    );
+  }
+
+  if (!buttonsAvailable) {
+    return (
+      <div className="flex items-center justify-center h-12">
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <PayPalButtons
+      style={{
+        layout: 'vertical',
+        color: 'blue',
+        shape: 'rect',
+        label: 'paypal',
+        height: 45,
+      }}
+      createOrder={createOrder}
+      onApprove={onApprove}
+      onError={onErrorHandler}
+      onCancel={onCancel}
+      disabled={disabled}
+    />
+  );
+}

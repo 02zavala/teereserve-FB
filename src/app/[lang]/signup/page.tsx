@@ -3,13 +3,13 @@ import Link from "next/link";
 import RegistrationFormClient from "./RegistrationFormClient";
 
 interface SignUpPageProps {
-    params: {
+    params: Promise<{
         lang: string;
-    };
+    }>;
 }
 
-export default function SignUpPage({ params }: SignUpPageProps) {
-    const { lang } = params;
+export default async function SignUpPage({ params: paramsProp }: SignUpPageProps) {
+    const { lang } = await paramsProp;
     
     return (
         <div className="container mx-auto flex min-h-[80vh] items-center justify-center">

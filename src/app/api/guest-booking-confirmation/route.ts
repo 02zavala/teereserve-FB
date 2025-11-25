@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendBookingConfirmation } from '@/lib/email.js';
+import { sendBookingConfirmation, sendAdminBookingNotification } from '@/lib/email.js';
+import { telegramService } from '@/lib/telegram-service';
 import { z } from 'zod';
 import { calculatePriceBreakdown } from '@/lib/money-utils';
 
@@ -16,9 +17,19 @@ const guestBookingConfirmationSchema = z.object({
     players: z.number().min(1, { message: 'Players must be at least 1' }),
     totalPrice: z.string().min(1, { message: 'Total price is required' }),
     confirmationNumber: z.string().optional(),
+    paymentMethod: z.string().optional(),
+    transactionId: z.string().optional(),
+    cardLast4: z.string().optional(),
+    cardBrand: z.string().optional(),
+    // Aceptar variantes comunes de campos de tarjeta
+    card_last4: z.string().optional(),
+    last4: z.string().optional(),
+    brand: z.string().optional(),
+    card_brand: z.string().optional(),
     courseLocation: z.string().optional(),
     holes: z.number().optional(),
     userName: z.string().optional(),
+    customerPhone: z.string().optional(),
     discountCode: z.string().optional(),
     discountAmount: z.number().optional(),
     pricing_snapshot: z.object({
@@ -78,6 +89,69 @@ export async function POST(request: NextRequest) {
       }
 
       await sendBookingConfirmation(userEmail, emailData);
+      
+      // Enviar notificación básica al correo del administrador
+      try {
+        const adminEmail = process.env.ADMIN_EMAIL_ADDRESS || 'info@teereserve.golf';
+        const adminDetails = {
+          bookingId: emailData.confirmationNumber || emailData.bookingId || 'N/A',
+          customerName: emailData.userName || emailData.playerName || 'Cliente',
+          customerEmail: userEmail,
+          customerPhone: emailData.customerPhone || 'N/A',
+          courseName: emailData.courseName,
+          date: emailData.date,
+          time: emailData.time,
+          players: emailData.players,
+          totalPrice: emailData.totalPrice,
+          paymentStatus: 'Completado',
+          specialRequests: emailData.specialRequests,
+        };
+
+        await sendAdminBookingNotification(adminEmail, adminDetails);
+      } catch (adminEmailError) {
+        console.warn('Admin booking notification failed:', adminEmailError);
+      }
+
+      // Enviar alerta por Telegram al chat de admin (si está configurado)
+      try {
+        const adminChatId = process.env.ADMIN_TELEGRAM_CHAT_ID || process.env.TELEGRAM_CHAT_ID;
+        if (adminChatId && process.env.TELEGRAM_BOT_TOKEN) {
+          telegramService.updateConfig({ chatId: adminChatId, enabled: true });
+          // Moneda: forzar USD como estándar solicitado
+          const currency = 'USD';
+
+          // Método de pago: normalizar, pero mostrar la etiqueta tal como se recibe
+          const pmRawOriginal = (bookingDetails.paymentMethod || '').trim();
+          const pmRaw = pmRawOriginal.toLowerCase().replace(/\s+/g, '_');
+          let paymentMethod: 'stripe' | 'paypal' | 'apple_pay' | 'google_pay' = 'stripe';
+          if (pmRaw.includes('paypal')) paymentMethod = 'paypal';
+          else if (pmRaw.includes('apple')) paymentMethod = 'apple_pay';
+          else if (pmRaw.includes('google')) paymentMethod = 'google_pay';
+          else if (pmRaw.includes('card') || pmRaw.includes('tarjeta') || pmRaw.includes('visa') || pmRaw.includes('master') || pmRaw.includes('stripe')) paymentMethod = 'stripe';
+          // Si hay datos de tarjeta, asumir pago por tarjeta/stripe
+          if (bookingDetails.cardLast4 || bookingDetails.cardBrand) paymentMethod = 'stripe';
+          const alert = {
+            type: 'booking' as const,
+            courseName: emailData.courseName,
+            playerCount: emailData.players,
+            date: emailData.date,
+            time: emailData.time,
+            paymentMethod,
+            paymentLabel: pmRawOriginal || paymentMethod,
+            transactionId: (emailData.confirmationNumber || bookingDetails.transactionId || 'unknown'),
+            amount: Number(emailData.totalPrice) || 0,
+            currency,
+            customerEmail: userEmail,
+            customerName: emailData.userName || emailData.playerName || 'Cliente',
+            customerPhone: emailData.customerPhone || bookingDetails.customerPhone,
+            cardLast4: bookingDetails.cardLast4 || bookingDetails.card_last4 || bookingDetails.last4,
+            cardBrand: bookingDetails.cardBrand || bookingDetails.card_brand || bookingDetails.brand,
+          };
+          await telegramService.sendBookingAlert(alert);
+        }
+      } catch (tgError) {
+        console.warn('Admin Telegram alert failed:', tgError);
+      }
       
       return NextResponse.json(
         { message: 'Booking confirmation email sent successfully' },

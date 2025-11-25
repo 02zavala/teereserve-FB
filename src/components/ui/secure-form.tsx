@@ -17,6 +17,9 @@ interface SecureFormProps {
   method?: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   children: React.ReactNode;
   className?: string;
+  showSecurityInfo?: boolean;
+  // Nuevo: permite ocultar el botón por defecto del formulario
+  showSubmitButton?: boolean;
 }
 
 export function SecureForm({ 
@@ -25,7 +28,9 @@ export function SecureForm({
   submitUrl, 
   method = 'POST', 
   children, 
-  className = '' 
+  className = '',
+  showSecurityInfo = process.env.NODE_ENV === 'development',
+  showSubmitButton = true,
 }: SecureFormProps) {
   const { submitForm, csrfToken } = useSecureForm();
   const { sanitizeAndValidate } = useFormValidation(schema);
@@ -35,12 +40,13 @@ export function SecureForm({
 
   const handleSubmit = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const formEl = event.currentTarget as HTMLFormElement; // Capturar referencia antes de awaits
     setIsSubmitting(true);
     setErrors([]);
     setSuccess(false);
 
     try {
-      const formData = new FormData(event.currentTarget);
+      const formData = new FormData(formEl);
       const data = Object.fromEntries(formData.entries());
 
       // Validar y sanitizar datos
@@ -62,8 +68,8 @@ export function SecureForm({
       }
 
       setSuccess(true);
-      // Resetear formulario
-      event.currentTarget.reset();
+      // Resetear formulario de forma segura
+      formEl.reset();
     } catch (error) {
       console.error('Error enviando formulario:', error);
       setErrors([error instanceof Error ? error.message : 'Error desconocido']);
@@ -75,15 +81,17 @@ export function SecureForm({
   return (
     <form onSubmit={handleSubmit} className={`space-y-4 ${className}`}>
       {/* Indicador de seguridad */}
-      <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-        <Shield className="h-4 w-4" />
-        <span>Formulario protegido con CSRF</span>
-        {csrfToken && (
-          <span className="text-xs opacity-60">
-            Token: {csrfToken.substring(0, 8)}...
-          </span>
-        )}
-      </div>
+      {showSecurityInfo && (
+        <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+          <Shield className="h-4 w-4" />
+          <span>Formulario protegido con CSRF</span>
+          {process.env.NODE_ENV === 'development' && csrfToken && (
+            <span className="text-xs opacity-60">
+              Token: {csrfToken.substring(0, 8)}...
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Mensajes de error */}
       {errors.length > 0 && (
@@ -112,21 +120,23 @@ export function SecureForm({
       {/* Contenido del formulario */}
       {children}
 
-      {/* Botón de envío */}
-      <Button 
-        type="submit" 
-        disabled={isSubmitting || !csrfToken}
-        className="w-full"
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Enviando...
-          </>
-        ) : (
-          'Enviar'
-        )}
-      </Button>
+      {/* Botón de envío (opcional) */}
+      {showSubmitButton && (
+        <Button 
+          type="submit" 
+          disabled={isSubmitting || !csrfToken}
+          className="w-full"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Enviando...
+            </>
+          ) : (
+            'Enviar'
+          )}
+        </Button>
+      )}
     </form>
   );
 }

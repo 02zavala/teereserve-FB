@@ -4,6 +4,7 @@ import { logger } from './logger';
 export class GlobalErrorHandler {
   private static instance: GlobalErrorHandler;
   private isInitialized = false;
+  private recoveringChunk = false;
 
   private constructor() {}
 
@@ -32,8 +33,54 @@ export class GlobalErrorHandler {
     logger.info('Global error handler initialized', 'GlobalErrorHandler');
   }
 
+  private isChunkLoadErrorMessage(message: string): boolean {
+    const msg = message.toLowerCase();
+    return (
+      msg.includes('chunkloaderror') ||
+      msg.includes('loading chunk') ||
+      msg.includes('csschunkloaderror') ||
+      msg.includes('failed to fetch dynamically imported module')
+    );
+  }
+
+  private attemptChunkRecovery(): void {
+    if (this.recoveringChunk) return;
+    this.recoveringChunk = true;
+
+    try {
+      console.warn('ChunkLoadError detected. Attempting recovery by reloading...');
+      // In dev, make sure any service workers are unregistered to avoid stale caches
+      if (process.env.NODE_ENV === 'development' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker
+          .getRegistrations()
+          .then((regs) => Promise.all(regs.map((r) => r.unregister().catch(() => {}))))
+          .catch(() => {});
+      }
+    } finally {
+      // Give a brief moment for unregister promises then reload
+      setTimeout(() => {
+        try {
+          window.location.reload();
+        } catch {}
+      }, 150);
+
+      // Reset flag after a short delay to prevent lock-in
+      setTimeout(() => {
+        this.recoveringChunk = false;
+      }, 2500);
+    }
+  }
+
   private handleError(event: ErrorEvent): void {
     const error = event.error || new Error(event.message);
+
+    // Auto-recover from stale bundle/chunk load failures
+    if (this.isChunkLoadErrorMessage(error.message)) {
+      logger.warn('Detected chunk loading error; forcing full page reload', 'GlobalErrorHandler');
+      this.attemptChunkRecovery();
+      event.preventDefault();
+      return;
+    }
     
     logger.error(
       `Uncaught error: ${event.message}`,
@@ -56,6 +103,14 @@ export class GlobalErrorHandler {
   private handlePromiseRejection(event: PromiseRejectionEvent): void {
     const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
     const errorMessage = error.message;
+
+    // Auto-recover from stale bundle/chunk load failures
+    if (this.isChunkLoadErrorMessage(errorMessage)) {
+      logger.warn('Detected chunk loading error (promise rejection); reloading', 'GlobalErrorHandler');
+      this.attemptChunkRecovery();
+      event.preventDefault();
+      return;
+    }
     
     // Verificar si es un error offline de Firestore
     const isFirestoreOfflineError = 
@@ -203,143 +258,23 @@ export class ErrorClassifier {
     // Medium severity errors
     if (
       message.includes('validation') ||
-      message.includes('format') ||
-      context?.component === 'form'
+      message.includes('timeout') ||
+      message.includes('rate limit')
     ) {
       return ErrorSeverity.MEDIUM;
     }
 
-    // Default to low severity
+    // Low severity errors (default)
     return ErrorSeverity.LOW;
-  }
-
-  public static isRecoverable(error: Error, context?: ErrorContext): boolean {
-    const message = error.message.toLowerCase();
-    
-    // Non-recoverable errors
-    const nonRecoverablePatterns = [
-      /chunk.*failed/,
-      /script.*error/,
-      /network.*error/,
-      /cors.*error/
-    ];
-
-    if (nonRecoverablePatterns.some(pattern => pattern.test(message))) {
-      return false;
-    }
-
-    // Context-based recovery assessment
-    if (context?.recoverable !== undefined) {
-      return context.recoverable;
-    }
-
-    // Default to recoverable
-    return true;
   }
 }
 
-// Enhanced error reporting with context
-export const reportError = (
-  error: Error,
-  context?: ErrorContext,
-  customMessage?: string
-): void => {
-  const severity = ErrorClassifier.classifyError(error, context);
-  const recoverable = ErrorClassifier.isRecoverable(error, context);
-  
-  const enhancedContext = {
-    ...context,
-    severity,
-    recoverable,
-    timestamp: new Date().toISOString(),
-    userAgent: typeof window !== 'undefined' ? navigator.userAgent : undefined,
-    url: typeof window !== 'undefined' ? window.location.href : undefined
-  };
-
-  const message = customMessage || `${severity.toUpperCase()} error in ${context?.component || 'unknown component'}: ${error.message}`;
-
-  switch (severity) {
-    case ErrorSeverity.CRITICAL:
-      logger.fatal(message, error, context?.component, enhancedContext);
-      break;
-    case ErrorSeverity.HIGH:
-      logger.error(message, error, context?.component, enhancedContext);
-      break;
-    case ErrorSeverity.MEDIUM:
-      logger.warn(message, context?.component, enhancedContext);
-      break;
-    case ErrorSeverity.LOW:
-    default:
-      logger.info(message, context?.component, enhancedContext);
-      break;
-  }
-};
-
-// React hook for error reporting with context
-import { useCallback, useRef } from 'react';
-
-export const useErrorReporting = (defaultContext?: Partial<ErrorContext>) => {
-  const contextRef = useRef(defaultContext);
-
-  const reportErrorWithContext = useCallback(
-    (error: Error, additionalContext?: Partial<ErrorContext>, customMessage?: string) => {
-      const fullContext: ErrorContext = {
-        ...contextRef.current,
-        ...additionalContext
-      };
-      
-      reportError(error, fullContext, customMessage);
-    },
-    []
-  );
-
-  const updateContext = useCallback((newContext: Partial<ErrorContext>) => {
-    contextRef.current = { ...contextRef.current, ...newContext };
-  }, []);
-
-  return {
-    reportError: reportErrorWithContext,
-    updateContext
-  };
-};
-
-// Async operation wrapper with error handling
-export const withErrorHandling = async <T>(
-  operation: () => Promise<T>,
-  context?: ErrorContext,
-  fallback?: T
-): Promise<T | undefined> => {
-  try {
-    return await operation();
-  } catch (error) {
-    reportError(
-      error instanceof Error ? error : new Error(String(error)),
-      context
-    );
-    
-    return fallback;
-  }
-};
-
-// Initialize global error handler
 export const initializeErrorHandling = (): void => {
   const globalHandler = GlobalErrorHandler.getInstance();
   globalHandler.initialize();
 };
 
-// Cleanup function
 export const destroyErrorHandling = (): void => {
   const globalHandler = GlobalErrorHandler.getInstance();
   globalHandler.destroy();
-};
-
-export default {
-  GlobalErrorHandler,
-  ErrorClassifier,
-  ErrorSeverity,
-  reportError,
-  useErrorReporting,
-  withErrorHandling,
-  initializeErrorHandling,
-  destroyErrorHandling
 };

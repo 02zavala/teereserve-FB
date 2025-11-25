@@ -1,19 +1,20 @@
 require('dotenv').config({ path: '.env.local' });
 
-// Importar EmailService usando require para módulos ES6
-const importEmailService = async () => {
-  const module = await import('../lib/email.js');
-  return module.default;
+// Importar funciones de email desde la implementación activa en src/lib
+const importEmailFns = async () => {
+  const module = await import('../src/lib/email.js');
+  return module;
 };
 
-let EmailService;
+let sendBookingReminder, sendContactFormNotification;
 
 // Función para esperar un tiempo determinado
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function testRemainingTemplates() {
-  // Inicializar EmailService
-  EmailService = await importEmailService();
+  // Inicializar funciones de email
+  const emailModule = await importEmailFns();
+  ({ sendBookingReminder, sendContactFormNotification } = emailModule);
   
   console.log('🧪 Enviando plantillas restantes con delay para evitar rate limit...');
   console.log('📧 Enviando a: oscraramon@gmail.com');
@@ -39,7 +40,7 @@ async function testRemainingTemplates() {
     // 1. Recordatorio de Reserva (con delay)
     console.log('\n1️⃣ Enviando recordatorio de reserva...');
     await delay(3000); // Esperar 3 segundos
-    const reminderResult = await EmailService.sendBookingReminder(testEmail, testUser, bookingDetails);
+    const reminderResult = await sendBookingReminder(testEmail, testUser, bookingDetails);
     if (reminderResult.success) {
       console.log('✅ Recordatorio de reserva enviado exitosamente');
     } else {
@@ -57,7 +58,7 @@ async function testRemainingTemplates() {
       message: 'Hola equipo de TeeReserve,\n\nMe complace ver las nuevas plantillas de email implementadas. El diseño es muy profesional y consistente en todas las comunicaciones.\n\nLas plantillas incluyen:\n- Diseño responsive\n- Colores temáticos de golf\n- Logo integrado\n- Información clara y organizada\n\n¡Excelente trabajo en la implementación!\n\nSaludos,\nOscar Ramón'
     };
     
-    const contactResult = await EmailService.sendContactFormNotification(contactData);
+    const contactResult = await sendContactFormNotification(contactData);
     if (contactResult.success) {
       console.log('✅ Notificación de contacto enviada exitosamente');
     } else {

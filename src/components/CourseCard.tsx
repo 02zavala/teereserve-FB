@@ -11,6 +11,7 @@ import { normalizeImageUrl } from '@/lib/normalize'
 import type { getDictionary } from '@/lib/get-dictionary'
 import type { Locale } from '@/i18n-config'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 // Removed pricingEngine import — we only display basePrice publicly
 
 interface CourseCardProps {
@@ -27,6 +28,30 @@ export function CourseCard({ course, dictionary, lang, asLink = false }: CourseC
 
   // Display basePrice only if present; otherwise, omit numeric price
   const hasBasePrice = typeof course.basePrice === 'number' && !isNaN(course.basePrice);
+
+  // Fetch derived minimum price to ensure "Desde $X" está alineado con bandas horarias
+  const [minPrice, setMinPrice] = useState<number | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    const loadMinPrice = async () => {
+      try {
+        const res = await fetch(`/api/public/pricing/load?courseId=${course.id}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const json = await res.json();
+        const value = json?.data?.minPrice;
+        if (mounted && typeof value === 'number' && !isNaN(value)) {
+          setMinPrice(value);
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[PUBLIC PRICING] minPrice computed', { courseId: course.id, minPrice: value });
+          }
+        }
+      } catch {
+        // silent fallback
+      }
+    };
+    loadMinPrice();
+    return () => { mounted = false; };
+  }, [course.id]);
 
   const content = (
     <Card className="flex flex-col overflow-hidden transition-transform duration-300 ease-in-out hover:scale-105 hover:shadow-lg">
@@ -57,7 +82,11 @@ export function CourseCard({ course, dictionary, lang, asLink = false }: CourseC
       </CardContent>
       <CardFooter className="flex items-center justify-between bg-card p-4">
         <div className="text-lg font-bold">
-            {hasBasePrice ? (
+            {typeof minPrice === 'number' ? (
+              <>
+                {dictionary.from} <span className="text-primary font-bold">${minPrice}</span>
+              </>
+            ) : hasBasePrice ? (
               <>
                 {dictionary.from} <span className="text-primary font-bold">${course.basePrice}</span>
               </>

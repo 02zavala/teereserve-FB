@@ -29,7 +29,7 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-export function NotificationProvider({ children }: { children: React.ReactNode }) {
+export function NotificationCenterProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const addNotification = useCallback((notification: Omit<Notification, 'id'>) => {
@@ -73,17 +73,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   );
 }
 
-export function useNotifications() {
+export function useNotificationCenter() {
   const context = useContext(NotificationContext);
   if (!context) {
-    throw new Error('useNotifications must be used within a NotificationProvider');
+    throw new Error('useNotificationCenter must be used within a NotificationContext provider');
   }
   return context;
 }
 
 // Hook para notificaciones comunes
-export function useToast() {
-  const { addNotification } = useNotifications();
+export function useNotificationToasts() {
+  const { addNotification } = useNotificationCenter();
 
   const toast = useMemo(() => ({
     success: (title: string, message?: string, options?: Partial<Notification>) => 
@@ -136,13 +136,13 @@ export function useToast() {
     },
   }), [addNotification]);
 
-  const { removeNotification } = useNotifications();
+  const { removeNotification } = useNotificationCenter();
 
   return { ...toast, dismiss: removeNotification };
 }
 
 function NotificationContainer() {
-  const { notifications } = useNotifications();
+  const { notifications } = useNotificationCenter();
 
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full">
@@ -156,7 +156,7 @@ function NotificationContainer() {
 }
 
 function NotificationItem({ notification }: { notification: Notification }) {
-  const { removeNotification } = useNotifications();
+  const { removeNotification } = useNotificationCenter();
   const [progress, setProgress] = useState(100);
 
   useEffect(() => {

@@ -5,11 +5,12 @@ import { Suspense, lazy, ComponentType } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 
 // Lazy load admin components
 // Dashboard is already using dynamic() internally, so we import it directly
 export { Dashboard as LazyDashboard } from '@/components/admin/Dashboard';
-const LazyBackupManager = lazy(() => import('@/components/admin/BackupManager'));
+// const LazyBackupManager = lazy(() => import('@/components/admin/BackupManager'));
 
 // Loading skeleton for admin pages
 function AdminPageSkeleton() {
@@ -89,6 +90,12 @@ function createLazyAdminPage<T extends object>(
     );
   };
 }
+
+// Export Backup Manager using next/dynamic to avoid React.lazy edge cases
+const LazyBackupManager = dynamic(() => import('@/components/admin/BackupManager'), {
+  loading: () => <AdminPageLoading />,
+  ssr: false,
+});
 
 export { LazyBackupManager };
 

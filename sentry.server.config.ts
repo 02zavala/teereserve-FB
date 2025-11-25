@@ -4,6 +4,11 @@
 
 import * as Sentry from '@sentry/nextjs';
 
+if (process.env.NEXT_PUBLIC_DISABLE_SENTRY === 'true' || !process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('ℹ️ Sentry (server) deshabilitado: flag activa o falta DSN');
+  }
+} else {
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   
@@ -58,3 +63,4 @@ Sentry.init({
     // Add server-specific integrations here
   ],
 });
+}

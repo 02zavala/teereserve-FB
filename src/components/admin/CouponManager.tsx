@@ -35,6 +35,7 @@ const formSchema = z.object({
   discountType: z.enum(['percentage', 'fixed']),
   discountValue: z.coerce.number().min(0, 'Discount value must be positive.'),
   expiresAt: z.string().optional(),
+  usageLimit: z.string().optional(),
 });
 
 type CouponFormValues = z.infer<typeof formSchema>;
@@ -69,6 +70,10 @@ function CouponRow({ coupon, onDelete, lang }: { coupon: Coupon; onDelete: (code
             <TableCell>
                 {coupon.expiresAt ? (isClient && formattedDate ? formattedDate : <Skeleton className="h-4 w-24" />) : 'Never'}
             </TableCell>
+            {/* NUEVA COLUMNA DE USO */}
+            <TableCell>
+                {(coupon.timesUsed ?? 0)}{coupon.usageLimit ? ` / ${coupon.usageLimit}` : ''}
+            </TableCell>
             <TableCell>
                 <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -101,11 +106,20 @@ export function CouponManager({ initialCoupons }: CouponManagerProps) {
   const pathname = usePathname();
   const lang = (pathname?.split('/')[1] || 'en') as Locale;
 
+  // MÉTRICAS BÁSICAS DE USO
+  const totalUses = coupons.reduce((sum, c) => sum + (c.timesUsed ?? 0), 0);
+  const topCoupon = coupons.reduce<Coupon | undefined>((top, c) => {
+    const cUses = c.timesUsed ?? 0;
+    const topUses = top ? (top.timesUsed ?? 0) : -1;
+    return cUses > topUses ? c : top;
+  }, undefined);
+
   const form = useForm<CouponFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       code: '',
       discountType: 'percentage',
+      usageLimit: '',
     },
   });
 
@@ -152,6 +166,16 @@ export function CouponManager({ initialCoupons }: CouponManagerProps) {
       hasErrors = true;
     }
     
+    // Validar límite de uso opcional
+    let usageLimitNum: number | undefined = undefined;
+    if (values.usageLimit && values.usageLimit.trim() !== '') {
+      usageLimitNum = parseInt(values.usageLimit, 10);
+      if (isNaN(usageLimitNum) || usageLimitNum <= 0) {
+        form.setError('usageLimit', { message: 'Usage limit must be a positive integer' });
+        hasErrors = true;
+      }
+    }
+    
     // Validar fecha de expiración
     if (values.expiresAt) {
       const expirationDate = new Date(values.expiresAt);
@@ -169,9 +193,11 @@ export function CouponManager({ initialCoupons }: CouponManagerProps) {
 
     try {
       const newCoupon = await addCoupon({
-        ...values,
-        code: values.code.toUpperCase(), // Normalizar código a mayúsculas
+        code: values.code.toUpperCase(),
+        discountType: values.discountType,
+        discountValue: values.discountValue,
         expiresAt: values.expiresAt ? new Date(values.expiresAt).toISOString() : undefined,
+        usageLimit: usageLimitNum,
       });
       
       setCoupons(prev => [newCoupon, ...prev]);
@@ -185,6 +211,7 @@ export function CouponManager({ initialCoupons }: CouponManagerProps) {
         discountType: 'percentage',
         discountValue: undefined,
         expiresAt: '',
+        usageLimit: '',
       });
     } catch (error) {
       handleError(error, {
@@ -302,6 +329,20 @@ export function CouponManager({ initialCoupons }: CouponManagerProps) {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="usageLimit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Usage Limit (Optional)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="1" placeholder="e.g., 10" {...field} />
+                      </FormControl>
+                      <FormDescription>Leave empty for unlimited uses.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Create Coupon
@@ -318,12 +359,45 @@ export function CouponManager({ initialCoupons }: CouponManagerProps) {
             <CardDescription>List of all available discount codes.</CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Tarjetas de métricas de uso */}
+            <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader className="py-2">
+                  <CardTitle className="text-sm">Total Uses</CardTitle>
+                </CardHeader>
+                <CardContent className="py-2">
+                  <div className="text-2xl font-semibold">{totalUses}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="py-2">
+                  <CardTitle className="text-sm">Top Coupon</CardTitle>
+                </CardHeader>
+                <CardContent className="py-2">
+                  <div className="text-lg">{topCoupon?.code ?? '—'}</div>
+                  {topCoupon && (
+                    <div className="text-sm text-muted-foreground">{(topCoupon.timesUsed ?? 0)} uses</div>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="py-2">
+                  <CardTitle className="text-sm">Active Coupons</CardTitle>
+                </CardHeader>
+                <CardContent className="py-2">
+                  <div className="text-2xl font-semibold">{coupons.length}</div>
+                </CardContent>
+              </Card>
+            </div>
+
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Code</TableHead>
                   <TableHead>Discount</TableHead>
                   <TableHead>Expires</TableHead>
+                  {/* NUEVA CABECERA USO */}
+                  <TableHead>Usage</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>

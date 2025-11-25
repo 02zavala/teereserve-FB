@@ -84,42 +84,12 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
       console.log('USD PaymentIntent creation failed:', error.message);
       
-      // Si el error es por política de moneda, intentar con MXN
+      // Si el error es por política de moneda, mantén USD y devuelve error claro
       if (isCurrencyPolicyError(error)) {
-        console.log('Retrying with MXN due to currency policy error');
-        
-        try {
-          const paymentIntentMxn = await stripe.paymentIntents.create({
-            amount: Math.round(amountUsd * fxRate * 100), // USD a MXN en centavos
-            currency: 'mxn',
-            automatic_payment_methods: { enabled: true },
-            payment_method_options: {
-              card: {
-                request_three_d_secure: 'automatic'
-              }
-            },
-            metadata: {
-              bookingId,
-              fxRate: fxRate.toString(),
-              currencyAttempt: 'mxn',
-              priceUsd: amountUsd.toString()
-            },
-            ...(customerId && { customer: customerId })
-          });
-
-          return NextResponse.json({
-            clientSecret: paymentIntentMxn.client_secret,
-            currency: 'mxn',
-            wasRetried: true
-          });
-
-        } catch (mxnError: any) {
-          console.error('MXN PaymentIntent creation also failed:', mxnError.message);
-          return NextResponse.json(
-            { error: 'Failed to create payment intent in both USD and MXN' },
-            { status: 500 }
-          );
-        }
+        return NextResponse.json(
+          { error: 'Payment failed due to currency policy. USD is required.' },
+          { status: 400 }
+        );
       } else {
         // Si no es error de moneda, devolver el error original
         throw error;
