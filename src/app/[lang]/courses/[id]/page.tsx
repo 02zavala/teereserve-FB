@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { dateLocales } from "@/lib/date-utils";
 import { BookingModal } from '@/components/BookingModal';
 import { useAuth } from '@/context/AuthContext';
+import { gtagEvent } from '@/lib/ga';
 
 
 
@@ -55,24 +56,46 @@ export default function CourseDetailPage() {
         fetchCourseAndDict();
     }, [courseId, lang]);
 
-    // Cargar precio mínimo derivado para asegurar consistencia con bandas horarias
     useEffect(() => {
-        if (!courseId) return;
-        let mounted = true;
-        const loadMinPrice = async () => {
-            try {
-                const res = await fetch(`/api/pricing/min-price?courseId=${courseId}`, { cache: 'no-store' });
-                if (!res.ok) return;
-                const json = await res.json();
-                const value = json?.data?.minPrice;
-                if (mounted && typeof value === 'number' && !isNaN(value)) {
-                    setMinPrice(value);
-                }
-            } catch {}
-        };
-        loadMinPrice();
-        return () => { mounted = false; };
-    }, [courseId]);
+        if (course) {
+            const item = {
+                currency: 'USD',
+                value: typeof course.basePrice === 'number' ? course.basePrice : 0,
+                items: [
+                    {
+                        item_id: course.id,
+                        item_name: course.name,
+                        item_category: 'golf_course',
+                        price: typeof course.basePrice === 'number' ? course.basePrice : 0,
+                        quantity: 1,
+                    },
+                ],
+            };
+            gtagEvent('view_item', item);
+        }
+    }, [course]);
+
+    // Cargar precio mínimo derivado para asegurar consistencia con bandas horarias
+  useEffect(() => {
+    if (!courseId) return;
+    let mounted = true;
+    const loadMinPrice = async () => {
+      try {
+        const res = await fetch(`/api/public/pricing/load?courseId=${courseId}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const json = await res.json();
+        const value = json?.data?.minPrice;
+        if (mounted && typeof value === 'number' && !isNaN(value)) {
+          setMinPrice(value);
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[PUBLIC PRICING] minPrice computed', { courseId, minPrice: value });
+          }
+        }
+      } catch {}
+    };
+    loadMinPrice();
+    return () => { mounted = false; };
+  }, [courseId]);
 
     if (!course || !dictionary) {
         return (
@@ -162,8 +185,8 @@ export default function CourseDetailPage() {
                                 lat: course.latLng.lat,
                                 lng: course.latLng.lng,
                                 description: course.description,
-                                imageUrl: course.images?.[0],
-                                priceFromUSD: typeof minPrice === 'number' ? minPrice : (typeof course.basePrice === 'number' ? course.basePrice : course.priceFromUSD),
+                                imageUrl: course.imageUrls?.[0],
+                                priceFromUSD: typeof minPrice === 'number' ? minPrice : (typeof course.basePrice === 'number' ? course.basePrice : undefined),
                                 url: `/${lang}/courses/${course.slug ?? course.id}`
                             }]}
                             height="400px"

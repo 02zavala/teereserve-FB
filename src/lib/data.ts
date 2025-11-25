@@ -653,7 +653,7 @@ export const addCourse = async (courseData: CourseDataInput): Promise<string> =>
         let candidate = base;
         let suffix = 1;
         while (true) {
-            const candidateRef = doc(db, 'courses', candidate);
+            const candidateRef = doc(db!, 'courses', candidate);
             const candidateSnap = await getDoc(candidateRef);
             if (!candidateSnap.exists()) {
                 return candidate;
@@ -769,17 +769,13 @@ export const updateCourse = async (courseId: string, courseData: CourseDataInput
         }
 
         // Structured log
-        logger.info('Course updated', {
-            operationId,
-            courseId,
-            userId,
-            userEmail,
-            basePriceChange,
-            changedFields: Object.keys(fieldChanges),
-        });
+        logger.info(
+            `Course updated [op=${operationId} course=${courseId} user=${userId} email=${userEmail}] fields=${Object.keys(fieldChanges).join(',')} basePriceChange=${JSON.stringify(basePriceChange)}`
+        );
 
         // Firestore audit record
         try {
+            if (!db) return;
             await addDoc(collection(db, 'admin_audit_logs'), {
                 type: courseSnap.exists() ? 'update_course' : 'create_course',
                 operationId,
@@ -791,12 +787,13 @@ export const updateCourse = async (courseId: string, courseData: CourseDataInput
             });
         } catch (auditErr) {
             // Do not block operation if audit fails
-            logger.warn('Failed to write admin audit log', { operationId, courseId, error: String(auditErr) });
+            logger.warn(`Failed to write admin audit log [op=${operationId} course=${courseId}]: ${String(auditErr)}`);
         }
     } catch (error) {
         // Error log and audit
-        logger.error('Failed to update course', { operationId, courseId, error: String(error) });
+        logger.error(`Failed to update course [op=${operationId} course=${courseId}]: ${String(error)}`);
         try {
+            if (!db) return;
             await addDoc(collection(db, 'admin_audit_logs'), {
                 type: 'update_course_failed',
                 operationId,
@@ -998,8 +995,7 @@ export const getTeeTimesForCourse = async (courseId: string, date: Date, basePri
                             date: dateStringForApi,
                             time: t.time,
                             players: 1,
-                            holes: 18,
-                            basePrice: basePrice
+                            holes: 18
                         }),
                     });
                     if (!response.ok) {
@@ -2835,7 +2831,7 @@ export async function reorderCMSSections(sectionIds: string[]): Promise<void> {
     const batch = writeBatch(db);
     
     sectionIds.forEach((sectionId, index) => {
-        const docRef = doc(db, 'cmsSections', sectionId);
+        const docRef = doc(db!, 'cmsSections', sectionId);
         batch.update(docRef, { 
             order: index,
             updatedAt: new Date().toISOString()
@@ -2849,7 +2845,7 @@ export async function reorderCMSSections(sectionIds: string[]): Promise<void> {
 export async function createEventTicket(ticket: Omit<EventTicket, 'id' | 'purchaseDate' | 'ticketCode'>): Promise<string> {
     if (!db) throw new Error("Firestore is not initialized.");
     
-    const ticketsRef = collection(db, 'eventTickets');
+    const ticketsRef = collection(db!, 'eventTickets');
     const ticketCode = generateTicketCode();
     
     const docRef = await addDoc(ticketsRef, {
@@ -2864,7 +2860,7 @@ export async function createEventTicket(ticket: Omit<EventTicket, 'id' | 'purcha
 export async function getEventTickets(eventSectionId: string): Promise<EventTicket[]> {
     if (!db) throw new Error("Firestore is not initialized.");
     
-    const ticketsRef = collection(db, 'eventTickets');
+    const ticketsRef = collection(db!, 'eventTickets');
     const q = query(
         ticketsRef,
         where('eventSectionId', '==', eventSectionId),
@@ -3094,17 +3090,17 @@ export async function getVisitMetricsRange(from: string, to: string): Promise<Vi
 }
 
 // NUEVO: Función para obtener IPs de usuarios para el admin
-export async function getUserIPs(limit: number = 50): Promise<UserIPLog[]> {
+export async function getUserIPs(limitCount: number = 50): Promise<UserIPLog[]> {
     if (!db) {
         console.warn("Firestore not initialized. Returning empty user IPs.");
         return [] as UserIPLog[];
     }
     try {
-        const userIPsRef = collection(db, 'userIPs');
+        const userIPsRef = collection(db!, 'userIPs');
         const q = query(
             userIPsRef,
             orderBy('timestamp', 'desc'),
-            limit(limit)
+            limit(limitCount)
         );
         
         const snapshot = await getDocs(q);
@@ -3126,7 +3122,7 @@ export async function getTodayVisitStats(): Promise<{ totalVisits: number; uniqu
     }
     
     const today = format(new Date(), 'yyyy-MM-dd');
-    const metricsRef = doc(db, 'visitMetrics', today);
+    const metricsRef = doc(db!, 'visitMetrics', today);
     
     try {
         const metricsDoc = await getDoc(metricsRef);

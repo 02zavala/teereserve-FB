@@ -35,12 +35,15 @@ export function CourseCard({ course, dictionary, lang, asLink = false }: CourseC
     let mounted = true;
     const loadMinPrice = async () => {
       try {
-        const res = await fetch(`/api/pricing/min-price?courseId=${course.id}`, { cache: 'no-store' });
+        const res = await fetch(`/api/public/pricing/load?courseId=${course.id}`, { cache: 'no-store' });
         if (!res.ok) return;
         const json = await res.json();
         const value = json?.data?.minPrice;
         if (mounted && typeof value === 'number' && !isNaN(value)) {
           setMinPrice(value);
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[PUBLIC PRICING] minPrice computed', { courseId: course.id, minPrice: value });
+          }
         }
       } catch {
         // silent fallback
