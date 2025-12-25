@@ -1,15 +1,6 @@
 import type { NextConfig } from 'next';
 import { withSentryConfig } from '@sentry/nextjs';
 
-// Extend NextConfig to include deprecated/removed properties if needed to suppress type errors
-// while keeping the config as requested.
-type CustomNextConfig = NextConfig & {
-  eslint?: {
-    ignoreDuringBuilds?: boolean;
-    dirs?: string[];
-  };
-};
-
 const nextConfig = {
   // Explicitly set the root to avoid issues with parent directories
   // Note: 'turbopack' key might not be in NextConfig type, checking validity.
@@ -27,11 +18,6 @@ const nextConfig = {
   // TypeScript configuration
   typescript: {
     ignoreBuildErrors: process.env.NEXT_PREVIEW_BUILD === 'true',
-  },
-  
-  // ESLint configuration (maintained for legacy compatibility)
-  eslint: {
-    ignoreDuringBuilds: true,
   },
   
   // External packages for server-side rendering
@@ -215,7 +201,7 @@ const nextConfig = {
       },
     ];
   },
-} satisfies CustomNextConfig;
+} satisfies NextConfig;
 
 
 // Sentry configuration options
