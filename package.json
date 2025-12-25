@@ -17,6 +17,7 @@
     "firebase:config": "node scripts/configure-firebase-env.js",
     "firebase:deploy": "firebase deploy --only hosting,functions",
     "deploy": "node scripts/deploy.js",
+    "install": "npm install --legacy-peer-deps",
     "deploy:staging": "firebase hosting:channel:deploy staging",
     "deploy:preview": "firebase hosting:channel:deploy preview",
     "predeploy": "npm run build",
