@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CheckCircle, Calendar, Clock, Users, MapPin, CreditCard } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { money } from '@/lib/money-utils';
+import { getDictionary } from '@/lib/get-dictionary';
 import { PriceBreakdown } from '@/components/PriceBreakdown';
 import type { Locale } from '@/i18n-config';
 
@@ -46,12 +46,13 @@ interface Booking {
 function BookingConfirmContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { lang } = useParams() as { lang: Locale };
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dict, setDict] = useState<any>(null);
   
   const bookingId = searchParams?.get('id');
-  const lang = 'es' as Locale; // You might want to get this from the URL
 
   useEffect(() => {
     if (!bookingId) {
@@ -61,31 +62,13 @@ function BookingConfirmContent() {
 
     const fetchBooking = async () => {
       try {
-        if (!db) {
-          throw new Error('Firebase not initialized');
-        }
-        const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
-        
-        if (!bookingDoc.exists()) {
+        const res = await fetch(`/api/v1/bookings/${bookingId}`, { headers: { 'x-tenant-id': 'default' } });
+        if (!res.ok) {
           setError('Reserva no encontrada');
           return;
         }
-
-        const bookingData = { id: bookingDoc.id, ...bookingDoc.data() } as Booking;
-        
-        // Fetch course name if needed
-        if (bookingData.courseId && !bookingData.courseName) {
-          try {
-            const courseDoc = await getDoc(doc(db, 'courses', bookingData.courseId));
-            if (courseDoc.exists()) {
-              bookingData.courseName = courseDoc.data().name;
-            }
-          } catch (err) {
-            console.warn('Could not fetch course name:', err);
-          }
-        }
-        
-        setBooking(bookingData);
+        const json = await res.json();
+        setBooking(json.data as Booking);
       } catch (err) {
         console.error('Error fetching booking:', err);
         setError('Error al cargar la reserva');
@@ -96,6 +79,10 @@ function BookingConfirmContent() {
 
     fetchBooking();
   }, [bookingId, router, lang]);
+
+  useEffect(() => {
+    getDictionary(lang).then(setDict).catch(() => setDict(null));
+  }, [lang]);
 
   if (loading) {
     return (
@@ -171,16 +158,16 @@ function BookingConfirmContent() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
             <CheckCircle className="h-8 w-8 text-green-600" />
           </div>
-          <h1 className="text-3xl font-bold text-green-600">¡Reserva Confirmada!</h1>
+          <h1 className="text-3xl font-bold text-green-600">{dict?.confirm?.title || '¡Reserva Confirmada!'}</h1>
           <p className="text-muted-foreground mt-2">
-            Tu reserva ha sido procesada exitosamente
+            {dict?.confirm?.subtitle || 'Tu reserva ha sido procesada exitosamente'}
           </p>
         </div>
 
         {/* Booking Details */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Detalles de la Reserva</CardTitle>
+            <CardTitle>{dict?.confirm?.details || 'Detalles de la Reserva'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -188,7 +175,7 @@ function BookingConfirmContent() {
                 <MapPin className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="font-medium">{booking.courseName || 'Campo de Golf'}</p>
-                  <p className="text-sm text-muted-foreground">Campo</p>
+                  <p className="text-sm text-muted-foreground">{dict?.confirm?.course || 'Campo'}</p>
                 </div>
               </div>
               
@@ -196,7 +183,7 @@ function BookingConfirmContent() {
                 <Calendar className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="font-medium">{formatDate(booking.date)}</p>
-                  <p className="text-sm text-muted-foreground">Fecha</p>
+                  <p className="text-sm text-muted-foreground">{dict?.confirm?.date || 'Fecha'}</p>
                 </div>
               </div>
               
@@ -204,7 +191,7 @@ function BookingConfirmContent() {
                 <Clock className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="font-medium">{booking.teeTime}</p>
-                  <p className="text-sm text-muted-foreground">Hora de salida</p>
+                  <p className="text-sm text-muted-foreground">{dict?.confirm?.teeTime || 'Hora de salida'}</p>
                 </div>
               </div>
               
@@ -212,7 +199,7 @@ function BookingConfirmContent() {
                 <Users className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="font-medium">{booking.players} jugador{booking.players > 1 ? 'es' : ''}</p>
-                  <p className="text-sm text-muted-foreground">Participantes</p>
+                  <p className="text-sm text-muted-foreground">{dict?.confirm?.players || 'Participantes'}</p>
                 </div>
               </div>
             </div>
@@ -223,21 +210,21 @@ function BookingConfirmContent() {
         {booking.isGuest && booking.guest && (
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Información del Contacto</CardTitle>
+              <CardTitle>{dict?.confirm?.contact || 'Información del Contacto'}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Nombre</p>
+                  <p className="text-sm text-muted-foreground">{dict?.confirm?.name || 'Nombre'}</p>
                   <p className="font-medium">{booking.guest.firstName} {booking.guest.lastName}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p className="text-sm text-muted-foreground">{dict?.confirm?.email || 'Email'}</p>
                   <p className="font-medium">{booking.guest.email}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Teléfono</p>
-                  <p className="font-medium">{booking.userPhone || 'Not provided'}</p>
+                  <p className="text-sm text-muted-foreground">{dict?.confirm?.phone || 'Teléfono'}</p>
+                  <p className="font-medium">{booking.guest?.phone || booking['customerInfo']?.phone || 'No proporcionado'}</p>
                 </div>
               </div>
             </CardContent>
@@ -249,7 +236,7 @@ function BookingConfirmContent() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Información de Pago
+              {dict?.confirm?.payment || 'Información de Pago'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -273,24 +260,24 @@ function BookingConfirmContent() {
                   return (
                     <>
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Subtotal:</span>
+                        <span className="text-sm text-muted-foreground">{dict?.confirm?.subtotal || 'Subtotal:'}</span>
                         <span className="font-medium">{formatAmount(priceBreakdown.subtotal, booking.currency)}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Impuestos (16%):</span>
+                        <span className="text-sm text-muted-foreground">{dict?.confirm?.tax || 'Impuestos (16%):'}</span>
                         <span className="font-medium">{formatAmount(priceBreakdown.tax, booking.currency)}</span>
                       </div>
                       {priceBreakdown.discount > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Descuento:</span>
+                          <span className="text-sm text-muted-foreground">{dict?.confirm?.discount || 'Descuento:'}</span>
                           <span className="font-medium text-green-600">-{formatAmount(priceBreakdown.discount, booking.currency)}</span>
                         </div>
                       )}
                       <div className="border-t pt-3">
                         <div className="flex justify-between items-center">
-                          <span className="text-lg font-semibold">Total Pagado:</span>
+                          <span className="text-lg font-semibold">{dict?.confirm?.total || 'Total Pagado:'}</span>
                           <span className="text-2xl font-bold text-green-600">
-                            {formatAmount(priceBreakdown.total, booking.currency)}
+                            {money(priceBreakdown.total, booking.currency, lang === 'es' ? 'es-ES' : 'en-US')}
                           </span>
                         </div>
                       </div>

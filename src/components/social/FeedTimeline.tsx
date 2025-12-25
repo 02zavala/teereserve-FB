@@ -108,7 +108,7 @@ export default function FeedTimeline({ lang, className, showComposer = true }: F
       setLoadingComments(prev => ({ ...prev, [post.id]: true }));
       const newId = await addPostComment(post.userId, post.id, user.uid, user.displayName || user.email || 'Usuario', user.photoURL || null, text);
       const newComment: ReviewComment = {
-        id: newId,
+        id: String(newId),
         userId: user.uid,
         userName: user.displayName || user.email || 'Usuario',
         userAvatar: user.photoURL || null,

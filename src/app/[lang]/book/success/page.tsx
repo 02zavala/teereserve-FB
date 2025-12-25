@@ -21,6 +21,7 @@ import { Separator } from '@/components/ui/separator';
 import { formatBookingDate } from '@/lib/date-utils';
 import { PriceBreakdown } from '@/components/PriceBreakdown';
 import { usePriceBreakdown } from '@/components/PriceBreakdown';
+import { useLogger } from '@/hooks/useLogger';
 
 const TAX_RATE = 0.16;
 
@@ -39,6 +40,7 @@ function SuccessPageContent() {
     const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
     const [recipientEmail, setRecipientEmail] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const { logEvent } = useLogger();
 
     // Get URL parameters first
     const bookingId = searchParams?.get('bookingId');
@@ -159,6 +161,17 @@ function SuccessPageContent() {
 
         loadBookingData();
     }, [bookingId, courseId, router, lang, price]);
+
+    useEffect(() => {
+        if (!loading) {
+            const cid = booking?.courseId || courseId || ''
+            const t = booking?.time || time || ''
+            const amount = (priceBreakdown.total_cents / 100)
+            if (cid && t) {
+                logEvent('payment_completed', { courseId: cid, teeTime: t, amount, stage: 'paid', lang })
+            }
+        }
+    }, [loading, booking?.courseId, booking?.time, courseId, time, priceBreakdown.total_cents, lang, logEvent])
     
     const handlePrint = () => window.print();
 

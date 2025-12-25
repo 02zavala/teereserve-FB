@@ -9,6 +9,9 @@ import { headers } from 'next/headers';
  */
 async function verifyAdminAuth(request: NextRequest): Promise<{ isValid: boolean; uid?: string; error?: string }> {
   try {
+    if (!auth) {
+      return { isValid: false, error: 'Admin auth not initialized' };
+    }
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return { isValid: false, error: 'Missing or invalid authorization header' };
@@ -17,8 +20,10 @@ async function verifyAdminAuth(request: NextRequest): Promise<{ isValid: boolean
     const token = authHeader.substring(7);
     const decodedToken = await auth.verifyIdToken(token);
     
-    // Check if user has admin role
-    if (!decodedToken.role || !['Admin', 'SuperAdmin'].includes(decodedToken.role)) {
+    // Check if user has admin role or custom admin claim
+    const hasRole = (decodedToken as any).role && ['Admin', 'SuperAdmin'].includes((decodedToken as any).role);
+    const hasAdminClaim = (decodedToken as any).admin === true;
+    if (!hasRole && !hasAdminClaim) {
       return { isValid: false, error: 'Insufficient permissions' };
     }
 

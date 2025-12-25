@@ -7,10 +7,10 @@ const nextConfig = {
   
   // TypeScript and ESLint configuration
   typescript: {
-    ignoreBuildErrors: true, // Temporarily disable for deployment
+    ignoreBuildErrors: process.env.NEXT_PREVIEW_BUILD === 'true',
   },
   eslint: {
-    ignoreDuringBuilds: true, // Temporarily disable for deployment
+    ignoreDuringBuilds: process.env.NEXT_PREVIEW_BUILD === 'true',
   },
   
   // External packages for server-side rendering
@@ -134,6 +134,52 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
+          // Conditionally allow 'unsafe-eval' only in development for React Refresh
+          // Build CSP dynamically to avoid EvalError in dev while keeping production strict
+          {
+            key: 'Content-Security-Policy',
+            value: (() => {
+              const isDev = process.env.NODE_ENV !== 'production';
+              const scriptSrc = [
+                "'self'",
+                "'unsafe-inline'",
+                ...(isDev ? ["'unsafe-eval'"] : []),
+                'http://localhost:*',
+                'https://apis.google.com',
+                'https://www.googletagmanager.com',
+                'https://js.stripe.com',
+                'https://checkout.stripe.com',
+                'https://m.stripe.network',
+                'https://*.paypal.com',
+                'https://*.paypalobjects.com',
+              ].join(' ');
+
+              const styleSrc = [
+                "style-src 'self' 'unsafe-inline' http://localhost:* https://fonts.googleapis.com https://www.gstatic.com",
+                ...(isDev ? ['https://unpkg.com'] : []),
+              ].join(' ');
+
+              const connectSrc = [
+                "connect-src 'self' http://localhost:* ws://localhost:* https://*.googleapis.com https://*.firebaseapp.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://api.stripe.com https://checkout.stripe.com https://*.stripe.com https://m.stripe.network https://*.paypal.com https://*.sentry.io https://*.openstreetmap.org https://nominatim.openstreetmap.org wss://*.firebaseio.com",
+                ...(isDev ? ['https://apis.google.com', 'https://www.google-analytics.com', 'https://api.openweathermap.org', 'https://unpkg.com'] : []),
+              ].join(' ');
+
+              const directives = [
+                "default-src 'self' http://localhost:* ws://localhost:*",
+                `script-src ${scriptSrc}`,
+                styleSrc,
+                "img-src 'self' http://localhost:* https://lh3.googleusercontent.com https://images.unsplash.com https://plus.unsplash.com https://unsplash.com https://firebasestorage.googleapis.com https://*.openstreetmap.org https://*.tile.openstreetmap.org data: blob:",
+                connectSrc,
+                "frame-src 'self' http://localhost:* https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://m.stripe.network https://*.paypal.com",
+                "font-src 'self' http://localhost:* https://fonts.gstatic.com https://fonts.googleapis.com",
+                "object-src 'none'",
+                "base-uri 'self'",
+                "form-action 'self'",
+                "frame-ancestors 'self'",
+              ];
+              return directives.join('; ');
+            })(),
+          },
           {
             key: 'X-Frame-Options',
             value: 'SAMEORIGIN',
@@ -145,22 +191,6 @@ const nextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
-          },
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self' http://localhost:* ws://localhost:*",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:* https://apis.google.com https://www.google.com https://accounts.google.com https://www.gstatic.com https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://js.stripe.com https://checkout.stripe.com https://m.stripe.network https://api.stripe.com https://*.firebaseapp.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com https://*.paypal.com https://*.paypalobjects.com",
-              "style-src 'self' 'unsafe-inline' http://localhost:* https://fonts.googleapis.com https://www.gstatic.com",
-              "img-src 'self' http://localhost:* https://apis.google.com https://www.google.com https://accounts.google.com https://www.gstatic.com https://lh3.googleusercontent.com https://www.googletagmanager.com https://www.google-analytics.com https://stats.g.doubleclick.net https://*.stripe.com https://checkout.stripe.com https://m.stripe.network https://*.openstreetmap.org https://*.tile.openstreetmap.org https://unpkg.com https://firebasestorage.googleapis.com https://*.paypalobjects.com data: blob:",
-              "connect-src 'self' http://localhost:* ws://localhost:* https://apis.google.com https://www.google.com https://accounts.google.com https://www.gstatic.com https://www.google-analytics.com https://region1.google-analytics.com https://stats.g.doubleclick.net https://api.stripe.com https://checkout.stripe.com https://*.stripe.com https://m.stripe.network https://*.firebaseapp.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://*.googleapis.com https://*.openstreetmap.org https://nominatim.openstreetmap.org wss://*.firebaseio.com https://api.openweathermap.org http://api.openweathermap.org https://*.sentry.io https://*.paypal.com",
-              "frame-src 'self' http://localhost:* https://apis.google.com https://www.google.com https://accounts.google.com https://www.googletagmanager.com https://js.stripe.com https://checkout.stripe.com https://hooks.stripe.com https://m.stripe.network https://*.paypal.com",
-              "font-src 'self' http://localhost:* https://fonts.gstatic.com https://fonts.googleapis.com",
-              "object-src 'none'",
-              "base-uri 'self'",
-              "form-action 'self' https://accounts.google.com",
-              "frame-ancestors 'self'"
-            ].join('; ')
           },
         ],
       },

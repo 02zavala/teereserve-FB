@@ -40,7 +40,8 @@ export class AlertRoleManager {
       const { getFirestore, collection, getDocs } = await import('firebase/firestore');
       const { db } = await import('./firebase');
 
-      const snapshot = await getDocs(collection(db, 'alert_role_configs'));
+      if (!db) return [];
+      const snapshot = await getDocs(collection(db!, 'alert_role_configs'));
       return snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -60,14 +61,15 @@ export class AlertRoleManager {
       const { db } = await import('./firebase');
 
       // Buscar configuración existente
-      const q = query(collection(db, 'alert_role_configs'), where('role', '==', roleConfig.role));
+      if (!db) return '';
+      const q = query(collection(db!, 'alert_role_configs'), where('role', '==', roleConfig.role));
       const snapshot = await getDocs(q);
 
       const now = new Date();
 
       if (snapshot.empty) {
         // Crear nueva configuración
-        const docRef = await addDoc(collection(db, 'alert_role_configs'), {
+        const docRef = await addDoc(collection(db!, 'alert_role_configs'), {
           ...roleConfig,
           createdAt: now,
           updatedAt: now
@@ -77,7 +79,7 @@ export class AlertRoleManager {
       } else {
         // Actualizar configuración existente
         const existingDoc = snapshot.docs[0];
-        await updateDoc(doc(db, 'alert_role_configs', existingDoc.id), {
+        await updateDoc(doc(db!, 'alert_role_configs', existingDoc.id), {
           ...roleConfig,
           updatedAt: now
         });
@@ -109,6 +111,7 @@ export class AlertRoleManager {
       }
 
       // Obtener usuarios con esos roles
+      if (!db) return [];
       const usersQuery = query(
         collection(db, 'users'),
         where('role', 'in', eligibleRoles),
@@ -167,7 +170,7 @@ export class AlertRoleManager {
         updateData.telegramChatId = telegramChatId;
       }
 
-      await updateDoc(doc(db, 'users', userId), updateData);
+      await updateDoc(doc(db!, 'users', userId), updateData);
       logger.info(`Updated alert preferences for user: ${userId}`);
     } catch (error) {
       logger.error('Error updating user alert preferences:', error);
@@ -202,7 +205,8 @@ export class AlertRoleManager {
       const { getFirestore, doc, getDoc } = await import('firebase/firestore');
       const { db } = await import('./firebase');
 
-      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (!db) return false;
+      const userDoc = await getDoc(doc(db!, 'users', userId));
       if (!userDoc.exists()) {
         return false;
       }
@@ -233,14 +237,31 @@ export class AlertRoleManager {
       const { getFirestore, collection, getDocs } = await import('firebase/firestore');
       const { db } = await import('./firebase');
 
-      const usersSnapshot = await getDocs(collection(db, 'users'));
+      if (!db) {
+        return {
+          totalConfigs: roleConfigs.length,
+          activeConfigs: roleConfigs.filter(c => c.enabled).length,
+          usersByRole: {} as Record<UserRole, number>,
+          alertTypeUsage: roleConfigs.reduce((acc, config) => {
+            config.alertTypes.forEach(type => { acc[type] = (acc[type] || 0) + 1; });
+            return acc;
+          }, {} as Record<AlertType, number>)
+        };
+      }
+      const usersSnapshot = await getDocs(collection(db!, 'users'));
       const users = usersSnapshot.docs.map(doc => doc.data());
 
+      const baseRoles: Record<UserRole, number> = {
+        SuperAdmin: 0,
+        CourseOwner: 0,
+        Staff: 0,
+        Customer: 0,
+      };
       const usersByRole = users.reduce((acc, user) => {
         const role = user.role as UserRole;
         acc[role] = (acc[role] || 0) + 1;
         return acc;
-      }, {} as Record<UserRole, number>);
+      }, baseRoles) as Record<UserRole, number>;
 
       const alertTypeUsage = roleConfigs.reduce((acc, config) => {
         config.alertTypes.forEach(type => {

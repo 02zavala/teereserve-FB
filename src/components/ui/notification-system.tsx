@@ -334,22 +334,23 @@ export function InlineNotification({
 
 // Hook para notificaciones de formulario
 export function useFormNotifications() {
-  const toast = useToast();
+  const { toast } = useToast();
 
   return {
     success: (message: string = 'Operación completada exitosamente') => 
-      toast.success('Éxito', message),
+      toast({ title: 'Éxito', description: message }),
     
     error: (error: any) => {
       const message = error?.message || error?.toString() || 'Ha ocurrido un error inesperado';
-      toast.error('Error', message);
+      toast({ title: 'Error', description: message, variant: 'destructive' });
     },
     
     validation: (errors: string[]) => {
-      toast.warning('Errores de validación', errors.join(', '));
+      toast({ title: 'Errores de validación', description: errors.join(', ') });
     },
     
     loading: (message: string = 'Procesando...') => 
-      toast.info('Cargando', message, { persistent: true }),
+      toast({ title: 'Cargando', description: message }),
   };
 }
+import { useToast } from '@/hooks/use-toast';

@@ -323,6 +323,7 @@ Enviado el ${new Date().toLocaleString('es-ES')}
         }
       };
 
+      if (!db) return;
       await addDoc(collection(db, 'admin_alert_summaries'), alertSummary);
       logger.info('Admin alert summary saved to Firestore');
     } catch (error) {

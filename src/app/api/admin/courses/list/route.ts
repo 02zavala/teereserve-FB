@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Cargar cursos dinámicos desde Firestore (admin SDK)
     try {
+      if (!db) throw new Error('Admin Firestore not initialized');
       const snapshot = await db.collection('courses').get();
       snapshot.docs.forEach(doc => {
         const data = doc.data() || {} as any;

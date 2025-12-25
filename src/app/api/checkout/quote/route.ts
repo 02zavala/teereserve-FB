@@ -136,22 +136,40 @@ export async function POST(request: NextRequest) {
       engine.importPricingData(body.courseId, pricingData as any);
     }
 
-    // Calculate dynamic subtotal (USD)
+    // Single source of truth: if client provides basePrice, treat it as subtotal (pre-tax) and do NOT recalculate
     let subtotalUsd: number;
-    try {
-      const result = await engine.calculatePrice({
-        courseId: body.courseId,
-        date: body.date,
-        time: body.time,
-        players: body.players
-      });
-      const perPlayer = result.finalPricePerPlayer * holeMultiplier;
-      subtotalUsd = perPlayer * body.players;
-    } catch (err) {
-      // Fallback to provided basePrice if engine cannot calculate
-      if (typeof body.basePrice === 'number' && body.basePrice > 0) {
-        subtotalUsd = body.basePrice * body.players * holeMultiplier;
-      } else {
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (typeof body.basePrice === 'number' && body.basePrice > 0) {
+      subtotalUsd = body.basePrice;
+      if (isDev) {
+        console.log('[QUOTE] using tee time price (not basePrice)', {
+          courseId: body.courseId,
+          date: body.date,
+          time: body.time,
+          players: body.players,
+          holes: body.holes,
+          clientSubtotalUsd: subtotalUsd
+        });
+      }
+    } else {
+      try {
+        const result = await engine.calculatePrice({
+          courseId: body.courseId,
+          date: body.date,
+          time: body.time,
+          players: body.players
+        });
+        const perPlayer = result.finalPricePerPlayer * holeMultiplier;
+        subtotalUsd = perPlayer * body.players;
+        if (isDev) {
+          console.log('[QUOTE] Engine subtotal used', {
+            perPlayer: result.finalPricePerPlayer,
+            holeMultiplier,
+            players: body.players,
+            subtotalUsd
+          });
+        }
+      } catch (err) {
         return NextResponse.json(
           { error: 'Pricing unavailable' },
           { status: 500 }
@@ -166,6 +184,15 @@ export async function POST(request: NextRequest) {
     const taxable_amount_cents = Math.max(subtotal_cents - discount_cents, 0);
     const tax_cents = Math.round(taxable_amount_cents * TAX_RATE);
     const total_cents = taxable_amount_cents + tax_cents;
+    if (isDev) {
+      console.log('[QUOTE] Totals', {
+        subtotal_cents,
+        discount_cents,
+        taxable_amount_cents,
+        tax_cents,
+        total_cents
+      });
+    }
 
     // Set expiration time
     const expires_at = new Date(Date.now() + QUOTE_TTL_MINUTES * 60 * 1000).toISOString();

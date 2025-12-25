@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, db } from '@/lib/firebase-admin';
 import Stripe from 'stripe';
+import { SecurityUtils } from '@/lib/security';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia',
@@ -24,6 +25,15 @@ interface FinalizeBookingRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const cookieToken = request.cookies.get('csrf-token')?.value;
+    const bodyForCsrf = await request.clone().json().catch(() => ({} as any));
+    const bodyToken = bodyForCsrf?.csrfToken;
+    if (!SecurityUtils.requireCSRFToken(bodyToken, cookieToken)) {
+      return NextResponse.json(
+        { error: 'Invalid CSRF token' },
+        { status: 403 }
+      );
+    }
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(

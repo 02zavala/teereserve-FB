@@ -15,9 +15,9 @@ interface PayPalButtonProps {
   disabled?: boolean;
 }
 
-const paypalOptions = {
-  'client-id': process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || '',
-  currency: 'USD',
+const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || '';
+const isPlaceholderId = !clientId || /your/i.test(clientId);
+const baseOptions: Record<string, string> = {
   intent: 'capture',
   components: 'buttons',
   'data-namespace': 'paypal',
@@ -35,10 +35,10 @@ export function PayPalButton({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const createOrder = (data: any, actions: any) => {
+  const createOrder = async (data: any, actions: any): Promise<string> => {
     logger.info('PayPal: Creating order', 'paypal', { amount, currency });
     
-    return actions.order.create({
+    return await actions.order.create({
       purchase_units: [
         {
           amount: {
@@ -112,7 +112,7 @@ export function PayPalButton({
     });
   };
 
-  if (!process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID) {
+  if (isPlaceholderId) {
     return (
       <Card>
         <CardContent className="p-4">
@@ -135,7 +135,13 @@ export function PayPalButton({
         </div>
       )}
       
-      <PayPalScriptProvider options={paypalOptions}>
+      <PayPalScriptProvider
+        options={{
+          ...baseOptions,
+          clientId,
+          currency,
+        }}
+      >
         <ButtonsWhenReady
           disabled={disabled || isLoading}
           createOrder={createOrder}
@@ -158,7 +164,7 @@ function ButtonsWhenReady({
   onCancel,
 }: {
   disabled: boolean;
-  createOrder: (data: any, actions: any) => Promise<string> | string;
+  createOrder: (data: any, actions: any) => Promise<string>;
   onApprove: (data: any, actions: any) => Promise<void>;
   onErrorHandler: (error: any) => void;
   onCancel: (data: any) => void;
@@ -200,7 +206,7 @@ function ButtonsWhenReady({
         label: 'paypal',
         height: 45,
       }}
-      createOrder={createOrder}
+      createOrder={createOrder as any}
       onApprove={onApprove}
       onError={onErrorHandler}
       onCancel={onCancel}

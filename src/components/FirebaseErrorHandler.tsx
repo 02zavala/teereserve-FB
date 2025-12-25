@@ -22,7 +22,7 @@ export const FirebaseErrorHandler: React.FC<FirebaseErrorHandlerProps> = ({ chil
             return;
           }
 
-          const { analytics } = await import('@/lib/analytics');
+          await import('@/lib/analytics');
           console.log('✅ Firebase Analytics inicializado');
         } catch (error: any) {
           // Manejar específicamente errores de fetch/network
@@ -132,6 +132,15 @@ export const FirebaseErrorHandler: React.FC<FirebaseErrorHandlerProps> = ({ chil
     
     console.error = (...args: any[]) => {
       const message = args.join(' ');
+      const lower = message.toLowerCase();
+      const argText = args.map((a: any) => {
+        if (typeof a === 'string') return a.toLowerCase();
+        if (a && typeof a === 'object') {
+          const m = (a.message || a.msg || '').toString().toLowerCase();
+          return m;
+        }
+        return '';
+      }).join(' ');
       
       // Suprimir errores del GlobalErrorHandler para evitar bucles infinitos
       if (message.includes('[GlobalErrorHandler]') && message.includes('Resource loading failed')) {
@@ -198,6 +207,18 @@ export const FirebaseErrorHandler: React.FC<FirebaseErrorHandlerProps> = ({ chil
            message.includes('fetch') ||
            message.includes('import'))) {
         console.log('📴 Suprimido error de importación de módulo (modo offline)');
+        return;
+      }
+
+      // Suprimir errores de Stripe Payment Element loaderror (ruido conocido en carga)
+      if (((lower.includes('payment element') || lower.includes('paymentelement')) && lower.includes('loaderror')) || argText.includes('loaderror')) {
+        console.log('💳 Suprimido PaymentElement loaderror');
+        return;
+      }
+
+      // Suprimir errores de SDK de PayPal por client-id placeholder o fallo de script
+      if (lower.includes('paypal.com/sdk/js') || lower.includes('sdk validation error') || lower.includes('client-id not recognized') || lower.includes('paypal') && lower.includes('failed to load')) {
+        console.log('💰 Suprimido error de carga del SDK de PayPal');
         return;
       }
       

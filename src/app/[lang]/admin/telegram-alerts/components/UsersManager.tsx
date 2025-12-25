@@ -41,7 +41,8 @@ export default function UsersManager() {
   async function loadUsers() {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/telegram-alerts/users');
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const res = await adminFetch('/api/admin/telegram-alerts/users');
       if (res.ok) {
         const data = await res.json();
         setUsers(Array.isArray(data) ? data : []);
@@ -70,7 +71,8 @@ export default function UsersManager() {
     };
 
     try {
-      const res = await fetch('/api/admin/telegram-alerts/users', {
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const res = await adminFetch('/api/admin/telegram-alerts/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userToSave),
@@ -89,7 +91,8 @@ export default function UsersManager() {
     const user = users.find(u => u.id === userId);
     if (!user) return;
     try {
-      const res = await fetch('/api/admin/telegram-alerts/users', {
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const res = await adminFetch('/api/admin/telegram-alerts/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...user, isActive, updatedAt: new Date().toISOString() }),
@@ -105,7 +108,8 @@ export default function UsersManager() {
 
   async function deleteUser(userId: string) {
     try {
-      const res = await fetch(`/api/admin/telegram-alerts/users?id=${encodeURIComponent(userId)}`, { method: 'DELETE' });
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const res = await adminFetch(`/api/admin/telegram-alerts/users?id=${encodeURIComponent(userId)}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Delete failed');
       toast({ title: 'Eliminado', description: 'Usuario eliminado' });
       await loadUsers();

@@ -59,12 +59,7 @@ if (isConfigValid) {
         try {
             db = initializeFirestore(app, {
                 experimentalAutoDetectLongPolling: true,
-                // Configuración para mejor manejo offline
-                localCache: {
-                    kind: 'persistent',
-                    tabManager: 'optimistic',
-                    cacheSizeBytes: 50 * 1024 * 1024, // 50MB cache
-                },
+                localCache: { kind: 'persistent' },
             });
             
             // Nota: El manejo de conectividad se realiza a través del hook useFirestoreConnection

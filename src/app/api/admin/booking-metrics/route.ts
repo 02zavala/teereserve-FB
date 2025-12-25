@@ -1,8 +1,7 @@
 // NUEVO: API endpoint para obtener métricas de reservas (solo admin)
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
+import { db } from '@/lib/firebase-admin';
 import { verifyIdToken } from '@/lib/firebase-admin';
-import { collection, getDocs, query, where, orderBy, limit as fsLimit } from 'firebase/firestore';
 
 // Tipos mínimos para procesar bookings
 type Booking = {
@@ -103,10 +102,6 @@ export async function GET(request: NextRequest) {
       const today = new Date();
       const fromDate = new Date(today);
       fromDate.setDate(today.getDate() - days + 1);
-      fromISO = toISO = undefined as any; // set below
-      fromISO = toISO = null;
-      fromISO = toISO = undefined as any;
-      // Usar YYYY-MM-DD, comparaciones lexicográficas válidas
       const toDate = new Date(today);
       fromISO = toISODateString(fromDate);
       toISO = toISODateString(toDate);
@@ -120,26 +115,28 @@ export async function GET(request: NextRequest) {
     };
 
     // Query de Firestore con fallback por compatibilidad de índices
-    const bookingsCol = collection(db, 'bookings');
+    if (!db) {
+      return NextResponse.json({ ok: false, error: 'Admin Firestore not initialized' }, { status: 500 });
+    }
+    const bookingsCol = db.collection('bookings');
     let bookings: Booking[] = [];
 
     try {
-      const constraints: any[] = [];
-      if (fromISO) constraints.push(where('createdAt', '>=', fromISO));
-      if (toISO) constraints.push(where('createdAt', '<=', toISO));
-      if (statusParam && statusParam !== 'all') constraints.push(where('status', '==', statusParam));
-      if (courseIdParam && courseIdParam !== 'all') constraints.push(where('courseId', '==', courseIdParam));
-      constraints.push(orderBy('createdAt', 'desc'));
-      constraints.push(fsLimit(limit));
-      const q = query(bookingsCol, ...constraints);
-      const snap = await getDocs(q);
-      bookings = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
+      let q = bookingsCol as FirebaseFirestore.Query<FirebaseFirestore.DocumentData>;
+      if (fromISO) q = q.where('createdAt', '>=', fromISO);
+      if (toISO) q = q.where('createdAt', '<=', toISO);
+      if (statusParam && statusParam !== 'all') q = q.where('status', '==', statusParam);
+      if (courseIdParam && courseIdParam !== 'all') q = q.where('courseId', '==', courseIdParam);
+      q = q.orderBy('createdAt', 'desc').limit(limit);
+      const snap = await q.get();
+      bookings = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Booking));
     } catch (qErr) {
       console.warn('Falling back to client-side filtering for bookings:', qErr);
-      const snap = await getDocs(query(bookingsCol, orderBy('createdAt', 'desc'), fsLimit(1000)));
-      const all = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
-      bookings = all.filter(b => {
-        const created = String(b.createdAt || '');
+      const snap = await bookingsCol.orderBy('createdAt', 'desc').limit(1000).get();
+      const all = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+      bookings = all.filter((b: any) => {
+        const raw = b.createdAt;
+        const created = typeof raw === 'string' ? raw : (raw?.toDate ? raw.toDate().toISOString() : '');
         const inRange = (!fromISO || created >= fromISO) && (!toISO || created <= toISO);
         const statusOk = !statusParam || statusParam === 'all' || b.status === statusParam;
         const courseOk = !courseIdParam || courseIdParam === 'all' || (b as any).courseId === courseIdParam;

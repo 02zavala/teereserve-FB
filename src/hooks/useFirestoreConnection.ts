@@ -28,7 +28,7 @@ export const useFirestoreConnection = () => {
       isProcessingRef.current = true;
       
       try {
-        await enableNetwork(db);
+        await enableNetwork(db!);
         setState(prev => ({
           ...prev,
           isOnline: true,
@@ -68,7 +68,7 @@ export const useFirestoreConnection = () => {
       isProcessingRef.current = true;
       
       try {
-        await disableNetwork(db);
+        await disableNetwork(db!);
         setState(prev => ({
           ...prev,
           isOnline: false,

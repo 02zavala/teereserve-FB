@@ -1,23 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-
-// Initialize Firebase Admin
-if (!getApps().length) {
-  try {
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
-  } catch (error) {
-    console.error('Error initializing Firebase Admin:', error);
-  }
-}
-
-const db = getFirestore();
+import { db } from '@/lib/firebase-admin';
 
 // Función para enviar mensaje de Telegram
 async function sendTelegramMessage(chatId: string, message: string): Promise<boolean> {
@@ -58,6 +40,7 @@ async function sendTelegramMessage(chatId: string, message: string): Promise<boo
 // Función para guardar registro de alerta
 async function saveAlertRecord(chatId: string, message: string, status: 'sent' | 'failed') {
   try {
+    if (!db) return;
     await db.collection('admin_alerts').add({
       type: 'test_message',
       recipientChatId: chatId,

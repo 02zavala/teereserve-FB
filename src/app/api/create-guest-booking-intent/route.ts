@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth, db } from '@/lib/firebase-admin';
 import { logUserIP } from '@/lib/data'; // NUEVO: Importar función de logging IP
 import Stripe from 'stripe';
+import { SecurityUtils } from '@/lib/security';
+import * as Sentry from '@sentry/nextjs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia',
@@ -41,6 +43,15 @@ interface GuestBookingRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const cookieToken = request.cookies.get('csrf-token')?.value;
+    const bodyForCsrf = await request.clone().json().catch(() => ({} as any));
+    const bodyToken = bodyForCsrf?.csrfToken;
+    if (!SecurityUtils.requireCSRFToken(bodyToken, cookieToken)) {
+      return NextResponse.json(
+        { error: 'Invalid CSRF token' },
+        { status: 403 }
+      );
+    }
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
@@ -121,6 +132,12 @@ export async function POST(request: NextRequest) {
       metadata: {
         draftId,
         courseId,
+        date,
+        teeTime,
+        players: String(players),
+        device: request.headers.get('user-agent') || 'unknown',
+        origin: request.headers.get('referer') || '',
+        priceBeforeTax_cents: String(amount),
         type: 'guest_booking',
       },
     });
@@ -148,6 +165,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error creating guest booking intent:', error);
+    try { Sentry.captureException(error as any); } catch {}
     return NextResponse.json(
       { error: 'Failed to create booking intent' },
       { status: 500 }

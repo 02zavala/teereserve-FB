@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Calendar, MapPin, DollarSign, Clock, Users, Ticket, Eye, Code, Palette, Save, Plus, Trash2 } from "lucide-react";
-import { createCMSSection, updateCMSSection } from "@/lib/data";
+import { createCMSSection, updateCMSSection, getCMSSection } from "@/lib/data";
 import { useAuth } from "@/context/AuthContext";
 import type { CMSSection, CMSEventSection } from "@/types";
 
@@ -87,10 +87,12 @@ export function EventVisualEditor({ section, onSave, onCancel }: EventVisualEdit
         await updateCMSSection(section.id, formData);
         savedSection = { ...section, ...formData } as CMSSection;
       } else {
-        savedSection = await createCMSSection({
+        const newId = await createCMSSection({
           ...formData as Omit<CMSSection, 'id' | 'createdAt' | 'updatedAt'>,
           createdBy: user.uid
         });
+        const fetched = await getCMSSection(newId);
+        savedSection = (fetched || ({ id: newId, ...formData, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), createdBy: user.uid } as any)) as CMSSection;
       }
       
       onSave?.(savedSection);

@@ -76,11 +76,7 @@ class FallbackService {
 
     this.services.set(serviceName, status);
 
-    logger.error(`Service ${serviceName} marked as unhealthy`, {
-      error,
-      retryCount: status.retryCount,
-      maxRetries: config.maxRetries
-    });
+    logger.error(`Service ${serviceName} marked as unhealthy: ${String(error)} (retry ${status.retryCount}/${config.maxRetries})`);
 
     // Start health check if not already running
     this.startHealthCheck(serviceName);
@@ -233,12 +229,14 @@ class FallbackService {
         // We're on the client side, use Firebase client SDK
         const { db } = await import('./firebase');
         const { collection, limit, getDocs, query } = await import('firebase/firestore');
+        if (!db) return false;
         await getDocs(query(collection(db, '_health'), limit(1)));
         return true;
       } else {
         // We're on the server side, use Firebase Admin SDK
-        const { db } = await import('./firebase-admin');
-        await db.collection('_health').limit(1).get();
+        const { db: adminDb } = await import('./firebase-admin');
+        if (!adminDb) return false;
+        await adminDb.collection('_health').limit(1).get();
         return true;
       }
     } catch {

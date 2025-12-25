@@ -259,7 +259,9 @@ async function handleSuccessfulPayPalPayment(capture: any, orderId: string) {
         
         // Send notification to all configured users
         for (const user of alertUsers) {
-          await telegramService.sendMessageTo(user.telegramChatId, message);
+          if (user.telegramChatId) {
+            await telegramService.sendMessageTo(user.telegramChatId, message);
+          }
         }
         
         logger.info(`Telegram notifications sent for successful PayPal payment: ${capture.id}`);
@@ -305,7 +307,9 @@ async function handleFailedPayPalPayment(capture: any, orderId: string, reason?:
         
         // Send notification to all configured users
         for (const user of alertUsers) {
-          await telegramService.sendMessageTo(user.telegramChatId, message);
+          if (user.telegramChatId) {
+            await telegramService.sendMessageTo(user.telegramChatId, message);
+          }
         }
         
         logger.info(`Telegram notifications sent for failed PayPal payment: ${capture.id}`);

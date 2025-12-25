@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useLogger } from '@/hooks/useLogger';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +42,7 @@ interface BookingForm {
 export function BookingPageClient({ dictionary, lang, courseId }: BookingPageClientProps) {
   const { user } = useAuth();
   const router = useRouter();
+  const { logEvent } = useLogger();
   const [course, setCourse] = useState<GolfCourse | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingCourse, setLoadingCourse] = useState(!!courseId);
@@ -263,7 +265,13 @@ export function BookingPageClient({ dictionary, lang, courseId }: BookingPageCli
 
                     <div>
                       <Label htmlFor="time">{dictionary.booking?.selectTime || 'Select Time'} *</Label>
-                      <Select value={form.time} onValueChange={(value) => setForm(prev => ({ ...prev, time: value }))}>
+                      <Select value={form.time} onValueChange={(value) => {
+                        setForm(prev => ({ ...prev, time: value }))
+                        const cid = form.courseId || courseId || ''
+                        if (cid && value) {
+                          logEvent('tee_time_selected', { courseId: cid, teeTime: value, stage: 'select', lang })
+                        }
+                      }}>
                         <SelectTrigger>
                           <SelectValue placeholder={dictionary.booking?.selectTimePlaceholder || 'Select a time'} />
                         </SelectTrigger>

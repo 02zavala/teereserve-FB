@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 import Negotiator from 'negotiator';
 import { match as matchLocale } from '@formatjs/intl-localematcher';
 import { i18n } from './i18n-config';
+import { isRateLimitedDistributed } from '@/lib/ratelimit';
 
 // Allowlist de CORS (producción y staging)
 const ALLOWED_ORIGINS = [
@@ -43,7 +43,7 @@ function getClientIp(request: NextRequest): string {
     'unknown'
   );
 }
-function isRateLimited(key: string, windowMs: number, max: number): boolean {
+function isRateLimitedLocal(key: string, windowMs: number, max: number): boolean {
   const now = Date.now();
   const windowStart = now - windowMs;
   const arr = requestTimestamps.get(key) || [];
@@ -80,7 +80,7 @@ function detectLocale(request: NextRequest): string {
   return matchLocale(languages, i18n.locales, i18n.defaultLocale) || i18n.defaultLocale;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
   const pathname = url.pathname || '/';
 
@@ -106,7 +106,7 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  const { pathname, origin } = request.nextUrl;
+  const origin = url.origin;
 
   // Aplicar protecciones para API
   if (pathname.startsWith('/api')) {
@@ -138,7 +138,9 @@ export function middleware(request: NextRequest) {
     const ip = getClientIp(request);
     const sensitive = Object.entries(SENSITIVE_LIMITS).find(([prefix]) => pathname.startsWith(prefix));
     const limit = sensitive ? sensitive[1] : { windowMs: API_RATE_LIMIT_WINDOW_MS, max: API_RATE_LIMIT_MAX };
-    if (isRateLimited(`api:${ip}`, limit.windowMs, limit.max)) {
+    const key = `api:${ip}`;
+    const dist = await isRateLimitedDistributed(key, limit.windowMs, limit.max);
+    if (dist === true || (dist === null && isRateLimitedLocal(key, limit.windowMs, limit.max))) {
       return new NextResponse('Too Many Requests', { status: 429 });
     }
 
@@ -177,7 +179,26 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${locale}${rest}`, origin));
   }
 
-  return NextResponse.next();
+  const res = NextResponse.next();
+  const isDev = process.env.NODE_ENV !== 'production';
+  const cspDev = [
+    "default-src 'self' data: blob: https:",
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com https://www.googletagmanager.com",
+    "style-src 'self' 'unsafe-inline' https:",
+    "img-src 'self' data: blob: https:",
+    "frame-src https://js.stripe.com https://www.paypal.com",
+    "connect-src 'self' https: ws:"
+  ].join('; ');
+  const cspProd = [
+    "default-src 'self'",
+    "script-src 'self' https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com https://www.googletagmanager.com",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "frame-src https://js.stripe.com https://www.paypal.com",
+    "connect-src 'self' https://api.stripe.com https://api-m.paypal.com https://api-m.sandbox.paypal.com https://www.google-analytics.com"
+  ].join('; ');
+  res.headers.set('Content-Security-Policy', isDev ? cspDev : cspProd);
+  return res;
 }
 
 export const config = {

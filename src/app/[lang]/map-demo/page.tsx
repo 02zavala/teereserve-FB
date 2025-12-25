@@ -1,8 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { getDictionary } from '@/lib/dictionaries';
-import { Locale } from '@/lib/types';
+type Locale = 'en' | 'es';
 import { golfCourses } from '@/lib/data/golf-courses';
 import type { MarkerData } from '@/components/map/TRMap';
 
@@ -38,7 +37,7 @@ export default function MapDemoPage({ params }: PageProps) {
     lat: course.lat,
     lng: course.lng,
     description: course.description,
-    priceFromUSD: typeof course.basePrice === 'number' ? course.basePrice : course.priceFromUSD,
+    priceFromUSD: course.priceFromUSD,
     url: course.url,
   }));
 

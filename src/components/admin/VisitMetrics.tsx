@@ -84,7 +84,7 @@ export function VisitMetrics() {
           return;
         }
         
-        const token = await user.getIdToken();
+        
 
         // Construir query según período seleccionado
         const params = new URLSearchParams();
@@ -101,11 +101,11 @@ export function VisitMetrics() {
           params.set('to', toDate);
         }
 
-        const response = await fetch(`/api/admin/visit-metrics?${params.toString()}`, {
+        const { adminFetch } = await import('@/lib/admin-fetch');
+        const response = await adminFetch(`/api/admin/visit-metrics?${params.toString()}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         });
 

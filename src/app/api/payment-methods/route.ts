@@ -9,6 +9,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 // GET - Obtener métodos de pago guardados del usuario
 export async function GET(request: NextRequest) {
   try {
+    if (!auth || !db) {
+      return NextResponse.json({ ok: false, error: 'Server configuration error' }, { status: 500 });
+    }
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
@@ -56,6 +59,9 @@ export async function GET(request: NextRequest) {
 // POST - Guardar un nuevo método de pago
 export async function POST(request: NextRequest) {
   try {
+    if (!auth || !db) {
+      return NextResponse.json({ ok: false, error: 'Server configuration error' }, { status: 500 });
+    }
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
@@ -70,7 +76,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Payment method ID is required' }, { status: 400 });
     }
 
-    // Check for idempotency key
     const idempotencyKey = request.headers.get('idempotency-key');
     
     // Obtener o crear Stripe Customer
@@ -129,8 +134,7 @@ export async function POST(request: NextRequest) {
       confirm: true,
       capture_method: 'automatic',
       description: 'Verification charge (non-refundable)',
-      ...(idempotencyKey && { idempotency_key: idempotencyKey }),
-    });
+    }, idempotencyKey ? { idempotencyKey } : undefined);
 
     // Verificar que el pago fue exitoso
     if (paymentIntent.status !== 'succeeded') {
@@ -208,6 +212,9 @@ export async function POST(request: NextRequest) {
 // DELETE - Eliminar un método de pago
 export async function DELETE(request: NextRequest) {
   try {
+    if (!auth || !db) {
+      return NextResponse.json({ ok: false, error: 'Server configuration error' }, { status: 500 });
+    }
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });

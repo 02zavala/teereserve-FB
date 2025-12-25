@@ -54,8 +54,14 @@ const TRMapComponent: React.FC<TRMapProps> = ({
         // Importar solo Leaflet (sin react-leaflet)
         const leafletModule = await import('leaflet');
 
-        // Importar CSS de Leaflet
-        await import('leaflet/dist/leaflet.css');
+        // Inyectar CSS de Leaflet (evitar error de tipos en import)
+        if (typeof document !== 'undefined' && !document.querySelector('link[data-leaflet-css]')) {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          link.setAttribute('data-leaflet-css', 'true');
+          document.head.appendChild(link);
+        }
         
         // Importar plugins adicionales
         await import('leaflet.markercluster');
@@ -97,7 +103,7 @@ const TRMapComponent: React.FC<TRMapProps> = ({
     if (!container || !container.parentNode) return;
     
     // Verificar si el contenedor ya tiene un mapa inicializado
-    if (container._leaflet_id || mapInstanceRef.current) {
+    if (mapInstanceRef.current) {
       return;
     }
 
@@ -151,7 +157,7 @@ const TRMapComponent: React.FC<TRMapProps> = ({
         });
         
         // Crear popup rico si hay datos
-        if (markerData.name || markerData.popup) {
+        if (markerData.name) {
           const popupContent = `
             <div style="max-width: 250px;">
               ${markerData.imageUrl ? `<img src="${markerData.imageUrl}" alt="${markerData.name}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;" />` : ''}
@@ -167,8 +173,6 @@ const TRMapComponent: React.FC<TRMapProps> = ({
             </div>
           `;
           marker.bindPopup(popupContent);
-        } else if (markerData.popup) {
-          marker.bindPopup(markerData.popup);
         }
         
         marker.addTo(mapInstanceRef.current);

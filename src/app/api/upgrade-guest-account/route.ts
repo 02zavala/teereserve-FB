@@ -12,6 +12,9 @@ interface UpgradeGuestAccountRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!auth || !db) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
@@ -166,7 +169,7 @@ export async function POST(request: NextRequest) {
 // Helper function to get authentication methods for an email
 async function getAuthMethodsForEmail(email: string): Promise<string[]> {
   try {
-    // Using imported auth instance
+    if (!auth) return [];
     const user = await auth.getUserByEmail(email);
     
     const methods: string[] = [];

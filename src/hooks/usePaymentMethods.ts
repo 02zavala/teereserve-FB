@@ -22,7 +22,7 @@ export function usePaymentMethods() {
   const { toast } = useToast();
   const { fetchWithAbort } = useFetchWithAbort();
 
-  const fetchPaymentMethods = async () => {
+  const fetchPaymentMethods = useCallback(async () => {
     if (!user) return;
     
     setLoading(true);
@@ -74,7 +74,7 @@ export function usePaymentMethods() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, toast, fetchWithAbort]);
 
   const savePaymentMethod = async (paymentMethodId: string) => {
     if (!user) {
@@ -261,7 +261,7 @@ export function usePaymentMethods() {
     } else {
       setPaymentMethods([]);
     }
-  }, [user]);
+  }, [user, fetchPaymentMethods]);
 
   return {
     paymentMethods,

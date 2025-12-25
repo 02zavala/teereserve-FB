@@ -1,5 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
+import { Locale } from "@/i18n-config";
 
 const BookingLookupClient = dynamic(() => import("./BookingLookupClient").then(m => m.BookingLookupClient), {
   ssr: false,
@@ -8,6 +9,6 @@ const BookingLookupClient = dynamic(() => import("./BookingLookupClient").then(m
   ),
 });
 
-export default function BookingLookupClientWrapper(props: { dictionary: any; lang: string }) {
+export default function BookingLookupClientWrapper(props: { dictionary: any; lang: Locale }) {
   return <BookingLookupClient {...props} />;
 }

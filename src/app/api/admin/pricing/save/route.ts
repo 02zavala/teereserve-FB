@@ -100,6 +100,10 @@ async function isAdmin(authHeader: string | null): Promise<boolean> {
   }
 
   try {
+    if (!auth || !db) {
+      console.error('Firebase Admin SDK not initialized');
+      return false;
+    }
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await auth.verifyIdToken(token);
     
@@ -135,6 +139,12 @@ export async function POST(request: NextRequest) {
     const { courseId, seasons, timeBands, priceRules, specialOverrides, baseProduct } = validatedData;
     const timestamp = new Date().toISOString();
     
+    if (!db) {
+      return NextResponse.json(
+        { ok: false, error: 'Admin Firestore not initialized' },
+        { status: 500 }
+      );
+    }
     // Use a batch write for atomicity
     const batch = db.batch();
     
@@ -196,12 +206,14 @@ export async function POST(request: NextRequest) {
       batch.set(baseProductRef, baseProductData, { merge: true });
 
       // Propagate basePrice to public courses collection to ensure UI reflects latest pricing
+      let propagationFailed = false;
       try {
         const resolvedBasePrice = baseProduct.basePrice;
         const coursePublicRef = db.collection('courses').doc(courseId);
         batch.set(coursePublicRef, { basePrice: resolvedBasePrice, updatedAt: timestamp }, { merge: true });
       } catch (propErr) {
-        console.warn('Failed to propagate basePrice to courses collection:', propErr);
+        console.error('Failed to propagate basePrice to courses collection:', propErr);
+        propagationFailed = true;
       }
     }
     
@@ -217,6 +229,7 @@ export async function POST(request: NextRequest) {
     await batch.commit();
 
     // Trigger ISR revalidation for public pages depending on pricing
+    let revalidationFailed = false;
     try {
       for (const locale of i18n.locales) {
         revalidatePath(`/${locale}`);
@@ -224,12 +237,19 @@ export async function POST(request: NextRequest) {
         revalidatePath(`/${locale}/courses/${courseId}`);
       }
     } catch (revalErr) {
-      console.warn('Failed to revalidate paths after pricing save:', revalErr);
+      console.error('Failed to revalidate paths after pricing save:', revalErr);
+      revalidationFailed = true;
     }
     
+    const isOk = !revalidationFailed && !propagationFailed;
+    let message = 'Pricing data saved successfully';
+    if (revalidationFailed) message = 'Pricing data saved, but revalidation failed.';
+    if (propagationFailed) message = 'Pricing data saved, but failed to propagate basePrice.';
+    if (revalidationFailed && propagationFailed) message = 'Pricing data saved, but revalidation and propagation failed.';
+
     return NextResponse.json({
-      ok: true,
-      message: 'Pricing data saved successfully',
+      ok: isOk,
+      message,
       data: {
         courseId,
         timestamp,
@@ -239,7 +259,9 @@ export async function POST(request: NextRequest) {
           priceRules: priceRules?.length || 0,
           specialOverrides: specialOverrides?.length || 0,
           baseProduct: baseProduct ? 1 : 0
-        }
+        },
+        revalidationFailed,
+        propagationFailed
       }
     });
     
