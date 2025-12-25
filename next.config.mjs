@@ -1,16 +1,18 @@
 /** @type {import('next').NextConfig} */
 import { withSentryConfig } from '@sentry/nextjs';
 const nextConfig = {
+  // Explicitly set the root to avoid issues with parent directories
+  turbopack: {
+    root: process.cwd(),
+  },
+
   // Build optimizations for Firebase Hosting
   output: 'standalone',
   trailingSlash: false,
   
-  // TypeScript and ESLint configuration
+  // TypeScript configuration
   typescript: {
     ignoreBuildErrors: process.env.NEXT_PREVIEW_BUILD === 'true',
-  },
-  eslint: {
-    ignoreDuringBuilds: process.env.NEXT_PREVIEW_BUILD === 'true',
   },
   
   // External packages for server-side rendering
@@ -46,17 +48,6 @@ const nextConfig = {
   },
   images: {
     formats: ['image/avif', 'image/webp'],
-    domains: [
-      'firebasestorage.googleapis.com',
-      'lh3.googleusercontent.com',
-      'platform-lookaside.fbsbx.com',
-      'graph.facebook.com',
-      'scontent.facebook.com',
-      'avatars.githubusercontent.com',
-      'images.unsplash.com',
-      'plus.unsplash.com',
-      'unsplash.com'
-    ],
     remotePatterns: [
       {
         protocol: 'https',
