@@ -113,7 +113,9 @@ export function CourseSearchForm({ dictionary }: CourseSearchFormProps) {
     }
 
     const handleDateSelect = (date: Date | undefined) => {
-        form.setValue('date', date);
+        if (date) {
+          form.setValue('date', date);
+        }
         setIsCalendarOpen(false); // Cerrar el popover automáticamente
     }
 

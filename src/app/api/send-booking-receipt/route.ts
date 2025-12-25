@@ -61,7 +61,7 @@ export async function POST(req: Request) {
 
     // Generar PDF del recibo y adjuntarlo
     const { buffer, filename } = await generateReceiptPdf({
-      bookingId: normalizedDetails?.confirmationNumber || normalizedDetails?.id,
+      bookingId: normalizedDetails?.confirmationNumber,
       confirmationNumber: normalizedDetails?.confirmationNumber,
       courseName: normalizedDetails.courseName,
       courseLocation: normalizedDetails.courseLocation,

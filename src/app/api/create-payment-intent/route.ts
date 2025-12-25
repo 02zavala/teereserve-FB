@@ -28,8 +28,8 @@ export async function POST(request: NextRequest) {
 
     // Use the existing Genkit flow to create the payment intent
     const result = await createPaymentIntent({
-      amount: amountInCents, // Enviar en centavos a Stripe
-      currency: 'usd', // Forzar USD aunque la cuenta sea de México
+      amount: amountInCents,
+      currency: typeof currency === 'string' ? currency.toLowerCase() : 'usd',
       setup_future_usage,
     });
 

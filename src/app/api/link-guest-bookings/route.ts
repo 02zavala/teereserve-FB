@@ -10,6 +10,9 @@ interface LinkGuestBookingsRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!auth || !db) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
@@ -313,6 +316,9 @@ async function logBookingLinking(
 // GET endpoint to retrieve guest bookings that can be linked
 export async function GET(request: NextRequest) {
   try {
+    if (!auth || !db) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(

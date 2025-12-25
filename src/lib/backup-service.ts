@@ -131,7 +131,7 @@ class BackupService {
    * Backup bookings with optional date filtering
    */
   private async backupBookings(options: BackupOptions): Promise<Booking[]> {
-    const bookingsRef = db.collection('bookings');
+    const bookingsRef = db!.collection('bookings');
     let bookingsQuery = bookingsRef.orderBy('createdAt', 'desc');
 
     if (options.dateRange) {
@@ -153,7 +153,7 @@ class BackupService {
    * Backup courses and their subcollections
    */
   private async backupCourses(options: BackupOptions): Promise<GolfCourse[]> {
-    const coursesRef = db.collection('courses');
+    const coursesRef = db!.collection('courses');
     const snapshot = await coursesRef.get();
     
     const courses: GolfCourse[] = [];
@@ -162,7 +162,7 @@ class BackupService {
       const courseData = { id: courseDoc.id, ...courseDoc.data() } as Omit<GolfCourse, 'reviews'>;
       
       // Backup reviews for this course
-      const reviewsRef = db.collection('courses').doc(courseDoc.id).collection('reviews');
+      const reviewsRef = db!.collection('courses').doc(courseDoc.id).collection('reviews');
       const reviewsSnapshot = await reviewsRef.get();
       const reviews = reviewsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
@@ -176,7 +176,7 @@ class BackupService {
    * Backup user profiles
    */
   private async backupUsers(options: BackupOptions): Promise<UserProfile[]> {
-    const usersRef = db.collection('users');
+    const usersRef = db!.collection('users');
     let usersQuery = usersRef.orderBy('createdAt', 'desc');
 
     if (options.maxRecords) {
@@ -191,7 +191,7 @@ class BackupService {
    * Backup price rules
    */
   private async backupPriceRules(options: BackupOptions): Promise<PriceRule[]> {
-    const priceRulesRef = db.collection('priceRules');
+    const priceRulesRef = db!.collection('priceRules');
     const snapshot = await priceRulesRef.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PriceRule));
   }
@@ -200,7 +200,7 @@ class BackupService {
    * Backup seasons
    */
   private async backupSeasons(options: BackupOptions): Promise<Season[]> {
-    const seasonsRef = db.collection('seasons');
+    const seasonsRef = db!.collection('seasons');
     const snapshot = await seasonsRef.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Season));
   }
@@ -209,7 +209,7 @@ class BackupService {
    * Backup time bands
    */
   private async backupTimeBands(options: BackupOptions): Promise<TimeBand[]> {
-    const timeBandsRef = db.collection('timeBands');
+    const timeBandsRef = db!.collection('timeBands');
     const snapshot = await timeBandsRef.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as TimeBand));
   }
@@ -218,7 +218,7 @@ class BackupService {
    * Backup special overrides
    */
   private async backupSpecialOverrides(options: BackupOptions): Promise<SpecialOverride[]> {
-    const overridesRef = db.collection('specialOverrides');
+    const overridesRef = db!.collection('specialOverrides');
     const snapshot = await overridesRef.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SpecialOverride));
   }
@@ -227,7 +227,7 @@ class BackupService {
    * Backup base products
    */
   private async backupBaseProducts(options: BackupOptions): Promise<BaseProduct[]> {
-    const baseProductsRef = db.collection('baseProducts');
+    const baseProductsRef = db!.collection('baseProducts');
     const snapshot = await baseProductsRef.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BaseProduct));
   }
@@ -236,7 +236,7 @@ class BackupService {
    * Backup coupons
    */
   private async backupCoupons(options: BackupOptions): Promise<Coupon[]> {
-    const couponsRef = db.collection('coupons');
+    const couponsRef = db!.collection('coupons');
     const snapshot = await couponsRef.get();
     return snapshot.docs.map(doc => ({ code: doc.id, ...doc.data() } as Coupon));
   }

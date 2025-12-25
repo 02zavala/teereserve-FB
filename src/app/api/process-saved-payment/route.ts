@@ -8,6 +8,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!auth || !db) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -24,9 +27,9 @@ export async function POST(request: NextRequest) {
       bookingData 
     } = await request.json();
 
-    if (!paymentMethodId || !amount || !bookingData) {
+    if (!paymentMethodId || typeof amount !== 'number' || !bookingData) {
       return NextResponse.json({ 
-        error: 'Payment method ID, amount, and booking data are required' 
+        error: 'Payment method ID, numeric amount, and booking data are required' 
       }, { status: 400 });
     }
 
@@ -50,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     // Crear el Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convertir a centavos
+      amount: Math.round(Number(amount) * 100),
       currency,
       customer: userData.stripeCustomerId,
       payment_method: paymentMethodId,
@@ -69,7 +72,7 @@ export async function POST(request: NextRequest) {
         courseName: bookingData.courseName,
         date: bookingData.date,
         time: bookingData.time,
-        players: bookingData.players.toString(),
+        players: String(bookingData.players),
         holes: bookingData.holes?.toString() || '18',
       },
     });
@@ -91,8 +94,8 @@ export async function POST(request: NextRequest) {
           courseName: bookingData.courseName,
           date: bookingData.date,
           time: bookingData.time,
-          players: parseInt(bookingData.players),
-          holes: bookingData.holes ? parseInt(bookingData.holes) : 18,
+          players: typeof bookingData.players === 'number' ? bookingData.players : parseInt(String(bookingData.players), 10),
+          holes: bookingData.holes ? parseInt(String(bookingData.holes), 10) : 18,
           totalPrice: amount,
           status: 'confirmed',
           teeTimeId: bookingData.teeTimeId,

@@ -22,8 +22,8 @@ function getClientIP(request: NextRequest): string {
         return cfConnectingIP;
     }
     
-    // Fallback a la IP de la conexión
-    return request.ip || 'unknown';
+    // Fallback genérico si no se puede determinar
+    return 'unknown';
 }
 
 // Función para obtener información de geolocalización básica (opcional)

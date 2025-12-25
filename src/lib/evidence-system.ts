@@ -20,6 +20,7 @@ export interface CheckinEvidence {
     screenResolution: string;
   };
   distanceToVenue: number;
+  photo?: string;
   photos?: string[]; // Base64 encoded photos
   ipAddress?: string;
   verificationStatus: 'verified' | 'approximate' | 'failed';
@@ -93,7 +94,8 @@ class EvidenceSystem {
       };
 
       // Guardar evidencia principal
-      await setDoc(doc(db, 'dispute_evidence', evidenceId), disputeEvidence);
+      if (!db) throw new Error('Firebase not initialized');
+      await setDoc(doc(db!, 'dispute_evidence', evidenceId), disputeEvidence);
 
       // Guardar fotos por separado si existen (para optimizar consultas)
       if (evidence.photos && evidence.photos.length > 0) {
@@ -103,7 +105,8 @@ class EvidenceSystem {
           photos: evidence.photos,
           timestamp: evidence.timestamp
         };
-        await setDoc(doc(db, 'evidence_photos', evidenceId), photosDoc);
+        if (!db) return evidenceId;
+        await setDoc(doc(db!, 'evidence_photos', evidenceId), photosDoc);
       }
 
       // Registrar en audit log
@@ -161,7 +164,8 @@ class EvidenceSystem {
         }
       };
 
-      await setDoc(doc(db, 'dispute_evidence', evidenceId), disputeEvidence);
+      if (!db) throw new Error('Firebase not initialized');
+      await setDoc(doc(db!, 'dispute_evidence', evidenceId), disputeEvidence);
 
       await this.logBookingAction(
         bookingId,
@@ -212,7 +216,8 @@ class EvidenceSystem {
         }
       };
 
-      await setDoc(doc(db, 'dispute_evidence', evidenceId), disputeEvidence);
+      if (!db) throw new Error('Firebase not initialized');
+      await setDoc(doc(db!, 'dispute_evidence', evidenceId), disputeEvidence);
 
       await this.logBookingAction(
         bookingId,
@@ -262,7 +267,8 @@ class EvidenceSystem {
         }
       };
 
-      await setDoc(doc(db, 'dispute_evidence', evidenceId), disputeEvidence);
+      if (!db) throw new Error('Firebase not initialized');
+      await setDoc(doc(db!, 'dispute_evidence', evidenceId), disputeEvidence);
 
       await this.logBookingAction(
         bookingId,
@@ -285,8 +291,9 @@ class EvidenceSystem {
    */
   async getBookingEvidence(bookingId: string): Promise<DisputeEvidence[]> {
     try {
+      if (!db) return [];
       const q = query(
-        collection(db, 'dispute_evidence'),
+        collection(db!, 'dispute_evidence'),
         where('bookingId', '==', bookingId)
       );
       
@@ -369,7 +376,8 @@ class EvidenceSystem {
         userAgent
       };
 
-      await setDoc(doc(db, 'booking_audit_log', logId), auditLog);
+      if (!db) return;
+      await setDoc(doc(db!, 'booking_audit_log', logId), auditLog);
 
     } catch (error) {
       console.error('❌ Error logging booking action:', error);
@@ -382,8 +390,9 @@ class EvidenceSystem {
    */
   async getBookingAuditLog(bookingId: string): Promise<BookingAuditLog[]> {
     try {
+      if (!db) return [];
       const q = query(
-        collection(db, 'booking_audit_log'),
+        collection(db!, 'booking_audit_log'),
         where('bookingId', '==', bookingId)
       );
       

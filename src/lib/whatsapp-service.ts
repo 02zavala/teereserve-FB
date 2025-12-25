@@ -195,6 +195,7 @@ _Notificación automática de TeeReserve_`;
         }
       };
 
+      if (!db) return;
       await addDoc(collection(db, 'admin_alerts'), alertRecord);
       logger.info('WhatsApp alert record saved to Firestore');
     } catch (error) {

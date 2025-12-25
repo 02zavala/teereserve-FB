@@ -21,8 +21,8 @@ export default function AuthActionPage({ params }: ActionPageProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const mode = search.get("mode");
-    const oobCode = search.get("oobCode");
+    const mode = search?.get("mode");
+    const oobCode = search?.get("oobCode");
     if (!mode || !oobCode) {
       setStatus("error");
       setErrorMessage(
@@ -37,7 +37,7 @@ export default function AuthActionPage({ params }: ActionPageProps) {
         if (mode === "verifyEmail") {
           await applyActionCode(auth ?? getAuth(), oobCode);
           try {
-            await auth.currentUser?.reload();
+            await (auth ?? getAuth()).currentUser?.reload();
           } catch {}
           setStatus("success");
         } else {
@@ -63,7 +63,6 @@ export default function AuthActionPage({ params }: ActionPageProps) {
     };
 
     run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const goHome = () => router.replace(`/${lang}`);

@@ -10,6 +10,7 @@ import {
 // GET - Obtener todas las secciones de eventos
 export async function GET(request: NextRequest) {
   try {
+    if (!adminAuth) return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Token de autorización requerido' }, { status: 401 });
@@ -35,6 +36,7 @@ export async function GET(request: NextRequest) {
 // POST - Crear nueva sección de evento
 export async function POST(request: NextRequest) {
   try {
+    if (!adminAuth) return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Token de autorización requerido' }, { status: 401 });
@@ -72,6 +74,7 @@ export async function POST(request: NextRequest) {
 // PUT - Actualizar sección de evento existente
 export async function PUT(request: NextRequest) {
   try {
+    if (!adminAuth) return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Token de autorización requerido' }, { status: 401 });
@@ -106,6 +109,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Eliminar sección de evento
 export async function DELETE(request: NextRequest) {
   try {
+    if (!adminAuth) return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Token de autorización requerido' }, { status: 401 });

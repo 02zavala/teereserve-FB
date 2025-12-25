@@ -93,12 +93,11 @@ export function BookingMetrics({ lang = 'es' as Locale }: { lang?: Locale }) {
       try {
         if (authLoading) return;
         if (!user) return;
-        const token = await user.getIdToken();
-        const resp = await fetch('/api/admin/courses/list', {
+        const { adminFetch } = await import('@/lib/admin-fetch');
+        const resp = await adminFetch('/api/admin/courses/list', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
         });
         if (!resp.ok) return;
@@ -131,7 +130,7 @@ export function BookingMetrics({ lang = 'es' as Locale }: { lang?: Locale }) {
           return;
         }
 
-        const token = await user.getIdToken();
+        const { adminFetch } = await import('@/lib/admin-fetch');
         const params = new URLSearchParams();
         if (rangeMode === 'days') {
           params.set('days', String(selectedDays));
@@ -144,11 +143,10 @@ export function BookingMetrics({ lang = 'es' as Locale }: { lang?: Locale }) {
         if (courseId && courseId !== 'all') params.set('courseId', courseId);
         params.set('limit', '500');
 
-        const resp = await fetch(`/api/admin/booking-metrics?${params.toString()}`, {
+        const resp = await adminFetch(`/api/admin/booking-metrics?${params.toString()}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
           },
         });
 

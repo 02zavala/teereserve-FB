@@ -1,7 +1,7 @@
 // NUEVO: Hook personalizado para tracking de visitas
 "use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 
 interface VisitTrackingOptions {
@@ -21,7 +21,7 @@ export function useVisitTracking(options: VisitTrackingOptions = {}) {
   const lastTrackedPath = useRef<string>('');
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const trackVisit = async (page: string, referer?: string) => {
+  const trackVisit = useCallback(async (page: string, referer?: string) => {
     if (!enabled) return;
 
     try {
@@ -42,9 +42,9 @@ export function useVisitTracking(options: VisitTrackingOptions = {}) {
       }
     } catch (error) {
       console.warn('Error tracking visit:', error);
-      // No lanzar error para no afectar la UX
+      
     }
-  };
+  }, [enabled]);
 
   // Tracking automático de page views
   useEffect(() => {
@@ -68,7 +68,7 @@ export function useVisitTracking(options: VisitTrackingOptions = {}) {
         clearTimeout(debounceTimer.current);
       }
     };
-  }, [pathname, trackPageViews, enabled, debounceMs]);
+  }, [pathname, trackPageViews, enabled, debounceMs, trackVisit]);
 
   // Cleanup al desmontar
   useEffect(() => {

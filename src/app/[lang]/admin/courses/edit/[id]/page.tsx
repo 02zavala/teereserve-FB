@@ -19,5 +19,5 @@ export default async function EditCoursePage({ params: paramsProp }: EditCourseP
         notFound();
     }
 
-    return <EditCourseClientWrapper course={course} lang={params.lang as unknown as string} />;
+    return <EditCourseClientWrapper course={course} lang={params.lang} />;
 }

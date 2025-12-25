@@ -36,9 +36,14 @@ interface RestoreResult {
   };
 }
 
+type RestoreStreamEvent = RestoreProgress | RestoreResult | { type: 'error'; message: string };
+
 // Verify admin authentication
 async function verifyAdmin(request: NextRequest) {
   try {
+    if (!auth || !db) {
+      return null;
+    }
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return null;
@@ -76,7 +81,7 @@ function createProgressStream() {
     }
   });
 
-  const sendProgress = (data: RestoreProgress | RestoreResult | { type: 'error'; message: string }) => {
+  const sendProgress = (data: RestoreStreamEvent) => {
     try {
       const message = `data: ${JSON.stringify(data)}\n\n`;
       controller.enqueue(encoder.encode(message));
@@ -148,6 +153,9 @@ async function performRestore(
   options: z.infer<typeof restoreOptionsSchema>,
   sendProgress: (data: RestoreProgress) => void
 ): Promise<RestoreResult> {
+  if (!db) {
+    throw new Error('Admin Firestore not initialized');
+  }
   const result: RestoreResult = {
     success: false,
     summary: {

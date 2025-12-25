@@ -168,6 +168,7 @@ export function useFileValidation() {
 // Hook para rate limiting del lado del cliente
 export function useRateLimit(maxRequests: number = 10, windowMs: number = 60000) {
   const [requests, setRequests] = useState<number[]>([]);
+  const [isLimited, setIsLimited] = useState(false);
 
   const checkRateLimit = (): boolean => {
     const now = Date.now();
@@ -198,11 +199,15 @@ export function useRateLimit(maxRequests: number = 10, windowMs: number = 60000)
     return oldestRequest + windowMs;
   };
 
+  useEffect(() => {
+    setIsLimited(getRemainingRequests() === 0);
+  }, [requests, windowMs, maxRequests]);
+
   return {
     checkRateLimit,
     getRemainingRequests,
     getResetTime,
-    isLimited: getRemainingRequests() === 0
+    isLimited
   };
 }
 

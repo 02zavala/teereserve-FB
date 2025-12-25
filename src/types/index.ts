@@ -128,13 +128,7 @@ export type BookingStatus =
   | 'no_show'
   | 'disputed';
 
-export type PaymentStatus = 
-  | 'authorized'
-  | 'captured'
-  | 'partially_refunded'
-  | 'refunded'
-  | 'failed'
-  | 'disputed';
+export type PaymentStatus = string;
 
 export interface BookingInput {
     userId: string;
@@ -156,6 +150,8 @@ export interface BookingInput {
     couponCode?: string;
     version?: number; // For optimistic locking
     paymentStatus?: PaymentStatus;
+    currency?: string;
+    paymentMethod?: string;
     paymentIntentId?: string; // Stripe Payment Intent ID
     refundAmount?: number;
     cancellationReason?: string;

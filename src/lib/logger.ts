@@ -131,7 +131,6 @@ class Logger {
         return Buffer.from(input, 'utf-8').toString('base64');
       }
       // Generic fallback
-      // eslint-disable-next-line deprecation/unescape
       return btoa(unescape(encodeURIComponent(input)));
     } catch {
       // Last resort: replace non-Latin1 chars before encoding

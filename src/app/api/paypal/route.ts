@@ -37,6 +37,7 @@ async function getPayPalAccessToken() {
 // Create PayPal order
 export async function POST(request: NextRequest) {
   try {
+    if (!auth) return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     const { amount, currency = 'USD', courseId, courseName, idToken } = await request.json();
 
     if (!amount || !courseId || !courseName || !idToken) {
@@ -161,6 +162,7 @@ export async function PUT(request: NextRequest) {
     // Verify the user's authentication
     let decodedToken;
     try {
+      if (!auth) throw new Error('Auth not initialized');
       decodedToken = await auth.verifyIdToken(idToken);
     } catch (authError) {
       logger.error('PayPal order capture: Authentication failed', authError as Error);

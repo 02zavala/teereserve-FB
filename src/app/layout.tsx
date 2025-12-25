@@ -8,6 +8,7 @@ import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics'
 import { VisitTracker } from '@/components/analytics/VisitTracker' // NUEVO: Importar tracker de visitas
 import type { Locale } from '@/i18n-config'
 import { AppProviders } from '@/context/AppProviders'
+import Script from 'next/script'
 
 const fontHeadline = Playfair_Display({
   subsets: ['latin'],
@@ -59,8 +60,16 @@ export default async function RootLayout({
           fontBody.variable
         )}
       >
-        {/* Google Analytics */}
         {gaId && !gaDisabled && <GoogleAnalytics gaId={gaId} />}
+        <Script src={`https://www.googletagmanager.com/gtag/js?id=G-LZ0Y4R86E7`} strategy="afterInteractive" />
+        <Script id="gtag-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-LZ0Y4R86E7');
+          `}
+        </Script>
         
         {/* Visit Tracking - NUEVO */}
         <VisitTracker enabled={true} debounceMs={1000} />

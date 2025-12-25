@@ -99,14 +99,8 @@ const BackupManager: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const token = await user?.getIdToken();
-      if (!token) throw new Error('No authentication token');
-
-      const response = await fetch('/api/admin/backup?action=status', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const response = await adminFetch('/api/admin/backup?action=status');
 
       if (!response.ok) {
         throw new Error('Failed to load backup data');
@@ -128,14 +122,8 @@ const BackupManager: React.FC = () => {
 
   const loadJobHistory = async (jobId: string) => {
     try {
-      const token = await user?.getIdToken();
-      if (!token) throw new Error('No authentication token');
-
-      const response = await fetch(`/api/admin/backup?action=history&jobId=${jobId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const response = await adminFetch(`/api/admin/backup?action=history&jobId=${jobId}`);
 
       if (!response.ok) {
         throw new Error('Failed to load backup history');
@@ -154,14 +142,11 @@ const BackupManager: React.FC = () => {
       setError(null);
       setSuccess(null);
 
-      const token = await user?.getIdToken();
-      if (!token) throw new Error('No authentication token');
-
-      const response = await fetch('/api/admin/backup', {
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const response = await adminFetch('/api/admin/backup', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ action, ...params })
       });

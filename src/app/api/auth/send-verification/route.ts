@@ -22,6 +22,9 @@ export async function POST(req: NextRequest) {
     const { email, lang, displayName, idToken, origin } = parsed.data;
 
     // Verify the token to ensure the request is by the authenticated user
+    if (!adminAuth) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
     const decoded = await adminAuth.verifyIdToken(idToken);
     if ((decoded.email || '').toLowerCase() !== email.toLowerCase()) {
       return NextResponse.json({ error: 'Token/email mismatch' }, { status: 403 });

@@ -1195,10 +1195,10 @@ export class PricingEngine {
     }
 
     try {
-      const response = await fetch(`/api/admin/pricing/load?courseId=${courseId}`, {
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const response = await adminFetch(`/api/admin/pricing/load?courseId=${courseId}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${this.authToken}`,
           'Content-Type': 'application/json'
         }
       });
@@ -1285,10 +1285,10 @@ export class PricingEngine {
         } : undefined
       };
 
-      const response = await fetch('/api/admin/pricing/save', {
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const response = await adminFetch('/api/admin/pricing/save', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.authToken}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(pricingData)
@@ -1620,11 +1620,11 @@ export class PricingEngine {
       throw new Error('Authentication token required');
     }
 
-    const response = await fetch('/api/admin/pricing/dedupe', {
+    const { adminFetch } = await import('@/lib/admin-fetch');
+    const response = await adminFetch('/api/admin/pricing/dedupe', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.authToken}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         courseId,
@@ -1646,11 +1646,11 @@ export class PricingEngine {
       throw new Error('Authentication token required');
     }
 
-    const response = await fetch('/api/admin/pricing/dedupe', {
+    const { adminFetch } = await import('@/lib/admin-fetch');
+    const response = await adminFetch('/api/admin/pricing/dedupe', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.authToken}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         courseId,
@@ -1672,11 +1672,11 @@ export class PricingEngine {
       throw new Error('Authentication token required');
     }
 
-    const response = await fetch('/api/admin/pricing/dedupe', {
+    const { adminFetch } = await import('@/lib/admin-fetch');
+    const response = await adminFetch('/api/admin/pricing/dedupe', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.authToken}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         courseId,
@@ -1699,11 +1699,11 @@ export class PricingEngine {
       throw new Error('Authentication token required');
     }
 
-    const response = await fetch('/api/admin/pricing/dedupe', {
+    const { adminFetch } = await import('@/lib/admin-fetch');
+    const response = await adminFetch('/api/admin/pricing/dedupe', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.authToken}`
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
         courseId,

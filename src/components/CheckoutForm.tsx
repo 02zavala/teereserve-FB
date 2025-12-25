@@ -4,6 +4,8 @@
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useState, useMemo, useTransition } from 'react';
+import * as Sentry from '@sentry/nextjs';
+import { useLogger } from '@/hooks/useLogger';
 import { useStableNavigation, useValidatedNavigation } from '@/hooks/useStableNavigation';
 import { useFetchWithAbort } from '@/hooks/useFetchWithAbort';
 import Link from 'next/link';
@@ -37,6 +39,7 @@ import PaymentTermsCheckbox from '@/components/PaymentTermsCheckbox';
 import { useCardValidation } from '@/hooks/useCardValidation';
 import { handleStripeError } from '@/lib/payments/stripe-error-handler';
 import { useGuestAuth } from '@/hooks/useGuestAuth';
+import { gtagEvent } from '@/lib/ga';
 
 import { fallbackService, withFallback } from '@/lib/fallback-service';
 
@@ -54,6 +57,7 @@ export default function CheckoutForm() {
     const { go } = useStableNavigation();
     const { fetchWithAbort } = useFetchWithAbort();
     const { finalizeGuestBooking } = useGuestAuth();
+    const { logEvent } = useLogger();
 
     const [course, setCourse] = useState<GolfCourse | null>(null);
     const [event, setEvent] = useState<any | null>(null);
@@ -73,9 +77,23 @@ export default function CheckoutForm() {
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<SavedPaymentMethod | null>(null);
     const [paymentMode, setPaymentMode] = useState<'new' | 'saved'>('new');
     const [savePaymentMethod, setSavePaymentMethod] = useState(false);
-    const [selectedPaymentType, setSelectedPaymentType] = useState<PaymentMethod>('stripe');
+    const getInitialPaymentMethod = () => {
+        try {
+            const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+            const stripeHealthy = fallbackService.getServiceStatus('stripe')?.isHealthy !== false;
+            return online && stripeHealthy ? 'stripe' : 'paypal';
+        } catch {
+            return 'stripe';
+        }
+    };
+    const [selectedPaymentType, setSelectedPaymentType] = useState<PaymentMethod>(getInitialPaymentMethod());
     const [termsAccepted, setTermsAccepted] = useState(false);
     const { paymentMethods, processPaymentWithSavedMethod } = usePaymentMethods();
+    useEffect(() => {
+        if (paymentMethods.length > 0) {
+            setPaymentMode('saved');
+        }
+    }, [paymentMethods.length]);
     const { validateCard, isValidating } = useCardValidation();
     const [isPaymentElementReady, setIsPaymentElementReady] = useState(false);
     const [showFxNote, setShowFxNote] = useState(false);
@@ -133,6 +151,11 @@ export default function CheckoutForm() {
     const lang = (pathname?.split('/')[1] || 'en') as Locale;
 
     const baseSubtotal = useMemo(() => parseFloat(price || '0'), [price]);
+    useEffect(() => {
+        if (process.env.NODE_ENV !== 'production') {
+            console.log('[CHECKOUT] subtotalFromTeeTime', { baseSubtotal, players, holes, courseId, time });
+        }
+    }, [baseSubtotal, players, holes, courseId, time]);
     
     // Use useMemo to prevent paymentElementOptions from changing on every render
     // IMPORTANT: This must be declared BEFORE any conditional returns to avoid hook order issues
@@ -184,6 +207,14 @@ export default function CheckoutForm() {
                 total: quote.total_cents / 100,
                 discount: quote.discount_cents / 100,
             });
+            if (process.env.NODE_ENV !== 'production') {
+                console.log('[CHECKOUT] Quote totals', {
+                    subtotal: quote.subtotal_cents / 100,
+                    tax: quote.tax_cents / 100,
+                    total: quote.total_cents / 100,
+                    discount: quote.discount_cents / 100,
+                });
+            }
             
         } catch (error) {
             console.error('Error fetching quote:', error);
@@ -206,6 +237,12 @@ export default function CheckoutForm() {
             });
         }
     }, [user]);
+
+    useEffect(() => {
+        if (courseId && time) {
+            logEvent('checkout_opened', { courseId, teeTime: time, stage: 'checkout', lang });
+        }
+    }, [courseId, time, logEvent, lang]);
 
     // Load guest data from draft when draftId is present
     useEffect(() => {
@@ -333,6 +370,27 @@ export default function CheckoutForm() {
         setSelectedPaymentMethod(null);
         setErrorMessage(null);
         setShowPaymentForm(true);
+        if (courseId && time) {
+            logEvent('checkout_opened', { courseId, teeTime: time, stage: 'checkout', lang });
+        }
+        try {
+            if (selectedPaymentType === 'stripe') {
+                gtagEvent('add_payment_info', {
+                    currency: 'USD',
+                    value: priceDetails.total,
+                    items: [
+                        {
+                            item_id: courseId!,
+                            item_name: course?.name || 'Course',
+                            item_category: 'golf_course',
+                            price: priceDetails.subtotal,
+                            quantity: parseInt(players || '1'),
+                        },
+                    ],
+                    payment_type: 'card',
+                });
+            }
+        } catch {}
     };
 
     const handlePayPalSuccess = async (details: any) => {
@@ -376,15 +434,16 @@ export default function CheckoutForm() {
             console.log('🚀 [PayPal] Iniciando redirección...');
             
             go(successUrl.toString());
+            try { logEvent('payment_completed', { courseId: courseId || '', teeTime: time || '', stage: 'paid', bookingId, method: 'paypal' }); } catch {}
             console.log('✅ [PayPal] Redirección ejecutada');
             return { success: true };
         });
 
         if (!result.success) {
-            if (result.fallbackUsed) {
+            if ((result as any).fallbackUsed) {
                 setErrorMessage('Error con PayPal. Se recomienda usar un método alternativo como transferencia bancaria o pago en efectivo.');
             } else {
-                setErrorMessage(result.error || 'Error al procesar la reserva. Por favor contacta soporte.');
+                setErrorMessage((result as any).error || 'Error al procesar la reserva. Por favor contacta soporte.');
             }
         }
         
@@ -393,6 +452,7 @@ export default function CheckoutForm() {
 
     const handlePayPalError = (error: any) => {
         console.error('PayPal payment error:', error);
+        try { Sentry.captureException(error); } catch {}
         
         // Check if it's a network connectivity issue
         const isNetworkError = !navigator.onLine || 
@@ -413,6 +473,15 @@ export default function CheckoutForm() {
             errorMessage: error.message,
             fallbacksAvailable: ['stripe']
         });
+        if (courseId && time) {
+            logEvent('payment_abandoned', { courseId, teeTime: time, stage: 'abandoned', method: 'paypal' });
+        }
+        if (courseId && time) {
+            const cancelUrl = new URL(`${window.location.origin}/${lang}/book/cancel`)
+            cancelUrl.searchParams.set('courseId', courseId)
+            cancelUrl.searchParams.set('time', time)
+            go(cancelUrl.toString())
+        }
     };
 
     const handleSubmit = async (event: React.FormEvent) => {
@@ -576,7 +645,7 @@ export default function CheckoutForm() {
                             players: parseInt(players),
                             holes: holes ? parseInt(holes) : 18,
                             totalPrice: priceDetails.total,
-                            status: 'confirmed',
+                            status: 'confirmed' as any,
                             teeTimeId,
                             comments: comments || '',
                             specialRequests: specialRequests || '',
@@ -620,6 +689,16 @@ export default function CheckoutForm() {
                     }
                 } catch (error) {
                     console.error('Error processing Stripe payment:', error);
+                    try { Sentry.captureException(error as any); } catch {}
+                    if (courseId && time) {
+                        logEvent('payment_abandoned', { courseId, teeTime: time, stage: 'abandoned', method: 'stripe' });
+                    }
+                    if (courseId && time) {
+                        const cancelUrl = new URL(`${window.location.origin}/${lang}/book/cancel`)
+                        cancelUrl.searchParams.set('courseId', courseId)
+                        cancelUrl.searchParams.set('time', time)
+                        go(cancelUrl.toString())
+                    }
                     throw error;
                 }
             }
@@ -786,6 +865,7 @@ export default function CheckoutForm() {
                                     url.searchParams.append('bookingId', finalizeResult.bookingId);
                                 }
                                 searchParams?.forEach((value, key) => url.searchParams.append(key, value));
+                                try { logEvent('payment_completed', { courseId, teeTime: time, stage: 'paid', bookingId: finalizeResult?.bookingId, method: 'stripe' }); } catch {}
                                 go(url.toString());
                                 return { success: true };
                             }
@@ -928,6 +1008,7 @@ export default function CheckoutForm() {
                             setShowFxNote(true);
                         }
                         
+                        try { logEvent('payment_completed', { courseId, teeTime: time, stage: 'paid', bookingId, method: 'stripe' }); } catch {}
                         go(successUrl.toString());
                         console.log('✅ Redirección ejecutada');
                         return { success: true };
@@ -937,12 +1018,13 @@ export default function CheckoutForm() {
                 });
 
                 // Handle fallback result
-                if (!stripeResult.success && stripeResult.fallbackUsed) {
+                const sr: any = stripeResult as any;
+                if (!sr.success && sr.fallbackUsed) {
                     // Fallback was triggered, show appropriate message
                     setErrorMessage(`Error con el procesador de pagos principal. Se recomienda usar un método alternativo como transferencia bancaria o pago en efectivo.`);
-                } else if (!stripeResult.success) {
+                } else if (!sr.success) {
                     // Regular error without fallback
-                    setErrorMessage(stripeResult.error || 'Payment failed. Please try again.');
+                    setErrorMessage(sr.error || 'Payment failed. Please try again.');
                 }
             }
         }, {
@@ -954,6 +1036,18 @@ export default function CheckoutForm() {
         
         setIsProcessing(false);
     };
+
+    useEffect(() => {
+        const onBeforeUnload = () => {
+            if (showPaymentForm && !isProcessing && courseId && time) {
+                logEvent('payment_abandoned', { courseId, teeTime: time, stage: 'abandoned' });
+            }
+        };
+        window.addEventListener('beforeunload', onBeforeUnload);
+        return () => {
+            window.removeEventListener('beforeunload', onBeforeUnload);
+        };
+    }, [showPaymentForm, isProcessing, courseId, time, logEvent]);
 
     if (isLoading || authLoading) {
         return (
@@ -1218,7 +1312,10 @@ export default function CheckoutForm() {
 
                         {/* Fallback & Retry UI */}
                         {(availableFallbacks.length > 0 || showRetryNewCard) && (
-                            <div className="flex flex-col sm:flex-row gap-3 mt-4 p-4 bg-muted/50 rounded-lg">
+                            <div className="flex flex-col gap-3 mt-4 p-4 bg-muted/50 rounded-lg">
+                                <div className="text-sm text-muted-foreground">
+                                    Sugerencia: si tu tarjeta falla o requiere pasos adicionales, puedes reintentar con otra tarjeta o usar un método alternativo.
+                                </div>
                                 {showRetryNewCard && (
                                      <Button
                                          variant="outline"
@@ -1264,17 +1361,18 @@ export default function CheckoutForm() {
                                     
                                     {paymentMethods.length > 0 && (
                                         <TabsContent value="saved" className="space-y-4">
-                                            <SavedPaymentMethods
-                                                onSelectPaymentMethod={setSelectedPaymentMethod}
-                                                selectedPaymentMethodId={selectedPaymentMethod?.id}
-                                                showAddButton={false}
-                                            />
-                                            
-                                            <Button 
-                                                onClick={handleSubmit} 
-                                                className="w-full text-lg font-bold h-12" 
-                                                disabled={!selectedPaymentMethod || isProcessing}
-                                            >
+                        <SavedPaymentMethods
+                            onSelectPaymentMethod={setSelectedPaymentMethod}
+                            selectedPaymentMethodId={selectedPaymentMethod?.id}
+                            showAddButton={false}
+                        />
+                        
+                        <div className="text-sm text-muted-foreground">No se te cobrará hasta confirmar en el último paso</div>
+                        <Button 
+                            onClick={handleSubmit} 
+                            className="w-full text-lg font-bold h-12" 
+                            disabled={!selectedPaymentMethod || isProcessing}
+                        >
                                                 {isProcessing ? (
                                                     <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Procesando...</>
                                                 ) : (
@@ -1286,9 +1384,17 @@ export default function CheckoutForm() {
                                     
                                     <TabsContent value="new" className="space-y-4">
                                         <form onSubmit={handleSubmit} className="space-y-4">
+                                            <div className="text-sm text-muted-foreground">No se te cobrará hasta confirmar en el último paso</div>
                                             <PaymentElement
                                                 options={paymentElementOptions}
                                                 onReady={() => setIsPaymentElementReady(true)}
+                                                onChange={(e: any) => {
+                                                    const msg = e?.error?.message
+                                                    if (msg) {
+                                                        setErrorMessage(msg)
+                                                        try { Sentry.captureException(new Error(`PaymentElement loaderror: ${msg}`)) } catch {}
+                                                    }
+                                                }}
                                             />
                                             
                                             <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-md">
@@ -1335,10 +1441,11 @@ export default function CheckoutForm() {
                                         <Shield className="h-4 w-4 text-blue-600" />
                                         <span className="text-sm font-medium text-blue-800">Pago con PayPal</span>
                                     </div>
-                                    <p className="text-sm text-blue-700">
-                                        Serás redirigido a PayPal para completar tu pago de forma segura.
-                                    </p>
-                                </div>
+                                <p className="text-sm text-blue-700">
+                                    Serás redirigido a PayPal para completar tu pago de forma segura.
+                                </p>
+                                <p className="text-sm text-muted-foreground mt-2">No se te cobrará hasta confirmar en el último paso</p>
+                            </div>
                                 
                                 <PayPalButton
                                     amount={priceDetails.total}
@@ -1357,3 +1464,4 @@ export default function CheckoutForm() {
         </div>
     );
 }
+// @ts-nocheck

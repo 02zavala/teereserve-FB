@@ -14,7 +14,7 @@ interface NotificationPayload {
 
 export function usePushNotifications() {
   const [token, setToken] = useState<string | null>(null);
-  const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [permission, setPermission] = useState<NotificationPermission>(typeof window !== 'undefined' ? Notification.permission : 'default');
   const { toast } = useToast();
 
   // Request notification permission
@@ -61,47 +61,36 @@ export function usePushNotifications() {
     }
   };
 
-  // Initialize notifications
-  const initializeNotifications = async () => {
+  useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    // Check current permission
-    setPermission(Notification.permission);
-
-    // If permission is granted, get token
     if (Notification.permission === 'granted') {
-      await getNotificationToken();
+      void getNotificationToken();
     }
-
-    // Set up foreground message listener
-    const messagingInstance = await messaging;
-    if (messagingInstance) {
-      onMessage(messagingInstance, (payload) => {
-        console.log('Message received in foreground:', payload);
-        
-        const notification = payload.notification;
-        if (notification) {
-          // Show toast notification for foreground messages
-          toast({
-            title: notification.title || 'Nueva notificación',
-            description: notification.body || '',
-            duration: 5000,
-          });
-
-          // Also show browser notification if permission is granted
-          if (Notification.permission === 'granted') {
-            new Notification(notification.title || 'TeeReserve', {
-              body: notification.body || '',
-              icon: notification.icon || '/icon.png',
-              badge: '/icon.png',
-              tag: 'teereserve-notification',
-              data: payload.data
+    (async () => {
+      const messagingInstance = await messaging;
+      if (messagingInstance) {
+        onMessage(messagingInstance, (payload) => {
+          const notification = payload.notification;
+          if (notification) {
+            toast({
+              title: notification.title || 'Nueva notificación',
+              description: notification.body || '',
+              duration: 5000,
             });
+            if (Notification.permission === 'granted') {
+              new Notification(notification.title || 'TeeReserve', {
+                body: notification.body || '',
+                icon: notification.icon || '/icon.png',
+                badge: '/icon.png',
+                tag: 'teereserve-notification',
+                data: payload.data
+              });
+            }
           }
-        }
-      });
-    }
-  };
+        });
+      }
+    })();
+  }, [toast]);
 
   // Send token to server (to be implemented)
   const saveTokenToServer = async (token: string, userId?: string) => {
@@ -114,9 +103,7 @@ export function usePushNotifications() {
     }
   };
 
-  useEffect(() => {
-    initializeNotifications();
-  }, []);
+  
 
   return {
     token,

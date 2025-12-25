@@ -112,7 +112,8 @@ export default function BackupRestore() {
         dryRun: options.dryRun
       }));
 
-      const response = await fetch('/api/admin/backup/restore', {
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const response = await adminFetch('/api/admin/backup/restore', {
         method: 'POST',
         body: formData
       });

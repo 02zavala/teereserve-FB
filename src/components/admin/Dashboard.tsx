@@ -131,9 +131,9 @@ export function Dashboard() {
     const loadCourses = async () => {
         try {
             if (!user) return;
-            const token = await user.getIdToken();
-            const resp = await fetch('/api/admin/courses/list', {
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+            const { adminFetch } = await import('@/lib/admin-fetch');
+            const resp = await adminFetch('/api/admin/courses/list', {
+                headers: { 'Content-Type': 'application/json' }
             });
             if (!resp.ok) return;
             const json = await resp.json();
@@ -151,10 +151,10 @@ export function Dashboard() {
     useEffect(() => {
         // Inicializar filtros desde la URL si están presentes
         try {
-            const s = searchParams.get('startDate');
-            const e = searchParams.get('endDate');
-            const st = searchParams.get('status');
-            const c = searchParams.get('courseId');
+            const s = searchParams?.get('startDate');
+            const e = searchParams?.get('endDate');
+            const st = searchParams?.get('status');
+            const c = searchParams?.get('courseId');
             if (s) setStartDate(s);
             if (e) setEndDate(e);
             if (st) setStatus(st);
@@ -166,17 +166,14 @@ export function Dashboard() {
         if (!user) return;
         setLoading(true);
         try {
-            const token = await user.getIdToken();
+            const { adminFetch } = await import('@/lib/admin-fetch');
             const qs = new URLSearchParams();
             if (startDate) qs.set('startDate', startDate);
             if (endDate) qs.set('endDate', endDate);
             if (status) qs.set('status', status);
             if (courseId) qs.set('courseId', courseId);
             if (!startDate || !endDate) qs.set('days', '365');
-
-            const res = await fetch(`/api/admin/dashboard-stats?${qs.toString()}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await adminFetch(`/api/admin/dashboard-stats?${qs.toString()}`);
             if (!res.ok) throw new Error(`Failed to load dashboard stats (${res.status})`);
             const json = await res.json();
             const data = json.data as DashboardStats;

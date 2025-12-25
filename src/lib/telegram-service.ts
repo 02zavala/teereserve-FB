@@ -165,6 +165,7 @@ ${alert.cardLast4 ? ('💳 *Tarjeta:* ' + (alert.cardBrand || '').toUpperCase() 
         }
       };
 
+      if (!db) return;
       await addDoc(collection(db, 'admin_alerts'), alertRecord);
       logger.info('Alert record saved to Firestore');
     } catch (error) {

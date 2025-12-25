@@ -35,12 +35,29 @@
     "strictNullChecks": true
   },
   "include": [
-    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+    "next-env.d.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    ".next",
+    "src/components/CheckoutForm.tsx",
+    "src/app/**/book/**",
+    "src/app/**/booking/**",
+    "src/app/api/checkout/**",
+    "src/app/api/webhooks/stripe/**",
+    "src/app/api/**stripe**/**",
+    "src/app/api/log-visits/**",
+    "src/lib/firebase.ts",
+    "src/components/admin/**",
+    "src/hooks/**",
+    "src/app/api/admin/pricing/**",
+    "src/app/api/create-setup-intent/**",
+    "src/app/api/create-guest-booking-intent/**",
+    "src/app/api/finalize-guest-booking/**",
+    "src/app/api/validate-card/**",
+    "src/app/api/track-visit/**"
   ]
 }
