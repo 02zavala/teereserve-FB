@@ -34,7 +34,8 @@ export async function getCourseContacts(courseId: string): Promise<CourseContact
   try {
     const { db } = await import('./firebase');
     const { doc, getDoc } = await import('firebase/firestore');
-    const courseDocRef = doc(db, 'courses', courseId);
+    if (!db) return undefined;
+    const courseDocRef = doc(db!, 'courses', courseId);
     const snap = await getDoc(courseDocRef);
     if (snap.exists()) {
       const data = snap.data();
@@ -70,7 +71,8 @@ export async function listAllCourseContacts(): Promise<CourseContacts[]> {
   try {
     const { db } = await import('./firebase');
     const { collection, getDocs } = await import('firebase/firestore');
-    const snapshot = await getDocs(collection(db, 'courses'));
+    if (!db) return list;
+    const snapshot = await getDocs(collection(db!, 'courses'));
     for (const docSnap of snapshot.docs) {
       const data = docSnap.data();
       const contacts = (data as any)?.contacts as CourseContacts | undefined;

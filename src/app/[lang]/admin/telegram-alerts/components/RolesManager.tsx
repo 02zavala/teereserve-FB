@@ -34,7 +34,8 @@ export default function RolesManager() {
   async function loadConfigs() {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/telegram-alerts/roles');
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const res = await adminFetch('/api/admin/telegram-alerts/roles');
       if (res.ok) {
         const data = await res.json();
         setConfigs(Array.isArray(data) ? data : []);
@@ -48,7 +49,8 @@ export default function RolesManager() {
 
   async function saveConfig(config: AlertRoleConfig) {
     try {
-      const res = await fetch('/api/admin/telegram-alerts/roles', {
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const res = await adminFetch('/api/admin/telegram-alerts/roles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
@@ -64,7 +66,8 @@ export default function RolesManager() {
 
   async function deleteConfig(alertType: string) {
     try {
-      const res = await fetch(`/api/admin/telegram-alerts/roles?alertType=${encodeURIComponent(alertType)}`, { method: 'DELETE' });
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const res = await adminFetch(`/api/admin/telegram-alerts/roles?alertType=${encodeURIComponent(alertType)}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Delete failed');
       toast({ title: 'Eliminado', description: 'Configuración borrada' });
       await loadConfigs();

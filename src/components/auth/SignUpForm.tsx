@@ -27,7 +27,7 @@ import { sendWebhook } from "@/lib/webhooks"
 import { FirebaseError } from "firebase/app"
 import { Loader2 } from "lucide-react"
 import { handleError, translateFirebaseError } from "@/lib/error-handling"
-import { detectAuthMethods, handleEmailAlreadyInUse } from "@/lib/auth-utils"
+import { detectAuthMethods, handleEmailAlreadyInUse, getFriendlyErrorMessage } from "@/lib/auth-utils"
 
 
 const formSchema = z.object({

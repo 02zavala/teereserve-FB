@@ -1,26 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-
-// Initialize Firebase Admin
-if (!getApps().length) {
-  try {
-    initializeApp({
-      credential: cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-      }),
-    });
-  } catch (error) {
-    console.error('Error initializing Firebase Admin:', error);
-  }
-}
-
-const db = getFirestore();
+import { db } from '@/lib/firebase-admin';
 
 export async function GET(request: NextRequest) {
   try {
+    if (!db) return NextResponse.json({ error: 'Admin Firestore not initialized' }, { status: 500 });
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
@@ -62,6 +45,7 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    if (!db) return NextResponse.json({ error: 'Admin Firestore not initialized' }, { status: 500 });
     const { searchParams } = new URL(request.url);
     const alertId = searchParams.get('id');
     const clearAll = searchParams.get('clearAll') === 'true';

@@ -22,6 +22,7 @@ import { Separator } from "./ui/separator"
 import { dateLocales, getDefaultBookingDate } from "@/lib/date-utils"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/AuthContext"
+import { gtagEvent } from "@/lib/ga"
 
 interface TeeTimePickerProps {
     courseId: string
@@ -299,7 +300,27 @@ export function TeeTimePicker({ courseId, basePrice, teeTimeInterval, operatingH
                                                         !canBook && "opacity-50"
                                                     )}
                                                     disabled={!canBook}
-                                                    onClick={() => setSelectedTeeTime(teeTime)}
+                                                    onClick={() => {
+                                                        setSelectedTeeTime(teeTime);
+                                                        const subtotal = teeTime.price * players * getHoleMultiplier(holes);
+                                                        if (process.env.NODE_ENV !== 'production') {
+                                                          console.log('[TEE TIME] selectedTeeTime.price', { teeTimeId: teeTime.id, price: teeTime.price });
+                                                          console.log('[CHECKOUT] subtotalFromTeeTime', { subtotal, players, holes });
+                                                        }
+                                                        gtagEvent('select_item', {
+                                                            currency: 'USD',
+                                                            value: subtotal,
+                                                            items: [
+                                                                {
+                                                                    item_id: teeTime.id,
+                                                                    item_name: `${courseId}-${teeTime.time}`,
+                                                                    item_category: 'tee_time',
+                                                                    price: teeTime.price,
+                                                                    quantity: players,
+                                                                },
+                                                            ],
+                                                        });
+                                                    }}
                                                 >
                                                     <span className="font-semibold text-base">{teeTime.time}</span>
                                                     {isPartial && (

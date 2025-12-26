@@ -76,7 +76,9 @@ export async function POST(request: NextRequest) {
 }
 
 async function dedupeTimeBandsInFirestore(courseId: string): Promise<number> {
-  const timeBandsRef = adminDb.collection('pricing').doc(courseId).collection('timeBands');
+  if (!adminDb) return 0;
+  const db = adminDb;
+  const timeBandsRef = db.collection('pricing').doc(courseId).collection('timeBands');
   const snapshot = await timeBandsRef.get();
   
   if (snapshot.empty) return 0;
@@ -133,7 +135,7 @@ async function dedupeTimeBandsInFirestore(courseId: string): Promise<number> {
   }
 
   // Eliminar los documentos duplicados en lotes
-  const batch = adminDb.batch();
+  const batch = db.batch();
   for (const id of toDelete) {
     batch.delete(timeBandsRef.doc(id));
   }
@@ -146,7 +148,9 @@ async function dedupeTimeBandsInFirestore(courseId: string): Promise<number> {
 }
 
 async function dedupePriceRulesInFirestore(courseId: string): Promise<number> {
-  const priceRulesRef = adminDb.collection('pricing').doc(courseId).collection('priceRules');
+  if (!adminDb) return 0;
+  const db = adminDb;
+  const priceRulesRef = db.collection('pricing').doc(courseId).collection('priceRules');
   const snapshot = await priceRulesRef.get();
   
   if (snapshot.empty) return 0;
@@ -240,7 +244,7 @@ async function dedupePriceRulesInFirestore(courseId: string): Promise<number> {
   }
 
   // Eliminar los documentos duplicados en lotes
-  const batch = adminDb.batch();
+  const batch = db.batch();
   for (const id of toDelete) {
     batch.delete(priceRulesRef.doc(id));
   }
@@ -257,7 +261,9 @@ async function dedupePriceRulesByNameInFirestore(
   courseId: string,
   strategy: 'highest_priority' | 'latest' = 'highest_priority'
 ): Promise<number> {
-  const priceRulesRef = adminDb.collection('pricing').doc(courseId).collection('priceRules');
+  if (!adminDb) return 0;
+  const db = adminDb;
+  const priceRulesRef = db.collection('pricing').doc(courseId).collection('priceRules');
   const snapshot = await priceRulesRef.get();
   if (snapshot.empty) return 0;
 

@@ -10,6 +10,7 @@ const contactSchema = z.object({
   email: z.string().email({ message: 'Invalid email format' }),
   message: z.string().min(1, { message: 'Message is required' }),
   recaptchaToken: z.string().optional(),
+  csrfToken: z.string().optional(),
 });
 
 async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
@@ -50,6 +51,11 @@ async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const cookieToken = req.cookies.get('csrf-token')?.value;
+    const bodyToken = body?.csrfToken;
+    if (!SecurityUtils.requireCSRFToken(bodyToken, cookieToken)) {
+      return NextResponse.json({ error: 'Invalid CSRF token' }, { status: 403 });
+    }
 
     // Validate request body
     const validation = contactSchema.safeParse(body);

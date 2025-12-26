@@ -11,6 +11,10 @@ async function isAdmin(authHeader: string | null): Promise<boolean> {
   }
 
   try {
+    if (!auth || !db) {
+      console.error('Firebase Admin SDK not initialized');
+      return false;
+    }
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await auth.verifyIdToken(token);
     const userDoc = await db.collection('users').doc(decodedToken.uid).get();

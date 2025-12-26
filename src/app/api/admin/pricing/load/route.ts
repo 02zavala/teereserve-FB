@@ -8,6 +8,10 @@ async function isAdmin(authHeader: string | null): Promise<boolean> {
   }
 
   try {
+    if (!auth || !db) {
+      console.error('Firebase Admin SDK not initialized');
+      return false;
+    }
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await auth.verifyIdToken(token);
     
@@ -58,6 +62,7 @@ export async function GET(request: NextRequest) {
     
     // Load seasons
     try {
+      if (!db) throw new Error('Admin Firestore not initialized');
       const seasonsSnapshot = await db.collection('pricing').doc(courseId).collection('seasons').get();
       pricingData.seasons = seasonsSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -69,6 +74,7 @@ export async function GET(request: NextRequest) {
     
     // Load time bands
     try {
+      if (!db) throw new Error('Admin Firestore not initialized');
       const timeBandsSnapshot = await db.collection('pricing').doc(courseId).collection('timeBands').get();
       pricingData.timeBands = timeBandsSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -80,6 +86,7 @@ export async function GET(request: NextRequest) {
     
     // Load price rules
     try {
+      if (!db) throw new Error('Admin Firestore not initialized');
       const priceRulesSnapshot = await db.collection('pricing').doc(courseId).collection('priceRules').get();
       pricingData.priceRules = priceRulesSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -91,6 +98,7 @@ export async function GET(request: NextRequest) {
     
     // Load special overrides
     try {
+      if (!db) throw new Error('Admin Firestore not initialized');
       const overridesSnapshot = await db.collection('pricing').doc(courseId).collection('specialOverrides').get();
       pricingData.specialOverrides = overridesSnapshot.docs.map(doc => ({
         id: doc.id,
@@ -102,6 +110,7 @@ export async function GET(request: NextRequest) {
     
     // Load base product
     try {
+      if (!db) throw new Error('Admin Firestore not initialized');
       const baseProductDoc = await db.collection('pricing').doc(courseId).collection('baseProducts').doc('default').get();
       if (baseProductDoc.exists) {
         pricingData.baseProduct = {
@@ -116,6 +125,7 @@ export async function GET(request: NextRequest) {
     // Get course metadata
     let courseMetadata: any = null;
     try {
+      if (!db) throw new Error('Admin Firestore not initialized');
       const courseDoc = await db.collection('pricing').doc(courseId).get();
       if (courseDoc.exists) {
         courseMetadata = courseDoc.data() || null;

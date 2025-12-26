@@ -207,12 +207,11 @@ export function CourseForm({ course, lang }: CourseFormProps) {
 
       // Trigger revalidation of public pages to reflect price/base data changes immediately
       try {
-        const token = user ? await user.getIdToken() : null;
-        await fetch("/api/admin/courses/revalidate", {
+        const { adminFetch } = await import('@/lib/admin-fetch');
+        await adminFetch("/api/admin/courses/revalidate", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {})
           },
           body: JSON.stringify({ courseId: normalizedSlug || savedCourseId })
         });

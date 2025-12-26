@@ -21,23 +21,29 @@ function loadEnvFile(filePath) {
 // Load .env.local file
 loadEnvFile(path.join(process.cwd(), '.env.local'));
 
-// Check critical environment variables
 const criticalVars = [
   'NEXT_PUBLIC_FIREBASE_API_KEY',
   'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
-  'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY'
+  'NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID',
+  'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'NEXT_PUBLIC_PAYPAL_CLIENT_ID',
+  'PAYPAL_CLIENT_SECRET',
+  'GA4_API_SECRET'
 ];
 
 console.log('=== CHECKING CRITICAL ENVIRONMENT VARIABLES ===\n');
 
 criticalVars.forEach(varName => {
   const value = process.env[varName];
-  if (value && value.trim() !== '' && !value.includes('your-') && !value.includes('placeholder')) {
+  const bad = !value || /your|placeholder/i.test(value);
+  if (!bad) {
     console.log(`✅ ${varName}: CONFIGURED`);
   } else {
     console.log(`❌ ${varName}: NOT SET OR PLACEHOLDER`);
     if (value) {
-      console.log(`   Current value: ${value.substring(0, 20)}...`);
+      console.log(`   Current value: ${value.substring(0, 24)}...`);
     }
   }
 });
@@ -45,7 +51,7 @@ criticalVars.forEach(varName => {
 console.log('\n=== SUMMARY ===');
 const configuredCount = criticalVars.filter(varName => {
   const value = process.env[varName];
-  return value && value.trim() !== '' && !value.includes('your-') && !value.includes('placeholder');
+  return !!value && !/your|placeholder/i.test(value);
 }).length;
 
 console.log(`Configured: ${configuredCount}/${criticalVars.length}`);

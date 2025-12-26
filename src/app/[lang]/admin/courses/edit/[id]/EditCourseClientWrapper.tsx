@@ -1,5 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
+import { Locale } from "@/i18n-config";
 
 const EditCourseClient = dynamic(() => import("@/components/admin/EditCourseClient").then(m => m.EditCourseClient), {
   ssr: false,
@@ -8,6 +9,6 @@ const EditCourseClient = dynamic(() => import("@/components/admin/EditCourseClie
   ),
 });
 
-export default function EditCourseClientWrapper(props: { course: any; lang: string }) {
+export default function EditCourseClientWrapper(props: { course: any; lang: Locale }) {
   return <EditCourseClient {...props} />;
 }

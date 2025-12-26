@@ -20,7 +20,7 @@ interface NewPostProps {
 }
 
 export default function NewPost({ onPosted }: NewPostProps) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -52,7 +52,7 @@ export default function NewPost({ onPosted }: NewPostProps) {
       const input: PostInput = {
         userId: user.uid,
         userName: user.displayName || user.email || "Usuario",
-        userAvatar: profile?.photoURL || user.photoURL || null,
+        userAvatar: user.photoURL || null,
         text: String(data.text || ""),
         media: mediaItems,
       };

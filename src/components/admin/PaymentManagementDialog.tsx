@@ -94,7 +94,9 @@ export function PaymentManagementDialog({ booking, open, onOpenChange, onPayment
       const [summary, intent, evidence] = await Promise.all([
         paymentManager.getPaymentSummary(booking.id),
         loadPaymentIntent(),
-        evidenceSystem.buildDisputeDocumentation(booking.id),
+        typeof (evidenceSystem as any).buildDisputeDocumentation === 'function'
+          ? (evidenceSystem as any).buildDisputeDocumentation(booking.id)
+          : Promise.resolve(null),
       ]);
       
       setPaymentSummary(summary);
@@ -760,19 +762,19 @@ const loadAutomaticEvidence = () => {
                                   </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-xs">
-                                  {automaticEvidence.checkinLocation && (
+                                  {(automaticEvidence as any)?.checkinLocation && (
                                     <div className="flex items-center gap-2">
                                       <MapPin className="h-3 w-3 text-green-600" />
                                       <span>Check-in verificado por geolocalización</span>
                                     </div>
                                   )}
-                                  {automaticEvidence.checkinPhoto && (
+                                  {(automaticEvidence as any)?.checkinPhoto && (
                                     <div className="flex items-center gap-2">
                                       <Camera className="h-3 w-3 text-green-600" />
                                       <span>Fotografía de evidencia disponible</span>
                                     </div>
                                   )}
-                                  {automaticEvidence.deviceMetadata && (
+                                  {(automaticEvidence as any)?.deviceMetadata && (
                                     <div className="flex items-center gap-2">
                                       <Shield className="h-3 w-3 text-green-600" />
                                       <span>Metadatos del dispositivo registrados</span>

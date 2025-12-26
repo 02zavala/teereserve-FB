@@ -262,6 +262,7 @@ export default function ReviewsPageClient({ dict, lang }: ReviewsPageClientProps
         userName: user.displayName || 'Usuario',
         rating: newReview.rating,
         text: newReview.text.trim(),
+        comment: newReview.text.trim(),
         media: [],
         experienceType: newReview.experienceType
       };

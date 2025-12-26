@@ -26,7 +26,8 @@ export default function TestSender() {
 
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/telegram-alerts/test', {
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const res = await adminFetch('/api/admin/telegram-alerts/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chatId: testChatId, message: testMessage }),

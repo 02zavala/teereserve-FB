@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     let userId: string | null = null;
     const authHeader = request.headers.get('authorization');
-    if (authHeader?.startsWith('Bearer ')) {
+    if (authHeader?.startsWith('Bearer ') && auth) {
       try {
         const token = authHeader.split('Bearer ')[1];
         const decoded = await auth.verifyIdToken(token);
@@ -27,6 +27,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (!db) {
+      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+    }
     const leadsCol = db.collection('leads');
 
     // Upsert by email to avoid duplicates

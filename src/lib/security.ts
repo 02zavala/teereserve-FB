@@ -168,6 +168,12 @@ export class SecurityUtils {
     return result === 0;
   }
 
+  static requireCSRFToken(token: string | undefined, expectedToken: string | undefined): boolean {
+    if (!expectedToken) return true
+    if (!token) return false
+    return SecurityUtils.validateCSRFToken(token, expectedToken)
+  }
+
   // Validar archivo de imagen
   static validateImageFile(file: File): { valid: boolean; error?: string } {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];

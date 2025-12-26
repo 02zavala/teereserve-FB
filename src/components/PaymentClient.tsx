@@ -5,8 +5,9 @@ import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { LazyCheckoutForm } from '@/components/LazyComponents';
 
-// Initialize Stripe outside of component to avoid re-initialization
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripeKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripeMisconfigured = !stripeKey || /your|placeholder/i.test(stripeKey);
+const stripePromise = stripeMisconfigured ? null : loadStripe(stripeKey!);
 
 interface PaymentClientProps {
   clientSecret?: string;
@@ -37,7 +38,15 @@ export default function PaymentClient({ clientSecret }: PaymentClientProps) {
   }, [clientSecret]);
 
   // Conditional rendering ONLY in JSX, never before hooks
-  if (!clientSecret || !options) {
+  if (stripeMisconfigured) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="text-sm text-red-600">Sistema de pagos no configurado: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</div>
+      </div>
+    );
+  }
+
+  if (!clientSecret || !options || !stripePromise) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
         <div className="flex flex-col items-center space-y-2">

@@ -57,7 +57,7 @@ export class OptimizedFirebaseService {
       if (!db) {
         throw new Error('Firebase not initialized');
       }
-      const coursesRef = collection(db, 'courses');
+      const coursesRef = collection(db!, 'courses');
       const q = query(coursesRef, orderBy('name'));
       const snapshot = await getDocs(q);
       
@@ -92,7 +92,7 @@ export class OptimizedFirebaseService {
       if (!db) {
         throw new Error('Firebase not initialized');
       }
-      const courseRef = doc(db, 'courses', courseId);
+      const courseRef = doc(db!, 'courses', courseId);
       const snapshot = await getDoc(courseRef);
       
       if (!snapshot.exists()) {
@@ -138,7 +138,7 @@ export class OptimizedFirebaseService {
       if (!db) {
         throw new Error('Firebase not initialized');
       }
-      const coursesRef = collection(db, 'courses');
+      const coursesRef = collection(db!, 'courses');
       const constraints: QueryConstraint[] = [];
 
       // Aplicar filtros

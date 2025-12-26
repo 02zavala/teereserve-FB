@@ -37,7 +37,8 @@ export default function HistoryList() {
     try {
       if (reset) setLoading(true);
       const currentOffset = reset ? 0 : offset;
-      const res = await fetch(`/api/admin/telegram-alerts/history?limit=${limit}&offset=${currentOffset}`);
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const res = await adminFetch(`/api/admin/telegram-alerts/history?limit=${limit}&offset=${currentOffset}`);
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data?.alerts) ? data.alerts : Array.isArray(data) ? data : [];
@@ -63,7 +64,8 @@ export default function HistoryList() {
 
   async function clearAll() {
     try {
-      const res = await fetch('/api/admin/telegram-alerts/history?clearAll=true', { method: 'DELETE' });
+      const { adminFetch } = await import('@/lib/admin-fetch');
+      const res = await adminFetch('/api/admin/telegram-alerts/history?clearAll=true', { method: 'DELETE' });
       if (res.ok) {
         setAlerts([]);
         setOffset(0);
