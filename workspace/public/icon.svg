@@ -1,0 +1,22 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Escudo hexagonal -->
+  <path d="M64 10L104 28V82L64 100L24 82V28L64 10Z" fill="#1E5631" stroke="#1E5631" stroke-width="2"/>
+
+  <!-- Montaña -->
+  <path d="M30 75L50 45L60 50L80 35L98 75V90H30V75Z" fill="#2D7A3E"/>
+
+  <!-- Palmera tronco -->
+  <rect x="78" y="55" width="3" height="20" fill="#1E5631"/>
+
+  <!-- Palmera hojas -->
+  <path d="M79.5 55C76 52 76 58 79.5 55M79.5 55C83 52 83 58 79.5 55M79.5 55C77 48 82 48 79.5 55M79.5 55C82 48 77 48 79.5 55" fill="#1E5631"/>
+
+  <!-- Bandera polo -->
+  <rect x="88" y="60" width="2" height="15" fill="#D4AF37"/>
+
+  <!-- Bandera -->
+  <path d="M90 60L100 65L90 70Z" fill="#D4AF37"/>
+
+  <!-- Camino -->
+  <path d="M55 90C58 82 61 78 64 75C67 78 70 82 73 90" fill="white"/>
+</svg>

@@ -1,9 +1,11 @@
 
 import { initializeApp, getApps, getApp, FirebaseOptions, FirebaseApp } from "firebase/app";
-import { getFirestore, Firestore } from "firebase/firestore";
-import { getAuth, Auth } from "firebase/auth";
-import { getStorage, FirebaseStorage } from "firebase/storage";
+import { getFirestore, Firestore, initializeFirestore, enableNetwork, disableNetwork, connectFirestoreEmulator } from "firebase/firestore";
+import { getAuth, Auth, connectAuthEmulator } from "firebase/auth";
+import { getStorage, FirebaseStorage, connectStorageEmulator } from "firebase/storage";
 import { getAnalytics, isSupported, Analytics } from "firebase/analytics";
+import { getDatabase, Database, connectDatabaseEmulator } from "firebase/database";
+import { getMessaging, Messaging, isSupported as isMessagingSupported } from "firebase/messaging";
 
 // --- Configuration and Validation ---
 
@@ -19,8 +21,23 @@ const firebaseConfig: FirebaseOptions = {
 
 const validateFirebaseConfig = (config: FirebaseOptions): boolean => {
     return Object.entries(config).every(([key, value]) => {
-        if (!value || typeof value !== 'string' || value.includes('your_') || value.includes('YOUR_')) {
-            console.warn(`Firebase Initialization Warning: Missing or invalid environment variable for '${key}'. Firebase services will be disabled.`);
+        // Check for empty values, "your_", "YOUR_", or "dummy" (case insensitive)
+        if (!value || 
+            typeof value !== 'string' || 
+            value.includes('your_') || 
+            value.includes('YOUR_') || 
+            value.toLowerCase().includes('dummy')) {
+            console.warn(`
+              *****************************************************************
+              * Firebase Initialization Warning:                              *
+              * Invalid value detected for environment variable:              *
+              * NEXT_PUBLIC_${key.replace(/([A-Z])/g, '_$1').toUpperCase()}
+              * Value: "${value}"                                             *
+              *                                                               *
+              * Firebase services will be disabled.                           *
+              * Please ensure your .env.local file is correctly configured.   *
+              *****************************************************************
+            `);
             return false;
         }
         return true;
@@ -33,18 +50,224 @@ const isConfigValid = validateFirebaseConfig(firebaseConfig);
 
 let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
+let realtimeDb: Database | null = null;
 let auth: Auth | null = null;
 let storage: FirebaseStorage | null = null;
 let analytics: Promise<Analytics | null> | null = null;
+let messaging: Promise<Messaging | null> | null = null;
 
 if (isConfigValid) {
     try {
+        // Evitar doble inicialización
         app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-        db = getFirestore(app);
-        auth = getAuth(app);
+        
+        // Configurar Firestore con transporte estable y persistencia offline
+        try {
+            db = initializeFirestore(app, {
+                experimentalAutoDetectLongPolling: true,
+                localCache: { kind: 'persistent' },
+            });
+            
+            // Nota: El manejo de conectividad se realiza a través del hook useFirestoreConnection
+            // para evitar conflictos y el error "Target ID already exists"
+            
+        } catch (error: any) {
+            // Si ya está inicializado, usar la instancia existente
+            if (error.code === 'failed-precondition') {
+                db = getFirestore(app);
+                console.log('Using existing Firestore instance');
+            } else {
+                console.error('Error initializing Firestore:', error);
+                // Intentar con configuración básica como fallback
+                try {
+                    db = getFirestore(app);
+                    console.log('Firestore initialized with basic configuration');
+                } catch (fallbackError) {
+                    console.error('Failed to initialize Firestore with fallback:', fallbackError);
+                    throw fallbackError;
+                }
+            }
+        }
+        
+        realtimeDb = getDatabase(app);
+        
+        // Configurar Auth con manejo mejorado de errores
+        try {
+            auth = getAuth(app);
+            
+            // Configurar manejo de errores específicos para Google APIs
+            if (typeof window !== 'undefined') {
+                // Función para verificar conectividad a Google APIs
+                const checkGoogleApisConnectivity = async (): Promise<boolean> => {
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 segundos timeout (más rápido)
+                        
+                        const response = await fetch('https://apis.google.com/js/api.js', {
+                            method: 'HEAD',
+                            signal: controller.signal,
+                            cache: 'no-cache',
+                            mode: 'no-cors' // Evita algunos errores CORS
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        return response.ok;
+                    } catch (error) {
+                        // Silenciar errores específicos de red para reducir ruido en consola
+                        if (error instanceof Error) {
+                            const errorMsg = error.message.toLowerCase();
+                            if (errorMsg.includes('aborted') || 
+                                errorMsg.includes('network') || 
+                                errorMsg.includes('fetch')) {
+                                // Solo log en desarrollo para debugging
+                                if (process.env.NODE_ENV === 'development') {
+                                    console.log('🔐 Google APIs: Conectividad limitada (modo offline)');
+                                }
+                                return false;
+                            }
+                        }
+                        console.log('🔐 Google APIs no disponibles:', error instanceof Error ? error.message : 'Unknown error');
+                        return false;
+                    }
+                };
+                
+                // Verificar conectividad antes de inicializar Google APIs
+                const handleAuthErrors = async () => {
+                    const isGoogleApisAvailable = await checkGoogleApisConnectivity();
+                    
+                    if (!isGoogleApisAvailable) {
+                        console.log('🔐 Auth: Google APIs no disponibles - modo offline');
+                        return;
+                    }
+                    
+                    // Interceptar errores de Google APIs con retry
+                    const originalFetch = window.fetch;
+                    window.fetch = async (...args) => {
+                        try {
+                            return await originalFetch(...args);
+                        } catch (error: any) {
+                            // Manejar errores específicos de Google APIs
+                            if (args[0] && typeof args[0] === 'string' && 
+                                args[0].includes('apis.google.com')) {
+                                console.log('🔐 Google APIs fetch failed (retrying in offline mode)');
+                                
+                                // Intentar una vez más después de un breve delay
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                                
+                                try {
+                                    return await originalFetch(...args);
+                                } catch (retryError) {
+                                    console.log('🔐 Google APIs retry failed - operating in offline mode');
+                                    throw new Error('Network unavailable for Google APIs');
+                                }
+                            }
+                            throw error;
+                        }
+                    };
+                };
+                
+                // Solo aplicar interceptores si estamos online
+                if (typeof window !== 'undefined' && navigator.onLine) {
+                    handleAuthErrors().catch(error => {
+                        console.log('🔐 Auth error handling setup failed:', error.message);
+                    });
+                }
+                
+                // Manejar cambios de conectividad para Auth
+                const handleAuthOnline = async () => {
+                    console.log('🔐 Auth: Conectividad restaurada');
+                    
+                    // Esperar un poco para que la red se estabilice
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    try {
+                        await handleAuthErrors();
+                    } catch (error) {
+                        console.log('🔐 Auth: Error al restaurar conectividad:', error instanceof Error ? error.message : 'Unknown error');
+                    }
+                };
+                
+                const handleAuthOffline = () => {
+                    console.log('🔐 Auth: Modo offline - Google Sign-In deshabilitado');
+                };
+                
+                window.addEventListener('online', handleAuthOnline);
+                window.addEventListener('offline', handleAuthOffline);
+            }
+        } catch (authError) {
+            console.error('Error initializing Firebase Auth:', authError);
+            auth = null;
+        }
+        
         storage = getStorage(app);
+        
+        // Enable Firebase Emulators in development when explicitly requested
+        const useEmulators = process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === 'true';
+        if (useEmulators) {
+            try {
+                if (db) {
+                    connectFirestoreEmulator(db, 'localhost', 8080);
+                }
+                if (auth) {
+                    connectAuthEmulator(auth, 'http://localhost:9099');
+                }
+                if (storage) {
+                    connectStorageEmulator(storage, 'localhost', 9199);
+                }
+                if (realtimeDb) {
+                    connectDatabaseEmulator(realtimeDb, 'localhost', 9000);
+                }
+                console.log('✅ Connected to Firebase emulators');
+            } catch (e) {
+                console.warn('Failed to connect to Firebase emulators:', e);
+            }
+        }
+        
+        // Log de conexión para debugging
+        if (typeof window !== 'undefined' && db) {
+            console.log('Firestore initialized with stable transport');
+        }
+        
         if (typeof window !== 'undefined') {
-            analytics = isSupported().then(yes => (yes ? getAnalytics(app as FirebaseApp) : null));
+            analytics = isSupported().then(async (yes) => {
+                if (yes) {
+                    try {
+                        // En desarrollo, deshabilitar Analytics si hay problemas de red
+                        if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && !navigator.onLine) {
+                            console.warn('Firebase Analytics disabled in development (offline)');
+                            return null;
+                        }
+                        return getAnalytics(app as FirebaseApp);
+                    } catch (error) {
+                        console.warn('Failed to initialize Firebase Analytics (script loading failed):', error);
+                        return null;
+                    }
+                }
+                return null;
+            }).catch((error) => {
+                console.warn('Analytics support check failed:', error);
+                return null;
+            });
+            
+            const disableNotifications = process.env.NEXT_PUBLIC_DISABLE_NOTIFICATIONS === 'true';
+            messaging = isMessagingSupported().then(async (yes) => {
+                if (yes) {
+                    try {
+                        if (disableNotifications) {
+                            console.warn('Firebase Messaging disabled by NEXT_PUBLIC_DISABLE_NOTIFICATIONS');
+                            return null;
+                        }
+                        return getMessaging(app as FirebaseApp);
+                    } catch (error) {
+                        console.warn('Failed to initialize Firebase Messaging:', error);
+                        return null;
+                    }
+                }
+                return null;
+            }).catch((error) => {
+                console.warn('Messaging support check failed:', error);
+                return null;
+            });
         }
     } catch (e) {
          console.error("Error initializing Firebase:", e);
@@ -54,11 +277,19 @@ if (isConfigValid) {
          auth = null;
          storage = null;
          analytics = null;
+         messaging = null;
     }
 } else {
-    console.error(
-        "Firebase services are disabled due to invalid configuration. Please check your .env.local file."
-    );
+    // Only warn in development, error in production if config is missing
+    if (process.env.NODE_ENV === 'production') {
+        console.error(
+            "Firebase services are disabled due to invalid or missing configuration. This is critical in production."
+        );
+    } else {
+        console.warn(
+            "ℹ️ [DEV MODE] Firebase services disabled (using dummy/missing config). UI will work in offline/mock mode."
+        );
+    }
 }
 
-export { db, auth, storage, app, analytics };
+export { db, realtimeDb, auth, storage, app, analytics, messaging };

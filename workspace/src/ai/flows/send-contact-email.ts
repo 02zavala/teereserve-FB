@@ -10,6 +10,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import nodemailer from 'nodemailer';
+import xoauth2 from 'xoauth2';
 
 const SendContactEmailInputSchema = z.object({
   name: z.string().describe('The name of the person sending the message.'),
@@ -37,9 +38,9 @@ const sendContactEmailFlow = ai.defineFlow(
 
     // IMPORTANT: You must configure Zoho Mail environment variables in your .env file
     const transporter = nodemailer.createTransport({
-      host: 'smtp.zoho.com', // Using Zoho's SMTP server
+      host: 'smtp.zoho.com',
       port: 465,
-      secure: true, // true for 465, false for other ports
+      secure: true,
       auth: {
         type: 'OAuth2',
         user: process.env.ZOHO_MAIL_FROM,
@@ -50,9 +51,9 @@ const sendContactEmailFlow = ai.defineFlow(
     });
 
     const mailOptions = {
-      from: `"${name}" <${process.env.ZOHO_MAIL_FROM}>`, // Sender address (your configured Zoho email)
-      to: process.env.CONTACT_FORM_RECIPIENT, // List of receivers
-      replyTo: email, // Set the sender's email as the reply-to address
+      from: `"${name}" <${process.env.ZOHO_MAIL_FROM}>`,
+      to: process.env.CONTACT_FORM_RECIPIENT,
+      replyTo: email,
       subject: `New Contact Form Message from ${name}`,
       text: message,
       html: `
@@ -70,8 +71,8 @@ const sendContactEmailFlow = ai.defineFlow(
       return { success: true, message: 'Email sent successfully.' };
     } catch (error) {
       console.error('Failed to send email:', error);
-      // It's important to throw an error here so the frontend knows something went wrong.
-      throw new Error('Failed to send email.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown mailing error.';
+      throw new Error(`Failed to send email: ${errorMessage}`);
     }
   }
 );
