@@ -1,0 +1,583 @@
+
+{
+    "header": {
+        "home": "Home",
+        "findCourse": "Find a Course",
+        "map": "Map",
+        "about": "About Us",
+        "contact": "Contact",
+        "recommendations": "AI Recommendations",
+        "admin": "Admin"
+    },
+    "footer": {
+        "platformDescription": "The premium golf booking platform in Mexico. Discover the best courses and live unique experiences.",
+        "platform": "Platform",
+        "courses": "Courses",
+        "reservations": "Reservations",
+        "reviews": "Reviews",
+        "admin": "Admin",
+        "support": "Support",
+        "helpCenter": "Help Center",
+        "contact": "Contact",
+        "contactTitle": "Contact",
+        "followUs": "Follow Us",
+        "allRightsReserved": "All rights reserved.",
+        "privacyPolicy": "Privacy Policy",
+        "termsOfService": "Terms of Service",
+        "premiumExperience": "A Premium Golf Experience",
+        "adminDashboard": "Admin Dashboard"
+    },
+     "secondaryFooter": {
+        "platformDescription": "The premium platform for golf bookings in Mexico. Discover the best courses and live unique experiences.",
+        "quickLinks": "Quick Links",
+        "golfCourses": "Golf Courses",
+        "book": "Book",
+        "adminDashboard": "Admin Dashboard",
+        "contactInfo": "Contact",
+        "reservations": "Reservations",
+        "offices": "Offices",
+        "ourService": "Our Service",
+        "supportHours": "Support",
+        "online247": "24/7 Online",
+        "phoneHours": "Mon-Sun 6:00-22:00",
+        "rating": "Rating",
+        "ratingCount": "+2,500 reviews",
+        "needHelp": "Need help?",
+        "helpCenter": "Help Center",
+        "allRightsReserved": "All rights reserved.",
+        "privacyPolicy": "Privacy",
+        "termsOfService": "Terms",
+        "madeIn": "Made with ❤️ in Mexico",
+        "contact": "Contact"
+    },
+    "onboarding": {
+        "title": "Welcome to TeeReserve!",
+        "subtitle": "We'll guide you through the main features so you can make the most of your experience.",
+        "steps": {
+            "welcome": {
+                "title": "Welcome to TeeReserve!",
+                "description": "We're excited to have you as part of our golf community. Get ready to discover the best courses and live unique experiences."
+            },
+            "explore": {
+                "title": "Explore Golf Courses",
+                "description": "Discover a wide selection of premium golf courses in Mexico. Each course offers unique and challenging experiences.",
+                "action": "View Courses"
+            },
+            "book": {
+                "title": "Book your Tee Time",
+                "description": "Easily book your preferred time slot at any course. Our system allows you to choose date, time and number of players.",
+                "action": "Make Booking"
+            },
+            "profile": {
+                "title": "Complete your Profile",
+                "description": "Customize your profile with your handicap, preferences and photo. This helps us offer you more accurate recommendations.",
+                "action": "Go to Profile"
+            },
+            "gamification": {
+                "title": "Achievement System",
+                "description": "Earn XP and unlock achievements while you play. Compete with other golfers and climb the community ranking."
+            }
+        },
+        "navigation": {
+            "next": "Next",
+            "previous": "Previous",
+            "skip": "Skip",
+            "finish": "Finish",
+            "getStarted": "Get Started"
+        }
+    },
+    "themeToggle": {
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System",
+        "toggle": "Toggle theme"
+    },
+    "languageSwitcher": {
+        "label": "Change language",
+        "en": "EN",
+        "es": "ES"
+    },
+    "heroSection": {
+        "title": "Find Your Perfect",
+        "titleHighlight": "Tee Time",
+        "subtitle": "Book your perfect round at the finest golf courses in Los Cabos. Real-time availability, instant confirmation, and exclusive access.",
+        "stats": {
+            "courses": { "value": "15+", "label": "Premium Courses" },
+            "golfers": { "value": "10K+", "label": "Happy Golfers" },
+            "rating": { "value": "4.9", "label": "Rating" },
+            "support": { "value": "24/7", "label": "Support" }
+        },
+        "bookButton": "Book Your Round",
+        "exploreButton": "Explore Courses"
+    },
+    "howItWorks": {
+        "title": "How It Works",
+        "subtitle": "Booking your perfect golf round in Los Cabos is simple and straightforward. Follow these easy steps to secure your tee time at world-class courses.",
+        "steps": {
+            "search": {
+                "title": "Search & Browse",
+                "description": "Browse our curated selection of premium golf courses. Use filters to find courses that match your preferences and skill level."
+            },
+            "select": {
+                "title": "Select Your Tee Time",
+                "description": "Choose your preferred date and time from available slots shown in our real-time calendar."
+            },
+            "pay": {
+                "title": "Secure Payment",
+                "description": "Complete your booking with our secure payment system. We protect your data and offer multiple payment options."
+            },
+            "play": {
+                "title": "Play & Enjoy",
+                "description": "Arrive at the course with your confirmation. Our 24/7 support team is available if you need any assistance."
+            }
+        },
+        "cta": {
+            "title": "Ready to Book Your Round?",
+            "subtitle": "Join thousands of satisfied golfers who trust TeeReserve for their Los Cabos golf experiences.",
+            "bookButton": "Start Booking",
+            "exploreButton": "Browse Courses"
+        }
+    },
+    "whyChooseUs": {
+        "title": "Why Choose TeeReserve?",
+        "subtitle": "We're more than just a booking platform. We're your trusted partner in creating unforgettable golf experiences in one of the world's most beautiful destinations.",
+        "features": {
+            "realTime": {
+                "title": "Real-Time Availability",
+                "description": "See live availability and book instantly with immediate confirmation for all premium courses in Los Cabos."
+            },
+            "bestRate": {
+                "title": "Best Rate Guarantee",
+                "description": "We guarantee the best rates available. Find a lower price elsewhere? We'll match it and give you 5% off."
+            },
+            "premium": {
+                "title": "Premium Courses Only",
+                "description": "Access to 15+ championship golf courses including Jack Nicklaus, Tiger Woods, and Robert Trent Jones designs."
+            },
+            "support": {
+                "title": "24/7 Support",
+                "description": "Our golf experts are available around the clock to help you find the perfect tee time and answer any questions."
+            },
+            "payment": {
+                "title": "Secure Payments",
+                "description": "Multiple payment options including Stripe, PayPal, Apple Pay, and Google Pay with bank-level security."
+            },
+            "expertise": {
+                "title": "Local Expertise",
+                "description": "Deep knowledge of Los Cabos golf courses with insider tips on course conditions, weather, and best times to play."
+            }
+        },
+        "stats": {
+            "coursesValue": "15+",
+            "coursesLabel": "Premium Golf Courses",
+            "golfersValue": "10,000+",
+            "golfersLabel": "Satisfied Golfers",
+            "ratingValue": "4.9",
+            "ratingLabel": "Average Rating",
+            "successRateValue": "99%",
+            "successRateLabel": "Success Rate"
+        }
+    },
+    "testimonials": {
+        "title": "What Our Golfers Say",
+        "subtitle": "Don't just take our word for it. Hear from thousands of satisfied golfers who have experienced the best of Los Cabos golf through TeeReserve.",
+        "testimonials": [
+          {
+            "name": "Michael Rodriguez",
+            "location": "California, USA",
+            "avatar": "https://i.pravatar.cc/100?u=michael",
+            "course": "Cabo del Sol Ocean Course",
+            "comment": "Absolutely incredible experience! TeeReserve made booking so easy, and the course was spectacular. The oceanfront holes are unforgettable. Will definitely book again."
+          },
+          {
+            "name": "Sarah Johnson",
+            "location": "Texas, USA",
+            "avatar": "https://i.pravatar.cc/100?u=sarah",
+            "course": "Diamante El Cardonal",
+            "comment": "Tiger Woods designed course was amazing! The booking process was seamless, and the customer service was top-notch. Best golf vacation we've ever had."
+          },
+          {
+            "name": "David Chen",
+            "location": "Vancouver, Canada",
+            "avatar": "https://i.pravatar.cc/100?u=david",
+            "course": "Palmilla Golf Club",
+            "comment": "The One&Only Palmilla course exceeded all expectations. TeeReserve's platform made it easy to compare options and book at the best rate. Highly recommended!"
+          },
+          {
+            "name": "Jennifer Williams",
+            "location": "Florida, USA",
+            "avatar": "https://i.pravatar.cc/100?u=jennifer",
+            "course": "Puerto Los Cabos Golf Club",
+            "comment": "Fantastic service from start to finish. The course was in perfect condition, and the views were breathtaking. TeeReserve made our group booking effortless."
+          }
+        ]
+    },
+    "home": {
+        "heroSubtitle": "Your specialized platform to book the best golf courses.",
+        "featuredCoursesTitle": "Featured Courses",
+        "featuredCoursesSubtitle": "Discover the top-rated courses in the area",
+        "recommendationsTitle": "Recommended for You",
+        "recommendationsSubtitle": "AI recommendations based on your preferences",
+        "featuredReviewsTitle": "What Our Golfers Say",
+        "featuredReviewsSubtitle": "Don't just take our word for it. Listen to thousands of satisfied golfers who have experienced the best of golf through TeeReserve."
+    },
+    "coursesPage": {
+        "title": "Find Your Next Round",
+        "description": "Explore all available golf courses and book your next tee time in Los Cabos.",
+        "subtitle": "Use the filters below to find the perfect course for your needs.",
+        "noResultsTitle": "No Courses Found",
+        "noResultsSubtitle": "Try adjusting your search filters to find available courses."
+    },
+    "courseSearch": {
+        "location": "Location",
+        "allLocations": "All Locations",
+        "date": "Date",
+        "pickDate": "Pick a date",
+        "players": "Players",
+        "onePlayer": "1 Player",
+        "multiplePlayers": "Players",
+        "groupBooking": "8+ Players (Groups)",
+        "time": "Time",
+        "anyTime": "Any Time",
+        "morning": "Morning (6am - 12pm)",
+        "afternoon": "Afternoon (12pm - 5pm)",
+        "evening": "Evening (5pm - 9pm)",
+        "search": "Search",
+        "contactUs": "Contact Us"
+    },
+    "courseCard": {
+        "from": "From",
+        "bookNow": "Book Now",
+        "viewTimes": "View Times",
+        "reviews": "reviews"
+    },
+    "cookieConsent": {
+        "title": "Cookie Usage at TeeReserve Golf",
+        "description": "We use cookies and similar technologies to enhance your browsing experience, personalize content, and analyze traffic. By clicking 'Accept All', you consent to the use of all cookies. You can manage your preferences individually.",
+        "acceptAll": "Accept All",
+        "rejectAll": "Reject All",
+        "configure": "Configure",
+        "privacyPolicy": "View Privacy Policy",
+        "close": "Close",
+        "preferencesTitle": "Cookie Preferences",
+        "necessary": {
+            "title": "Necessary",
+            "description": "Always active, required for basic website functionality."
+        },
+        "analytics": {
+            "title": "Analytics",
+            "description": "Help measure usage and improve performance."
+        },
+        "marketing": {
+            "title": "Marketing",
+            "description": "Personalization and relevant advertisements."
+        },
+        "cancel": "Cancel",
+        "savePreferences": "Save Preferences"
+    },
+    "exitIntent": {
+        "title": "Wait! Get exclusive offers",
+        "subtitle": "Leave your email to receive deals, updates and golf tips.",
+        "placeholderEmail": "you@example.com",
+        "cta": "Keep me posted",
+        "skip": "No thanks",
+        "success": "Thanks! We'll be in touch soon.",
+        "invalid": "Please enter a valid email address."
+    },
+    "aboutPage": {
+        "hero": {
+            "title": "About Us",
+            "subtitle": "Connecting golfers with unforgettable experiences on the best courses.",
+            "imageAlt": "TeeReserve team on a golf course"
+        },
+        "mission": {
+            "title": "Our Mission",
+            "description": "At TeeReserve, we are passionate about connecting golfers with unique experiences at the best golf courses. Our mission is to provide premium reservations with a seamless, secure, and reliable experience, ensuring that every round is memorable.",
+            "imageAlt": "Detailed view of a pristine golf course"
+        },
+        "values": {
+            "title": "Our Values",
+            "subtitle": "The principles that guide our work and commitment to you.",
+            "passion": {
+                "title": "Passion for Golf",
+                "description": "We are golfers serving golfers. We understand the details that make a round of golf perfect."
+            },
+            "quality": {
+                "title": "Quality and Excellence",
+                "description": "We partner with the most exclusive and best-maintained courses to offer a premium experience."
+            },
+            "trust": {
+                "title": "Trust and Security",
+                "description": "We guarantee a secure and transparent booking process from start to finish."
+            }
+        },
+        "team": {
+            "title": "Our Team",
+            "subtitle": "The experts making your next golf adventure possible.",
+            "roles": {
+                "founder": "Founder & CEO",
+                "ops": "Head of Operations",
+                "dev": "Lead Developer"
+            }
+        },
+        "cta": {
+            "title": "Ready for Your Next Round?",
+            "subtitle": "Explore our selection of world-class courses and book your next tee time with TeeReserve.",
+            "button": "Explore Courses"
+        }
+    },
+    "privacyPage": {
+        "title": "Privacy Policy",
+        "subtitle": "Your privacy is of utmost importance to us.",
+        "lastUpdated": "Last Updated: May 24, 2024",
+        "introduction": "This Privacy Policy outlines how TeeReserve Golf ('we', 'us', or 'our') collects, uses, and protects your personal information when you use our website and services. By accessing our platform, you agree to the practices described in this policy.",
+        "sections": [
+            {
+                "title": "1. Information We Collect",
+                "content": "We may collect various types of information, including: <ul><li><strong>Personal Information:</strong> Name, email address, phone number you provide upon registration or booking.</li><li><strong>Payment Information:</strong> Credit card details securely processed by our payment provider (Stripe). We do not store your full card details.</li><li><strong>Usage Information:</strong> Details on how you interact with our site, such as courses viewed, bookings made, and pages visited.</li><li><strong>Device Information:</strong> IP address, browser type, and operating system.</li></ul>"
+            },
+            {
+                "title": "2. How We Use Your Information",
+                "content": "Your information is used to: <ul><li>Process your tee time bookings.</li><li>Personalize your experience and recommend golf courses.</li><li>Communicate with you regarding your bookings and special offers.</li><li>Improve the security and functionality of our platform.</li><li>Comply with our legal obligations.</li></ul>"
+            },
+            {
+                "title": "3. Cookie Usage",
+                "content": "We use cookies to enhance your experience. Essential cookies are necessary for site functionality, while analytics and marketing cookies help us improve our services and provide relevant content. You can manage your cookie preferences at any time via our cookie consent banner."
+            },
+            {
+                "title": "4. Data Sharing and Disclosure",
+                "content": "We do not sell your personal information. We may share your data with: <ul><li><strong>Golf Courses:</strong> To confirm and manage your booking.</li><li><strong>Service Providers:</strong> Such as payment processors and analytics tools that assist our operations.</li><li><strong>Legal Authorities:</strong> If required by law or to protect our legal rights.</li></ul>"
+            },
+            {
+                "title": "5. Data Security",
+                "content": "We implement technical and organizational security measures to protect your personal information against unauthorized access, alteration, or destruction. We use SSL encryption and work with trusted partners who adhere to high security standards."
+            },
+            {
+                "title": "6. Your Privacy Rights",
+                "content": "Depending on your location, you may have the right to access, correct, or delete your personal information. To exercise these rights, please contact us at <a href='mailto:privacy@teereserve.golf' class='text-primary hover:underline'>privacy@teereserve.golf</a>."
+            },
+            {
+                "title": "7. Changes to This Policy",
+                "content": "We may update this Privacy Policy periodically. We will notify you of any significant changes by posting the new policy on our website. Your continued use of the platform after such changes constitutes your acceptance of the new policy."
+            }
+        ]
+    },
+    "termsPage": {
+        "title": "Terms and Conditions",
+        "subtitle": "Please read these terms carefully before using our services.",
+        "lastUpdated": "Last Updated: May 24, 2024",
+        "introduction": "Welcome to TeeReserve Golf. These Terms and Conditions govern your use of our website and services. By accessing or using our platform, you agree to be bound by these terms. If you disagree with any part of the terms, then you may not access the service.",
+        "sections": [
+            {
+                "title": "1. Booking Services",
+                "content": "TeeReserve Golf provides an online platform for users to browse and book tee times at various golf courses. We act as an intermediary between you and the golf course. All bookings are subject to availability and the specific terms of the golf course."
+            },
+            {
+                "title": "2. User Accounts",
+                "content": "You must create an account to access certain features of our service. You are responsible for maintaining the confidentiality of your account and password and for all activities that occur under your account. You agree to notify us immediately of any unauthorized use."
+            },
+            {
+                "title": "3. Payments and Cancellations",
+                "content": "<ul><li><strong>Payments:</strong> All payments for bookings must be made through our platform using one of our accepted payment methods. Prices are subject to change without notice.</li><li><strong>Cancellation Policy:</strong> Cancellation policies vary by golf course. The specific policy for your booking will be displayed during the booking process and in your confirmation email. Generally, cancellations made more than 24 hours in advance are eligible for a full refund.</li></ul>"
+            },
+            {
+                "title": "4. User Conduct",
+                "content": "You agree not to use the platform for any unlawful or prohibited purpose. You are responsible for your conduct at the golf course and must adhere to all course rules and etiquette, including dress codes and pace of play."
+            },
+            {
+                "title": "5. Intellectual Property",
+                "content": "All content on this website, including text, graphics, logos, and images, is the property of TeeReserve Golf or its content suppliers and is protected by international copyright laws. You may not reproduce, distribute, or create derivative works without our express written consent."
+            },
+            {
+                "title": "6. Limitation of Liability",
+                "content": "TeeReserve Golf shall not be liable for any direct, indirect, incidental, special, or consequential damages resulting from the use or inability to use our services, including but not to any injury or property damage that occurs at the golf course."
+            },
+            {
+                "title": "7. Governing Law",
+                "content": "These Terms shall be governed and construed in accordance with the laws of Mexico, without regard to its conflict of law provisions. Any disputes arising from these terms will be resolved in the courts of Los Cabos, B.C.S., Mexico."
+            }
+        ]
+    },
+    "helpPage": {
+        "backToHome": "Back to Home",
+        "title": "How can we help?",
+        "subtitle": "We're here to assist you with any questions or issues you may have. Explore our options below to find the help you need.",
+        "whatsapp": {
+            "title": "Chat on WhatsApp",
+            "description": "The fastest way to get help. Chat directly with one of our golf concierges.",
+            "buttonText": "Start Chat"
+        },
+        "phone": {
+            "title": "Call Us",
+            "description": "Speak directly with our support team for immediate assistance with your booking.",
+            "buttonText": "+52 624 135 29 86"
+        },
+        "email": {
+            "title": "Send an Email",
+            "description": "For less urgent inquiries, send us an email and we'll get back to you within 24 hours.",
+            "buttonText": "info@teereserve.golf"
+        },
+        "faq": {
+            "title": "Frequently Asked Questions",
+            "questions": [
+                {
+                    "question": "How do I cancel or modify a booking?",
+                    "answer": "You can modify or cancel your booking directly from your user profile under 'My Bookings'. Please be aware of the specific cancellation policy for your chosen course, as some may have restrictions."
+                },
+                {
+                    "question": "Is my payment information secure?",
+                    "answer": "Yes, absolutely. We use Stripe, a world-class payment processor, to handle all transactions. Your payment information is encrypted and never stored on our servers."
+                },
+                {
+                    "question": "What is the Best Rate Guarantee?",
+                    "answer": "We guarantee that you'll find the best available public rate on our platform. If you find a lower rate for the same tee time on another website within 24 hours of booking, we will match it and give you an additional 5% discount on your booking."
+                },
+                {
+                    "question": "Can I book for a large group?",
+                    "answer": "Yes, you can book for up to 4 players directly on the site. For larger groups or corporate events, please contact us directly via email or phone, and our concierge team will be happy to assist you with a custom arrangement."
+                }
+            ]
+        }
+    },
+    "contactPage": {
+        "title": "Get in Touch",
+        "subtitle": "We're here to help. Contact us with any questions or for assistance with your booking.",
+        "form": {
+            "title": "Send us a Message",
+            "description": "Fill out the form below and we'll get back to you as soon as possible.",
+            "nameLabel": "Your Name",
+            "namePlaceholder": "John Doe",
+            "emailLabel": "Your Email",
+            "emailPlaceholder": "you@example.com",
+            "messageLabel": "Your Message",
+            "messagePlaceholder": "Type your message here...",
+            "submit": "Send Message",
+            "submitting": "Sending...",
+            "successMessage": "Thank you! Your message has been sent.",
+            "errorMessage": "Sorry, there was an error sending your message. Please try again.",
+            "errors": {
+                "name": "Name must be at least 2 characters.",
+                "email": "Please enter a valid email address.",
+                "message": "Message must be at least 10 characters."
+            }
+        },
+        "info": {
+            "title": "Contact Information",
+            "emailLabel": "Email",
+            "phoneLabel": "Phone",
+            "addressLabel": "Address"
+        }
+    },
+    "recommendationsPage": {
+        "title": "Your Personalized Recommendations",
+        "subtitle": "Based on your preferences, we've found {count} perfect courses for you.",
+        "refresh": "Refresh",
+        "recommendationBadge": "#1 Recommendation",
+        "perPlayer": "per player",
+        "greatMatch": "Why it's a great match for you",
+        "bookNow": "Book Now",
+        "viewDetails": "View Details",
+        "error": {
+            "title": "Error Loading Recommendations",
+            "message": "Could not load recommendations at this time. Please try again later."
+        },
+        "tryAgain": "Try Again",
+        "noRecs": {
+            "title": "No Special Recommendations Right Now",
+            "subtitle": "We're working on finding the perfect match. Try refreshing!"
+        }
+    },
+    "bookingLookupPage": {
+        "title": "Find Your Reservation",
+        "subtitle": "Search for your booking as a guest or log in to see all your reservations.",
+        "form": {
+            "title": "Look Up Booking (Guest)",
+            "description": "You can use either your Booking ID or Confirmation Number. Both can be found in your confirmation email.",
+            "bookingIdLabel": "Booking ID or Confirmation Number",
+            "bookingIdPlaceholder": "e.g., TRG-2025-001234 or a1b2c3d4",
+            "lastNameLabel": "Email Address",
+            "lastNamePlaceholder": "Enter your email address",
+            "submit": "Find Reservation",
+            "submitting": "Searching..."
+        },
+        "result": {
+            "title": "Reservation Details",
+            "subtitle": "Booking ID:",
+            "total": "Total Paid",
+            "comments": "Your Comments",
+            "backButton": "Search for another reservation"
+        },
+        "error": {
+            "title": "Search Failed",
+            "notFound": "No reservation found with those details. Please check your information and try again.",
+            "generic": "An unexpected error occurred. Please try again later."
+        }
+    },
+    "reviewsPage": {
+        "title": "Golfer Reviews",
+        "subtitle": "Experience Mexico through its fairways: real reviews from our community in every corner of the country",
+        "writeNewReview": "Write New Review",
+        "golfCourse": "Golf Course",
+        "selectCourse": "Select a course",
+        "rating": "Rating",
+        "experienceType": "Experience Type",
+        "experienceTypes": {
+            "overall": "Overall",
+            "service": "Service",
+            "facilities": "Facilities",
+            "green": "Green"
+        },
+        "yourReview": "Your Review",
+        "reviewPlaceholder": "Share your experience at this golf course...",
+        "publishReview": "Publish Review",
+        "success": {
+            "likeAdded": "Like added",
+            "likeRegistered": "Your like has been registered",
+            "commentAdded": "Comment added",
+            "commentPublished": "Your comment has been published",
+            "linkCopied": "Link copied",
+            "linkCopiedToClipboard": "The link has been copied to clipboard",
+            "reviewSubmitted": "Review submitted",
+            "reviewPendingApproval": "Your review is pending approval"
+        },
+        "errors": {
+            "loadReviews": "Could not load reviews",
+            "signInToLike": "You must sign in to like",
+            "addLike": "Could not add like",
+            "addComment": "Could not add comment",
+            "shareReview": "Could not share review",
+            "signInToReview": "You must sign in to write a review",
+            "requiredFields": "Required fields",
+            "completeAllFields": "Please complete all fields",
+            "submitReview": "Could not submit review"
+        }
+    },
+    "courseDetail": {
+        "bookTeeTime": "Book Tee Time",
+        "perPlayer": "per player"
+    },
+    "common": {
+        "cancel": "Cancel",
+        "error": "Error",
+        "signIn": "Sign In"
+    },
+    "booking": {
+        "title": "Make a Reservation",
+        "loadingCourse": "Loading course...",
+        "duration": "Duration",
+        "price": "Price",
+        "description": "Description",
+        "bookingDetails": "Booking Details",
+        "selectCourse": "Select Course",
+        "courseIdPlaceholder": "Enter course ID",
+        "selectDate": "Select Date",
+        "pickDate": "Pick a date",
+        "selectTime": "Select Time",
+        "selectTimePlaceholder": "Select a time",
+        "participants": "Number of Participants",
+        "specialRequests": "Special Requests",
+        "specialRequestsPlaceholder": "Any special requirements or requests...",
+        "processing": "Processing...",
+        "confirmBooking": "Confirm Booking"
+    }
+}

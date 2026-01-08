@@ -1,28 +1,44 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { sendContactEmail } from '@/ai/flows/send-contact-email';
 import { z } from 'zod';
+import { SecurityUtils } from '@/lib/security';
 
 // Schema for validating the request body
 const contactSchema = z.object({
   name: z.string().min(1, { message: 'Name is required' }),
   email: z.string().email({ message: 'Invalid email format' }),
   message: z.string().min(1, { message: 'Message is required' }),
-  recaptchaToken: z.string().min(1, { message: 'reCAPTCHA token is required' }),
+  recaptchaToken: z.string().optional(),
+  csrfToken: z.string().optional(),
 });
 
-async function verifyRecaptcha(token: string): Promise<boolean> {
+async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
     const secretKey = process.env.RECAPTCHA_SECRET_KEY;
-    if (!secretKey) {
-        console.error("reCAPTCHA secret key is not set.");
-        // In a non-dev environment, you might want to fail hard here.
-        // For development, we can allow it to pass if the key is missing.
-        return process.env.NODE_ENV === 'development';
+    
+    // In a production environment, the secret key MUST be present.
+    if (!secretKey || secretKey.startsWith('your_')) {
+        console.error("reCAPTCHA secret key is not set or is a placeholder.");
+        // Fail securely in production if the key is missing.
+        if (process.env.NODE_ENV === 'production') {
+            return false;
+        }
+        // Allow to pass in development if the key is missing for easier local testing.
+        return true;
+    }
+    
+    // If there's no token but a key is present, fail.
+    if (!token) {
+        return false;
     }
 
     const verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${token}`;
 
     try {
         const response = await fetch(verificationUrl, { method: 'POST' });
+        if (!response.ok) {
+            throw new Error(`reCAPTCHA verification request failed with status: ${response.status}`);
+        }
         const data = await response.json();
         return data.success;
     } catch (error) {
@@ -35,6 +51,11 @@ async function verifyRecaptcha(token: string): Promise<boolean> {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const cookieToken = req.cookies.get('csrf-token')?.value;
+    const bodyToken = body?.csrfToken;
+    if (!SecurityUtils.requireCSRFToken(bodyToken, cookieToken)) {
+      return NextResponse.json({ error: 'Invalid CSRF token' }, { status: 403 });
+    }
 
     // Validate request body
     const validation = contactSchema.safeParse(body);
@@ -42,18 +63,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid input', details: validation.error.flatten() }, { status: 400 });
     }
     
-    const { name, email, message, recaptchaToken } = validation.data;
+    // Sanitizar datos antes de procesar
+    const name = SecurityUtils.sanitizeText(validation.data.name);
+    const email = SecurityUtils.sanitizeEmail(validation.data.email);
+    const message = SecurityUtils.sanitizeHtml(validation.data.message);
+    const { recaptchaToken } = validation.data;
+
+    // Verificar contenido malicioso en el mensaje
+    if (SecurityUtils.detectMaliciousContent(message)) {
+      return NextResponse.json({ error: 'Malicious content detected' }, { status: 400 });
+    }
 
     // Verify reCAPTCHA token
     const isHuman = await verifyRecaptcha(recaptchaToken);
     if (!isHuman) {
-        return NextResponse.json({ error: 'reCAPTCHA verification failed.' }, { status: 403 });
+        return NextResponse.json({ error: 'reCAPTCHA verification failed. Are you a robot?' }, { status: 403 });
     }
 
     const result = await sendContactEmail({ name, email, message });
 
     if (result.success) {
-      return NextResponse.json({ message: 'Message sent successfully!' }, { status: 200 });
+      const res = NextResponse.json({ message: 'Message sent successfully!' }, { status: 200 });
+      // Añadir headers de seguridad
+      res.headers.set('X-Content-Type-Options', 'nosniff');
+      res.headers.set('Referrer-Policy', 'no-referrer');
+      res.headers.set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+      return res;
     } else {
       // The flow should throw an error, but as a fallback:
       throw new Error(result.message || 'The email flow reported a failure.');
