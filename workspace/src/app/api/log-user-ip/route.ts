@@ -1,6 +1,6 @@
 // NUEVO: API endpoint para registrar IP de usuarios durante autenticación
 import { NextRequest, NextResponse } from 'next/server';
-import { logUserIP } from '@/lib/data';
+import { logUserIPAdmin } from '@/lib/data-admin';
 
 // Función para obtener la IP del cliente
 function getClientIP(request: NextRequest): string {
@@ -72,8 +72,8 @@ export async function POST(request: NextRequest) {
             location
         };
         
-        // Registrar la IP en Firebase
-        await logUserIP(ipData);
+        // Registrar la IP en Firebase usando Admin SDK
+        await logUserIPAdmin(ipData);
         
         return NextResponse.json({ 
             success: true, 

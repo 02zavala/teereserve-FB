@@ -24,6 +24,7 @@ export function VisitTracker({ enabled = true, debounceMs = 1000 }: VisitTracker
       if (typeof window !== 'undefined' && !sessionStorage.getItem('ip_visit_logged')) {
         fetch('/api/log-user-ip', {
           method: 'POST',
+          keepalive: true,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'visit',
