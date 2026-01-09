@@ -571,7 +571,7 @@ export class PricingEngine {
         seasonId: 'alta-nov2025-may2026',
         timeBandId: 'cabo-real-mid',
         priceType: 'fixed',
-        priceValue: 245,
+        priceValue: 295,
         priority: 90,
         active: true,
         createdAt: new Date().toISOString()
@@ -584,7 +584,7 @@ export class PricingEngine {
         seasonId: 'alta-nov2025-may2026',
         timeBandId: 'cabo-real-afternoon',
         priceType: 'fixed',
-        priceValue: 220,
+        priceValue: 295,
         priority: 90,
         active: true,
         createdAt: new Date().toISOString()
@@ -1130,17 +1130,18 @@ export class PricingEngine {
     specialOverrides?: SpecialOverride[];
     baseProduct?: BaseProduct;
   }) {
-    // Solo sobrescribir si los arrays tienen contenido; evitar borrar defaults con vacíos
-    if (data.seasons && data.seasons.length > 0) {
+    // Sobrescribir siempre con los datos proporcionados (incluso si son arrays vacíos)
+    // para garantizar consistencia con la base de datos y evitar usar defaults antiguos.
+    if (data.seasons) {
       this.seasons.set(courseId, data.seasons);
     }
-    if (data.timeBands && data.timeBands.length > 0) {
+    if (data.timeBands) {
       this.timeBands.set(courseId, data.timeBands);
     }
-    if (data.priceRules && data.priceRules.length > 0) {
+    if (data.priceRules) {
       this.priceRules.set(courseId, data.priceRules);
     }
-    if (data.specialOverrides && data.specialOverrides.length > 0) {
+    if (data.specialOverrides) {
       // Remove existing overrides for this course
       this.specialOverrides = this.specialOverrides.filter(o => o.courseId !== courseId);
       this.specialOverrides.push(...data.specialOverrides);

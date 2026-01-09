@@ -1,6 +1,6 @@
 // NUEVO: API endpoint para registrar visitas
 import { NextRequest, NextResponse } from 'next/server';
-import { logVisit } from '@/lib/data';
+import { logVisitAdmin } from '@/lib/data-admin';
 import { headers } from 'next/headers';
 
 // Función para generar un sessionId único basado en IP y User-Agent
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         };
         
         // Registrar la visita en Firebase
-        await logVisit(visitData);
+        await logVisitAdmin(visitData);
         
         return NextResponse.json({ 
             success: true, 

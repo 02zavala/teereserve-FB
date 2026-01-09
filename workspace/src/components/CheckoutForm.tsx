@@ -535,26 +535,32 @@ export default function CheckoutForm() {
                     // Use provided client_secret when present (guest flow), otherwise create intent
                     let clientSecretToUse = clientSecret || null;
                     if (!clientSecretToUse) {
-                        const response = await fetchWithAbort('/api/create-payment-intent', {
+                        if (!currentQuote) {
+                            throw new Error('No se ha podido calcular el precio. Por favor recarga la página.');
+                        }
+
+                        const response = await fetchWithAbort('/api/checkout/create-intent', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
-                                amount: priceDetails.total, // Enviar en dólares; el backend convierte a centavos
-                                currency: 'usd',
                                 courseId,
-                                courseName: course.name,
                                 date,
                                 time,
                                 players: parseInt(players),
                                 holes: holes ? parseInt(holes) : 18,
-                                teeTimeId,
-                                comments: comments || '',
-                                specialRequests: specialRequests || '',
-                                couponCode: appliedCoupon?.code || '',
-                                customerEmail: user?.email || guestInfo.email,
-                                customerName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
+                                currency: currentQuote.currency,
+                                tax_rate: currentQuote.tax_rate,
+                                subtotal_cents: currentQuote.subtotal_cents,
+                                discount_cents: currentQuote.discount_cents,
+                                tax_cents: currentQuote.tax_cents,
+                                total_cents: currentQuote.total_cents,
+                                quote_hash: currentQuote.quote_hash,
+                                expires_at: currentQuote.expires_at,
+                                promoCode: appliedCoupon?.code || '',
+                                guestEmail: user?.email || guestInfo.email,
+                                guestName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
                                 savePaymentMethod: savePaymentMethod
                             }),
                         });
@@ -564,7 +570,7 @@ export default function CheckoutForm() {
                             throw new Error(errorData.error || 'Error al crear la intención de pago');
                         }
 
-                        const { clientSecret: generatedClientSecret } = await response.json();
+                        const { client_secret: generatedClientSecret } = await response.json();
                         clientSecretToUse = generatedClientSecret;
                     }
 
@@ -706,36 +712,64 @@ export default function CheckoutForm() {
             }
 
             if (paymentMode === 'saved' && selectedPaymentMethod) {
-                // Process payment with saved method
-                const result = await processPaymentWithSavedMethod(
-                    selectedPaymentMethod.id,
-                    priceDetails.total,
-                    {
-                        userId: user?.uid || 'guest',
-                        userName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
-                        userEmail: user?.email || guestInfo.email,
-                        userPhone: guestInfo.phone || '',
-                        courseId,
-                        courseName: course.name,
-                        date,
-                        time,
-                        players: parseInt(players),
-                        holes: holes ? parseInt(holes) : 18,
-                        totalPrice: priceDetails.total,
-                        status: 'confirmed',
-                        teeTimeId,
-                        comments: comments || '',
-                        specialRequests: specialRequests || '',
-                        couponCode: appliedCoupon?.code || '',
-                    }
-                );
+                // Process payment with saved method securely
+                if (!currentQuote) {
+                     throw new Error("Price quote not available. Please refresh and try again.");
+                }
 
-                if (result.success) {
+                if (!stripe) {
+                    throw new Error("Payment system not ready.");
+                }
+
+                // 1. Create secure intent using the same robust endpoint
+                const response = await fetchWithAbort('/api/checkout/create-intent', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            courseId,
+                            date,
+                            time,
+                            players: parseInt(players),
+                            holes: holes ? parseInt(holes) : 18,
+                            currency: currentQuote.currency,
+                            tax_rate: currentQuote.tax_rate,
+                            subtotal_cents: currentQuote.subtotal_cents,
+                            discount_cents: currentQuote.discount_cents,
+                            tax_cents: currentQuote.tax_cents,
+                            total_cents: currentQuote.total_cents,
+                            quote_hash: currentQuote.quote_hash,
+                            expires_at: currentQuote.expires_at,
+                            promoCode: appliedCoupon?.code || '',
+                            guestEmail: user?.email || guestInfo.email,
+                            guestName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
+                            savePaymentMethod: false // Already saved
+                        }),
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || 'Failed to initialize payment');
+                }
+
+                const { client_secret } = await response.json();
+
+                // 2. Confirm with saved method
+                const { error, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
+                    payment_method: selectedPaymentMethod.id,
+                });
+
+                if (error) {
+                    setErrorMessage(error.message || "Payment failed. Please try again.");
+                    setIsProcessing(false);
+                    return;
+                }
+
+                if (paymentIntent && paymentIntent.status === 'succeeded') {
                     const successUrl = new URL(`${window.location.origin}/${lang}/book/success`);
                     searchParams?.forEach((value, key) => successUrl.searchParams.append(key, value));
                     go(successUrl.toString());
-                } else {
-                    setErrorMessage(result.error || "Payment failed. Please try again.");
                 }
             } else {
                 // Process payment with new method (existing Stripe flow with fallbacks)
@@ -759,15 +793,29 @@ export default function CheckoutForm() {
                     // Generate a unique booking ID for this payment attempt
                     const tempBookingId = `booking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
                     
-                    const response = await fetchWithAbort('/api/create-or-retry-payment-intent', {
+                    const response = await fetchWithAbort('/api/checkout/create-intent', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            amountUsd: currentQuote.total_cents / 100,
-                            bookingId: tempBookingId,
-                            customerId: user?.uid,
+                            courseId,
+                            date,
+                            time,
+                            players: parseInt(players),
+                            holes: holes ? parseInt(holes) : 18,
+                            currency: currentQuote.currency,
+                            tax_rate: currentQuote.tax_rate,
+                            subtotal_cents: currentQuote.subtotal_cents,
+                            discount_cents: currentQuote.discount_cents,
+                            tax_cents: currentQuote.tax_cents,
+                            total_cents: currentQuote.total_cents,
+                            quote_hash: currentQuote.quote_hash,
+                            expires_at: currentQuote.expires_at,
+                            promoCode: appliedCoupon?.code || '',
+                            guestEmail: user?.email || guestInfo.email,
+                            guestName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
+                            savePaymentMethod: savePaymentMethod
                         }),
                     });
                     
@@ -776,13 +824,13 @@ export default function CheckoutForm() {
                     }
                     
                     const responseData = await response.json();
-                    const { clientSecret, currency, wasRetried } = responseData;
+                    const { client_secret: clientSecret } = responseData;
                     
                     if (!clientSecret) {
                         throw new Error("Failed to initialize payment. Please try again.");
                     }
 
-                    // First payment attempt
+                    // Confirm payment attempt
                     const { error, paymentIntent } = await stripe.confirmPayment({
                         elements,
                         clientSecret,
@@ -791,115 +839,6 @@ export default function CheckoutForm() {
                         },
                         redirect: 'if_required',
                     });
-
-                    // If first attempt failed and we have a retry with MXN
-                    if (error && wasRetried && currency === 'mxn') {
-                        console.log('First payment failed, retrying with MXN...');
-                        
-                        // Second payment attempt with MXN clientSecret
-                        const { error: retryError, paymentIntent: retryPaymentIntent } = await stripe.confirmPayment({
-                            elements,
-                            clientSecret,
-                            confirmParams: {
-                                return_url: `${window.location.origin}/${lang}/book/success`,
-                            },
-                            redirect: 'if_required',
-                        });
-
-                        if (retryError) {
-                            const { userMessage, fallbacksAvailable, showRetryWithNewCard } = handleStripeError(retryError as StripeError);
-                            setErrorMessage(userMessage);
-                            setAvailableFallbacks(fallbacksAvailable);
-                            setShowRetryNewCard(showRetryWithNewCard);
-                            throw new Error(userMessage);
-                        }
-
-                        // Use the retry payment intent for the rest of the flow
-                        if (retryPaymentIntent && retryPaymentIntent.status === 'succeeded') {
-                            // Continue with retryPaymentIntent instead of paymentIntent
-                            const finalPaymentIntent = retryPaymentIntent;
-                            
-                            // Save payment method if requested with $1 validation charge
-                            if (savePaymentMethod && finalPaymentIntent.payment_method) {
-                                try {
-                                    // First validate the card with $1 charge
-                                    const validationResult = await validateCard(finalPaymentIntent.payment_method as string);
-                                    
-                                    if (validationResult.success && validationResult.validated) {
-                                        // Save the payment method after successful validation
-                                        await fetch('/api/payment-methods', {
-                                            method: 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                            },
-                                            body: JSON.stringify({
-                                                paymentMethodId: finalPaymentIntent.payment_method,
-                                            }),
-                                        });
-                                        
-                                        toast({
-                                            title: "Tarjeta guardada exitosamente",
-                                            description: "Tu tarjeta ha sido validada y guardada para futuros pagos.",
-                                        });
-                                    } else {
-                                        console.warn('Card validation failed, not saving payment method:', validationResult.error);
-                                        toast({
-                                            title: "Advertencia",
-                                            description: "El pago fue exitoso pero no se pudo validar la tarjeta para guardarla.",
-                                            variant: "destructive"
-                                        });
-                                    }
-                                } catch (saveError) {
-                                    console.error('Error validating/saving payment method:', saveError);
-                                    toast({
-                                        title: "Advertencia",
-                                        description: "El pago fue exitoso pero no se pudo guardar la tarjeta.",
-                                        variant: "destructive"
-                                    });
-                                }
-                            }
-
-                            if (draftId) {
-                                const finalizeResult: any = await finalizeGuestBooking(draftId, finalPaymentIntent.id);
-                                const redirectUrl = finalizeResult?.redirectUrl || `${window.location.origin}/${lang}/book/success`;
-                                const url = new URL(redirectUrl, window.location.origin);
-                                if (!finalizeResult?.redirectUrl && finalizeResult?.bookingId) {
-                                    url.searchParams.append('bookingId', finalizeResult.bookingId);
-                                }
-                                searchParams?.forEach((value, key) => url.searchParams.append(key, value));
-                                try { logEvent('payment_completed', { courseId, teeTime: time, stage: 'paid', bookingId: finalizeResult?.bookingId, method: 'stripe' }); } catch {}
-                                go(url.toString());
-                                return { success: true };
-                            }
-
-                            const bookingId = await createBooking({
-                                userId: user?.uid || 'guest',
-                                userName: user ? (user.displayName || user.email || 'User') : `${guestInfo.firstName} ${guestInfo.lastName}`,
-                                userEmail: user?.email || guestInfo.email,
-                                userPhone: guestInfo.phone || '',
-                                courseId,
-                                courseName: course.name,
-                                date,
-                                time,
-                                players: parseInt(players),
-                                holes: holes ? parseInt(holes) : 18,
-                                totalPrice: currentQuote ? currentQuote.total_cents / 100 : priceDetails.total,
-                                status: 'confirmed',
-                                teeTimeId,
-                                comments: comments || '',
-                                specialRequests: specialRequests || '',
-                                couponCode: appliedCoupon?.code || ''
-                            }, lang);
-                            
-                            const successUrl = new URL(`${window.location.origin}/${lang}/book/success`);
-                            searchParams?.forEach((value, key) => successUrl.searchParams.append(key, value));
-                            successUrl.searchParams.append('bookingId', bookingId);
-                            go(successUrl.toString());
-                            return { success: true };
-                        }
-                        
-                        throw new Error("Retry payment was not successful");
-                    }
 
                     if (error) {
                         const { userMessage, fallbacksAvailable, showRetryWithNewCard } = handleStripeError(error as StripeError);

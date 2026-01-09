@@ -4,6 +4,7 @@ import { Playfair_Display, PT_Sans } from 'next/font/google'
 import './globals.css'
 import { cn } from '@/lib/utils'
 import { ClientLayout } from '@/components/layout/ClientLayout'
+import { MaintenanceOverlay } from '@/components/MaintenanceOverlay'
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics'
 import { VisitTracker } from '@/components/analytics/VisitTracker' // NUEVO: Importar tracker de visitas
 import type { Locale } from '@/i18n-config'
@@ -51,6 +52,10 @@ export default async function RootLayout({
   const gaId = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
   const gaDisabled = process.env.NEXT_PUBLIC_DISABLE_ANALYTICS === 'true';
   
+  // URGENTE: MODO MANTENIMIENTO ACTIVADO
+  // Cambiar a false para desactivar
+  const IS_MAINTENANCE_MODE = true;
+  
   return (
     <html lang={lang} suppressHydrationWarning>
       <body
@@ -60,6 +65,7 @@ export default async function RootLayout({
           fontBody.variable
         )}
       >
+        {IS_MAINTENANCE_MODE && <MaintenanceOverlay />}
         {gaId && !gaDisabled && <GoogleAnalytics gaId={gaId} />}
         <Script src={`https://www.googletagmanager.com/gtag/js?id=G-LZ0Y4R86E7`} strategy="afterInteractive" />
         <Script id="gtag-init" strategy="afterInteractive">

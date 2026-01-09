@@ -27,6 +27,7 @@ export function useVisitTracking(options: VisitTrackingOptions = {}) {
     try {
       const response = await fetch('/api/track-visit', {
         method: 'POST',
+        keepalive: true,
         headers: {
           'Content-Type': 'application/json',
         },

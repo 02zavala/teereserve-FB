@@ -148,6 +148,8 @@ export async function POST(request: NextRequest) {
     // Use a batch write for atomicity
     const batch = db.batch();
     
+    let propagationFailed = false;
+
     // Save seasons
     if (seasons && seasons.length > 0) {
       for (const season of seasons) {
@@ -206,7 +208,6 @@ export async function POST(request: NextRequest) {
       batch.set(baseProductRef, baseProductData, { merge: true });
 
       // Propagate basePrice to public courses collection to ensure UI reflects latest pricing
-      let propagationFailed = false;
       try {
         const resolvedBasePrice = baseProduct.basePrice;
         const coursePublicRef = db.collection('courses').doc(courseId);
@@ -276,7 +277,7 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { ok: false, error: 'Internal server error' },
+      { ok: false, error: 'Internal server error', details: error.message, stack: error.stack },
       { status: 500 }
     );
   }

@@ -1,6 +1,6 @@
 # TeeReserve Golf Platform 🌍⛳
 
-![TeeReserve](./public/logo.svg)
+![TeeReserve](./workspace/public/logo.svg)
 
 TeeReserve es una plataforma premium para reservar tee times y experiencias de golf, construida con Next.js App Router y un stack moderno. Este README describe la arquitectura remasterizada, el flujo completo del funnel de reservas y las integraciones clave.
 
@@ -8,17 +8,15 @@ TeeReserve es una plataforma premium para reservar tee times y experiencias de g
 
 ## 📋 Índice
 
-- Descripción general
-- Tecnologías principales
-- Arquitectura remasterizada (SSR/CSR)
-- Estructura del App Router
-- Flujo booking → checkout → success/cancel
-- Funnel de eventos y monitoreo
-- Cómo correr en desarrollo
-- Variables de entorno
-- Deploy
-- Troubleshooting
-- Notas de seguridad
+- [Descripción general](#-descripción-general)
+- [Tecnologías principales](#-tecnologías-principales)
+- [Arquitectura (Workspace)](#-arquitectura-workspace)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Flujo booking → checkout → success/cancel](#-flujo-booking--checkout--successcancel)
+- [Funnel de eventos y monitoreo](#-funnel-de-eventos-y-monitoreo)
+- [Cómo correr en desarrollo](#-cómo-correr-en-desarrollo)
+- [Variables de entorno](#-variables-de-entorno)
+- [Deploy](#-deploy)
 
 ---
 
@@ -30,232 +28,99 @@ TeeReserve es una plataforma premium para reservar tee times y experiencias de g
 
 ## 💻 Tecnologías Principales
 
-- Framework: Next.js (App Router)
-- UI: Tailwind CSS + shadcn/ui
-- Autenticación: Firebase Authentication
-- Base de datos: Firestore
-- Storage: Firebase Storage
-- Pagos: Stripe y PayPal
-- Observabilidad: Sentry + logs en Firestore
+- **Framework:** Next.js 15+ (App Router)
+- **UI:** Tailwind CSS + shadcn/ui
+- **Autenticación:** Firebase Authentication
+- **Base de datos:** Firestore
+- **Storage:** Firebase Storage
+- **Pagos:** Stripe y PayPal
+- **Observabilidad:** Sentry + logs en Firestore
 
-## 🏗 Arquitectura Remasterizada (SSR/CSR)
+## 🏗 Arquitectura (Workspace)
 
-- Separación estricta de server/client acorde a App Router:
+El proyecto ha sido reestructurado para utilizar un **monorepo simplificado** bajo la carpeta `workspace/`.
+Toda la aplicación Next.js reside dentro de `workspace/`, manteniendo la raíz del repositorio limpia para configuraciones globales de Firebase y documentación.
+
+- **Separación Server/Client:**
   - Páginas y rutas de API server-side por defecto.
   - Componentes interactivos marcan `"use client"` y consumen APIs/SDK cliente.
-- SSR para páginas públicas y datos iniciales; CSR en flujos con alto nivel de interacción (checkout, perfil, admin en tabs específicas).
-- Middleware de i18n para segmentar `/[lang]` y propagar `Locale`.
-- Sentry configurado con `next.config.mjs` y headers CSP dinámicos por entorno.
+- **Middleware de i18n:** Segmentación `/[lang]` y propagación de `Locale`.
+- **Sentry:** Configurado en `workspace/sentry.*.config.ts`.
 
-## 📂 Estructura del App Router
+## 📂 Estructura del Proyecto
 
 ```
-src/
-├── app/
-│   ├── [lang]/
-│   │   ├── book/checkout/page.tsx        # Checkout (Stripe Elements)
-│   │   ├── book/cancel/page.tsx          # Cancelación de pago
-│   │   ├── admin/...                      # Panel administrativo
+/
+├── docs/                   # Documentación técnica detallada
+├── workspace/              # Aplicación Next.js principal
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── [lang]/     # Rutas localizadas
+│   │   │   ├── api/        # Endpoints API (Server Functions)
+│   │   │   └── ...
+│   │   ├── components/     # Componentes UI reutilizables
+│   │   ├── lib/            # Lógica de negocio, clientes de API
 │   │   └── ...
-│   ├── api/...
-│   └── (otras rutas)
-├── app/[lang]/book/success/page.tsx      # Página de éxito (client)
-├── components/CheckoutForm.tsx           # Componente principal de checkout
-├── lib/payments/...                      # Integración y utilidades de pagos
-├── hooks/useLogger.ts                    # Log de funnel en Firestore
-└── i18n-config.ts                        # Tipado y locales
+│   ├── public/             # Assets estáticos (imágenes, iconos)
+│   ├── next.config.ts      # Configuración de Next.js
+│   └── package.json        # Dependencias del proyecto
+├── firebase.json           # Configuración de Hosting/Functions
+└── README.md
 ```
-
-Notas:
-- La página de éxito vive en `src/app/[lang]/book/success/page.tsx` y se accede desde `/${lang}/book/success`. Asegura incluir el segmento de idioma en la URL de retorno.
 
 ## 🔁 Flujo Booking → Checkout → Success/Cancel
 
-- Booking: selección de curso/fecha/hora/jugadores; generación de `quote` vía `POST /api/checkout/quote`.
-- Checkout: creación de `PaymentIntent` vía `POST /api/checkout/create-intent`; render de Stripe Elements y/o PayPal.
-- Success: redirección a `/${lang}/book/success` con parámetros del booking y confirmaciones.
-- Cancel: redirección a `/${lang}/book/cancel` y registro de evento `abandoned`.
-
-Puntos de referencia:
-- Confirmación Stripe: `src/components/CheckoutForm.tsx:536`.
-- Redirección éxito: `src/components/CheckoutForm.tsx:966–981`.
-- Cancelación: `src/app/[lang]/book/cancel/page.tsx:22–35`.
+- **Booking:** Selección de curso/fecha/hora/jugadores.
+- **Checkout:** Creación de `PaymentIntent` vía `POST /api/checkout/create-intent`.
+- **Success:** Redirección a `/${lang}/book/success` con parámetros del booking.
+- **Cancel:** Redirección a `/${lang}/book/cancel`.
 
 ## 📈 Funnel de Eventos y Monitoreo
 
 - Hook `useLogger` registra etapas: `view | select | checkout | abandoned | paid` en `visit_logs`.
 - Endpoint `POST /api/log-visits` enriquece con país y normaliza payload.
-- Sentry captura errores de cliente/servidor; ver avisos de instrumentación en desarrollo.
 
 ## 🧪 Cómo correr en desarrollo
 
-- Requisitos: Node 18+, npm/yarn/pnpm, proyecto Firebase configurado.
-- Instalación:
-  - `npm install`
-  - Copiar `.env.example` a `.env.local` y completar variables.
-  - `npm run dev` y abrir `http://localhost:3000`.
+**Prerrequisitos:** Node 18+, npm.
+
+1.  **Entrar al workspace:**
+    Es fundamental ejecutar los comandos desde la carpeta `workspace`.
+    ```bash
+    cd workspace
+    ```
+
+2.  **Instalar dependencias:**
+    ```bash
+    npm install
+    ```
+
+3.  **Configurar variables de entorno:**
+    Copia `.env.example` a `.env.local` dentro de `workspace/` y completa las credenciales.
+    ```bash
+    cp .env.example .env.local
+    ```
+
+4.  **Iniciar servidor de desarrollo:**
+    ```bash
+    npm run dev
+    ```
+    Abre [http://localhost:3000](http://localhost:3000).
 
 ## 🔑 Variables de entorno
 
-Guía completa para configurar entornos.
+El archivo `.env.local` debe estar ubicado en `workspace/.env.local`.
+Contiene claves para:
+- Firebase (Cliente y Admin)
+- Stripe / PayPal
+- Sentry
+- Resend (Emails)
 
-### Desarrollo (`.env.local`)
+## � Deploy
 
-Configura las siguientes variables con claves reales:
+El proyecto está configurado para desplegarse en **Firebase Hosting** usando `firebase-frameworks` o soporte nativo de Next.js.
+El archivo `firebase.json` en la raíz ya apunta a `workspace` como la fuente ("source").
 
-```
-NODE_ENV=development
-NEXT_PUBLIC_APP_ENV=development
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
-
-NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
-NEXT_PUBLIC_FIREBASE_APP_ID=...
-NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=...
-
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=...
-STRIPE_SECRET_KEY=...
-STRIPE_WEBHOOK_SECRET=...
-
-NEXT_PUBLIC_PAYPAL_CLIENT_ID=...
-PAYPAL_CLIENT_SECRET=...
-NEXT_PUBLIC_PAYPAL_ENVIRONMENT=sandbox
-PAYPAL_WEBHOOK_ID=...
-
-GA4_API_SECRET=...
-
-NEXT_PUBLIC_RECAPTCHA_SITE_KEY=...
-RECAPTCHA_SECRET_KEY=...
-```
-
-Reglas:
-- Evita valores que contengan `your` o `placeholder`.
-- No dupliques variables.
-- Reinicia el servidor tras cambios.
-
-### Producción (`.env`)
-
-Solo variables genéricas, sin secretos:
-
-```
-NODE_ENV=production
-NEXT_PUBLIC_APP_ENV=production
-NEXT_PUBLIC_APP_URL=https://teereserve.golf
-RATE_LIMIT_MAX_REQUESTS=100
-RATE_LIMIT_WINDOW_MS=900000
-```
-
-Configura los secretos en el proveedor (Firebase Hosting, Vercel, etc.).
-
-### Uso correcto en código
-
-- Stripe (cliente): `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
-- PayPal (cliente): `NEXT_PUBLIC_PAYPAL_CLIENT_ID`.
-- GA4 (server): `GA4_API_SECRET`.
-- reCAPTCHA: `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` en cliente y `RECAPTCHA_SECRET_KEY` en servidor.
-
-### Validación automática
-
-Ejecuta `node scripts/check-env-vars.js` para validar variables críticas.
-
-## 🚀 Deploy
-
-- Opción 1: Firebase App Hosting (recomendado con `output: 'standalone'`).
-  - Build: `npm run build`
-  - Deploy siguiendo guía de App Hosting.
-- Opción 2: Vercel/Node server
-  - `npm run build && npm run start`
-  - Configurar variables y secretos en el proveedor.
-
-## 🛠 Troubleshooting
-
-- Sentry: avisos de "instrumentation" y "global-error" en dev si falta archivo de instrumentación; no bloquea.
-- Next.js workspace root: si hay lockfiles en distintos directorios, ajustar `outputFileTracingRoot` si es necesario.
-- Stripe en local: revisar CSP y claves válidas.
-- PayPal SDK: si no carga, confirmar `NEXT_PUBLIC_PAYPAL_CLIENT_ID` y `components: 'buttons'`.
-- Verificación email 404: ver sección específica más abajo.
-
-## 🔒 Notas de seguridad
-
-- Stripe/PayPal: nunca loguear PII; usar `metadata` solo para IDs y datos técnicos.
-- Firestore cliente: reglas deben impedir lecturas/escrituras sensibles; los logs (`visit_logs`) no deben almacenar datos personales.
-- Variables: nunca commitear secretos; usar `.env.local`.
-
----
-
-## 🔑 Environment Variables
-
-Crear `.env.local` con variables. A continuación un índice de grupos; no pegues valores reales.
-
-### 🔥 Firebase (Cliente/Admin)
 ```bash
-NEXT_PUBLIC_FIREBASE_API_KEY=
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
-NEXT_PUBLIC_FIREBASE_APP_ID=
-NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
-NEXT_PUBLIC_FIREBASE_DATABASE_URL=
-NEXT_PUBLIC_FIREBASE_VAPID_KEY=
-
-FIREBASE_PROJECT_ID=
-FIREBASE_CLIENT_EMAIL=
-FIREBASE_PRIVATE_KEY="..."
+firebase deploy
 ```
-
-### 💳 Pagos
-```bash
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-
-NEXT_PUBLIC_PAYPAL_CLIENT_ID=
-PAYPAL_CLIENT_SECRET=
-NEXT_PUBLIC_PAYPAL_ENVIRONMENT=
-PAYPAL_WEBHOOK_ID=
-```
-
-### 📧 Email
-```bash
-RESEND_API_KEY=
-EMAIL_FROM=
-RESEND_FROM_EMAIL=
-CONTACT_FORM_RECIPIENT=
-```
-
-### 🛡 Observabilidad y otros
-```bash
-NEXT_PUBLIC_SENTRY_DSN=
-NEXT_PUBLIC_SENTRY_ENVIRONMENT=
-SENTRY_ORG=
-SENTRY_PROJECT=
-NEXT_PUBLIC_SITE_URL=
-```
-
----
-
-## 📜 Scripts disponibles
-
-- `npm run dev`: servidor de desarrollo
-- `npm run build`: build producción
-- `npm run start`: servidor producción
-- `npm run lint`: lint del proyecto
-
----
-
-## 🧹 Mantenimiento de Precios: Deduplicación en Firestore
-
-Sección operativa para admins; ver detalles y endpoint en esta misma página.
-
-## ⚠️ Solución a 404 en enlaces de verificación de email
-
-Guía para ajustar dominios y `continueUrl` en flujos de verificación.
-
-## 🔌 Toggle: desactivar verificación de email temporalmente
-
-Control mediante `NEXT_PUBLIC_REQUIRE_EMAIL_VERIFICATION=false` durante pruebas.
