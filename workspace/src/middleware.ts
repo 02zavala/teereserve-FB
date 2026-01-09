@@ -28,7 +28,7 @@ function isOriginAllowed(origin: string | null): boolean {
 
 // Protecciones para API: rate limiting y detección de bots
 const API_RATE_LIMIT_WINDOW_MS = 60_000; // 1 minuto
-const API_RATE_LIMIT_MAX = 60; // 60 req/min por IP
+const API_RATE_LIMIT_MAX = process.env.NODE_ENV === 'development' ? 1000 : 60; // 60 req/min por IP (1000 en dev)
 const SENSITIVE_LIMITS: Record<string, { windowMs: number; max: number }> = {
   '/api/contact': { windowMs: 60_000, max: 10 },
 };

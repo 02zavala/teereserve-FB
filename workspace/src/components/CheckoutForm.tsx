@@ -196,7 +196,8 @@ export default function CheckoutForm() {
             });
             
             if (!response.ok) {
-                throw new Error('Failed to fetch quote');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Failed to fetch quote: ${response.status}`);
             }
             
             const quote: QuoteResponse = await response.json();
