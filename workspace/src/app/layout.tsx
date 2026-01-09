@@ -65,7 +65,6 @@ export default async function RootLayout({
           fontBody.variable
         )}
       >
-        {IS_MAINTENANCE_MODE && <MaintenanceOverlay />}
         {gaId && !gaDisabled && <GoogleAnalytics gaId={gaId} />}
         <Script src={`https://www.googletagmanager.com/gtag/js?id=G-LZ0Y4R86E7`} strategy="afterInteractive" />
         <Script id="gtag-init" strategy="afterInteractive">
@@ -81,6 +80,7 @@ export default async function RootLayout({
         <VisitTracker enabled={true} debounceMs={1000} />
         
         <AppProviders>
+          {IS_MAINTENANCE_MODE && <MaintenanceOverlay />}
           <ClientLayout lang={lang}>
             {children}
           </ClientLayout>

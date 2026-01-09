@@ -4,14 +4,22 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
 export function MaintenanceOverlay() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const { userProfile, loading } = useAuth();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Si es Admin o SuperAdmin, permitir acceso completo
+  // Solo aplicamos esta excepción si ya terminó de cargar la info del usuario
+  if (!loading && (userProfile?.role === 'Admin' || userProfile?.role === 'SuperAdmin')) {
+    return null;
+  }
 
   // Permitir acceso a rutas de admin, auth (login) y api
   // También permitimos login para que los admins puedan entrar
