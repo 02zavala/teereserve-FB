@@ -42,6 +42,10 @@ interface GuestBookingRequest {
 }
 
 export async function POST(request: NextRequest) {
+  if (!db) {
+    return NextResponse.json({ error: 'Database connection failed' }, { status: 500 });
+  }
+
   try {
     const cookieToken = request.cookies.get('csrf-token')?.value;
     const bodyForCsrf = await request.clone().json().catch(() => ({} as any));
@@ -61,6 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split('Bearer ')[1];
+    if (!auth) throw new Error('Auth not initialized');
     const decodedToken = await auth.verifyIdToken(token);
     
     // Verify user is anonymous

@@ -5,7 +5,7 @@ export default function TelegramAlertsLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: Promise<{ lang: Locale }>;
+  params: Promise<{ lang: string }>;
 }) {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">

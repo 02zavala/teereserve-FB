@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error: 'Error enviando el comprobante',
-          details: result?.error || 'Fallo desconocido',
+          details: String((result as any)?.error) || 'Fallo desconocido',
         },
         { status: 500 }
       );

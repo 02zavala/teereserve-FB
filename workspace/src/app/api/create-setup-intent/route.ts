@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     let decodedToken;
     
     try {
+      if (!auth) throw new Error('Auth not initialized');
       decodedToken = await auth.verifyIdToken(token);
     } catch (error) {
       return NextResponse.json(

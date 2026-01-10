@@ -77,7 +77,7 @@ export default function CheckoutForm() {
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<SavedPaymentMethod | null>(null);
     const [paymentMode, setPaymentMode] = useState<'new' | 'saved'>('new');
     const [savePaymentMethod, setSavePaymentMethod] = useState(false);
-    const getInitialPaymentMethod = () => {
+    const getInitialPaymentMethod = (): PaymentMethod => {
         try {
             const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
             const stripeHealthy = fallbackService.getServiceStatus('stripe')?.isHealthy !== false;
@@ -689,9 +689,9 @@ export default function CheckoutForm() {
                                 console.error('createBooking returned null or undefined:', bookingId);
                                 throw new Error('Error creating booking - no booking ID returned');
                             }
-                        } catch (createBookingError) {
+                        } catch (createBookingError: any) {
                             console.error('Error in createBooking function:', createBookingError);
-                            throw new Error(`Error creating booking: ${createBookingError.message}`);
+                            throw new Error(`Error creating booking: ${createBookingError?.message || 'Unknown error'}`);
                         }
                     } else {
                         throw new Error('Payment was not completed successfully');

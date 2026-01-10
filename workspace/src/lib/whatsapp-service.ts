@@ -137,7 +137,7 @@ _Notificación automática de TeeReserve_`;
       });
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to send WhatsApp message:', error, 'whatsapp', {
         to: to,
         configured: this.isConfigured()
@@ -158,7 +158,7 @@ _Notificación automática de TeeReserve_`;
       await this.saveAlertRecord(data, message, success, adminPhoneNumber);
       
       return success;
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error sending WhatsApp booking alert:', error);
       await this.saveAlertRecord(data, '', false, adminPhoneNumber, error instanceof Error ? error.message : 'Unknown error');
       return false;
@@ -198,7 +198,7 @@ _Notificación automática de TeeReserve_`;
       if (!db) return;
       await addDoc(collection(db, 'admin_alerts'), alertRecord);
       logger.info('WhatsApp alert record saved to Firestore');
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to save WhatsApp alert record:', error);
     }
   }

@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     const result = await sendVerificationEmail(email, verifyUrl, { displayName: displayName || decoded.name || 'Golfer', lang });
     if (!result?.success) {
-      return NextResponse.json({ error: result?.error || 'Failed to send verification email' }, { status: 500 });
+      return NextResponse.json({ error: (result as any)?.error || 'Failed to send verification email' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, verifyUrl });

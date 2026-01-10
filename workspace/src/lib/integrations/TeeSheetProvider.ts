@@ -54,6 +54,8 @@ export type Booking = {
     conciergeCommissionUSD?: number;
     platformCommissionUSD?: number;
   };
+  cancellationReason?: string;
+  refundAmount?: number;
 };
 
 export interface TeeSheetProvider {
@@ -63,5 +65,5 @@ export interface TeeSheetProvider {
   getRates(courseId: string, date: string): Promise<Rate[]>;
   createBooking(input: BookingInput, idempotencyKey?: string): Promise<Booking>;
   getBookingById(id: string): Promise<Booking | null>;
-  cancelBooking(id: string): Promise<{ status: 'cancelled' | 'not_found'; booking?: Booking }>;
+  cancelBooking(id: string, reason?: string, refundAmount?: number): Promise<{ status: 'cancelled' | 'not_found'; booking?: Booking }>;
 }

@@ -121,9 +121,10 @@ export async function GET(request: NextRequest) {
     const usersCountSnap = await getCountFromServer(query(usersCol));
 
     // Build constraints for bookings count (respect filters)
+    // Use 'date' (tee time) instead of 'createdAt' to include legacy bookings
     const countConstraints: any[] = [
-      where('createdAt', '>=', fromISO),
-      where('createdAt', '<=', toISO),
+      where('date', '>=', fromISO),
+      where('date', '<=', toISO),
     ];
     if (courseIdFilter) countConstraints.push(where('courseId', '==', courseIdFilter));
     if (statusFilter && statusFilter !== 'all') countConstraints.push(where('status', '==', statusFilter));
@@ -133,13 +134,15 @@ export async function GET(request: NextRequest) {
       bookingsCountSnap = await getCountFromServer(query(bookingsCol, ...countConstraints));
     } catch (err) {
       console.warn('Count query fallback (bookings):', err);
-      const allSnap = await getDocs(query(bookingsCol, orderBy('createdAt', 'desc')));
+      // Fallback: fetch recent by date or just all
+      const allSnap = await getDocs(query(bookingsCol, orderBy('date', 'desc'), fsLimit(1000)));
       const all = allSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
       const filtered = all.filter(b => {
-        const created = String(b.createdAt || '');
+        // Filter by date (tee time) or createdAt if available
+        const dateCheck = String(b.date || b.createdAt || '');
         const statusOk = statusFilter === 'all' ? true : b.status === statusFilter;
         const courseOk = courseIdFilter ? (b.courseId === courseIdFilter) : true;
-        return created >= fromISO && created <= toISO && statusOk && courseOk;
+        return dateCheck >= fromISO && dateCheck <= toISO && statusOk && courseOk;
       });
       // Emulate count
       bookingsCountSnap = { data: () => ({ count: filtered.length }) } as any;
@@ -149,9 +152,9 @@ export async function GET(request: NextRequest) {
     let recentBookingsSnap;
     try {
       const recentConstraints: any[] = [
-        where('createdAt', '>=', fromISO),
-        where('createdAt', '<=', toISO),
-        orderBy('createdAt', 'desc'),
+        where('date', '>=', fromISO),
+        where('date', '<=', toISO),
+        orderBy('date', 'desc'),
         fsLimit(5),
       ];
       if (statusFilter && statusFilter !== 'all') recentConstraints.unshift(where('status', '==', statusFilter));
@@ -159,13 +162,13 @@ export async function GET(request: NextRequest) {
       recentBookingsSnap = await getDocs(query(bookingsCol, ...recentConstraints));
     } catch (err) {
       console.warn('Recent bookings query fallback:', err);
-      const snap = await getDocs(query(bookingsCol, orderBy('createdAt', 'desc')));
+      const snap = await getDocs(query(bookingsCol, orderBy('date', 'desc'), fsLimit(50)));
       const all = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
       const filtered = all.filter(b => {
-        const created = String(b.createdAt || '');
+        const dateCheck = String(b.date || b.createdAt || '');
         const statusOk = statusFilter === 'all' ? true : b.status === statusFilter;
         const courseOk = courseIdFilter ? (b.courseId === courseIdFilter) : true;
-        return created >= fromISO && created <= toISO && statusOk && courseOk;
+        return dateCheck >= fromISO && dateCheck <= toISO && statusOk && courseOk;
       }).slice(0, 5);
       recentBookingsSnap = { docs: filtered.map(b => ({ id: b.id!, data: () => b })) } as any;
     }
@@ -174,8 +177,8 @@ export async function GET(request: NextRequest) {
     let filteredBookings: Booking[] = [];
     try {
       const constraints: any[] = [
-        where('createdAt', '>=', fromISO),
-        where('createdAt', '<=', toISO),
+        where('date', '>=', fromISO),
+        where('date', '<=', toISO),
       ];
       if (statusFilter && statusFilter !== 'all') constraints.push(where('status', '==', statusFilter));
       if (courseIdFilter) constraints.push(where('courseId', '==', courseIdFilter));
@@ -184,13 +187,13 @@ export async function GET(request: NextRequest) {
       filteredBookings = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
     } catch (err) {
       console.warn('Dashboard-stats query fallback (filtered bookings):', err);
-      const snap = await getDocs(query(bookingsCol, orderBy('createdAt', 'desc')));
+      const snap = await getDocs(query(bookingsCol, orderBy('date', 'desc'), fsLimit(1000)));
       const all = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
       filteredBookings = all.filter(b => {
-        const created = String(b.createdAt || '');
+        const dateCheck = String(b.date || b.createdAt || '');
         const statusOk = statusFilter === 'all' ? true : b.status === statusFilter;
         const courseOk = courseIdFilter ? (b.courseId === courseIdFilter) : true;
-        return created >= fromISO && created <= toISO && statusOk && courseOk;
+        return dateCheck >= fromISO && dateCheck <= toISO && statusOk && courseOk;
       });
     }
 

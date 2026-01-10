@@ -1405,16 +1405,32 @@ export async function createBooking(bookingData: BookingInput, lang: Locale): Pr
 export async function getBookings(): Promise<Booking[]> {
     if (!db) return [];
     const bookingsCol = collection(db, 'bookings');
-    const snapshot = await getDocs(query(bookingsCol, orderBy('createdAt', 'desc')));
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
+    // Removing orderBy from query to ensure we fetch legacy bookings without createdAt
+    const snapshot = await getDocs(query(bookingsCol));
+    const bookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
+    
+    // Sort in memory
+    return bookings.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : (a.date ? new Date(a.date).getTime() : 0);
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : (b.date ? new Date(b.date).getTime() : 0);
+        return dateB - dateA;
+    });
 }
 
 export async function getUserBookings(userId: string): Promise<Booking[]> {
     if (!db) return [];
     const bookingsCol = collection(db, 'bookings');
-    const q = query(bookingsCol, where('userId', '==', userId), orderBy('createdAt', 'desc'));
+    // Removing orderBy from query to ensure we fetch legacy bookings without createdAt
+    const q = query(bookingsCol, where('userId', '==', userId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
+    const bookings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
+    
+    // Sort in memory
+    return bookings.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : (a.date ? new Date(a.date).getTime() : 0);
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : (b.date ? new Date(b.date).getTime() : 0);
+        return dateB - dateA;
+    });
 }
 
 export async function getBookingById(bookingId: string): Promise<Booking | null> {
@@ -1874,7 +1890,7 @@ export async function getDashboardStats() {
         const holeStats = { holes9: 0, holes18: 0, holes27: 0 };
         const revenueByHoles = { holes9: 0, holes18: 0, holes27: 0 };
         
-        revenueSnapshot.docs.forEach(doc => {
+        revenueSnapshot.docs.forEach((doc: any) => {
             const booking = doc.data();
             const revenue = booking.totalPrice || 0;
             const holes = booking.holes || 18;
@@ -1893,7 +1909,7 @@ export async function getDashboardStats() {
             }
         });
         
-        const recentBookings = recentBookingsSnapshot.docs.map(doc => ({ 
+        const recentBookings = recentBookingsSnapshot.docs.map((doc: any) => ({ 
             id: doc.id, 
             ...doc.data() 
         } as Booking));
@@ -1946,7 +1962,7 @@ export async function getRevenueLast7Days(): Promise<{ date: string; revenue: nu
             )
         ]) as any;
 
-        snapshot.docs.forEach(doc => {
+        snapshot.docs.forEach((doc: any) => {
             const booking = doc.data() as Booking;
             const bookingDate = new Date(booking.createdAt);
             if (isAfter(bookingDate, sevenDaysAgo)) {

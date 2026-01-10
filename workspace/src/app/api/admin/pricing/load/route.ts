@@ -192,6 +192,7 @@ export async function POST(request: NextRequest) {
         };
         
         // Load all collections in parallel
+        if (!db) throw new Error('Database not initialized');
         const [seasonsSnapshot, timeBandsSnapshot, priceRulesSnapshot, overridesSnapshot, baseProductDoc] = await Promise.all([
           db.collection('pricing').doc(courseId).collection('seasons').get().catch(() => null),
           db.collection('pricing').doc(courseId).collection('timeBands').get().catch(() => null),
@@ -201,19 +202,19 @@ export async function POST(request: NextRequest) {
         ]);
         
         if (seasonsSnapshot) {
-          pricingData.seasons = seasonsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          pricingData.seasons = seasonsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
         }
         
         if (timeBandsSnapshot) {
-          pricingData.timeBands = timeBandsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          pricingData.timeBands = timeBandsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
         }
         
         if (priceRulesSnapshot) {
-          pricingData.priceRules = priceRulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          pricingData.priceRules = priceRulesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
         }
         
         if (overridesSnapshot) {
-          pricingData.specialOverrides = overridesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          pricingData.specialOverrides = overridesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
         }
         
         if (baseProductDoc && baseProductDoc.exists) {

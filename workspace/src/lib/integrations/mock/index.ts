@@ -124,10 +124,15 @@ export const mockProvider: TeeSheetProvider = {
     return bookings.get(id) || null;
   },
 
-  async cancelBooking(id: string): Promise<{ status: 'cancelled' | 'not_found'; booking?: Booking }> {
+  async cancelBooking(id: string, reason?: string, refundAmount?: number): Promise<{ status: 'cancelled' | 'not_found'; booking?: Booking }> {
     const b = bookings.get(id);
     if (!b) return { status: 'not_found' };
-    const cancelled: Booking = { ...b, status: 'cancelled' };
+    const cancelled: Booking = { 
+      ...b, 
+      status: 'cancelled',
+      cancellationReason: reason,
+      refundAmount: refundAmount
+    };
     bookings.set(id, cancelled);
     return { status: 'cancelled', booking: cancelled };
   },

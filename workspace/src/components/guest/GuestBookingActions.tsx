@@ -112,17 +112,34 @@ export function GuestBookingActions({ booking, course, dictionary, onBookingUpda
   const handleCancel = async () => {
     setIsLoading(true);
     try {
-      // Aquí iría la lógica para cancelar la reserva
-      // Por ahora solo mostramos un toast
+      const response = await fetch(`/api/v1/bookings/${booking.id}/cancel`, {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        throw new Error('Error canceling booking');
+      }
+
+      const data = await response.json();
+
       if (refundCalculation) {
         toast({
-          title: "Solicitud de cancelación enviada",
-          description: `Tu solicitud ha sido enviada. ${refundCalculation.description}`,
+          title: "Reserva cancelada",
+          description: `Tu reserva ha sido cancelada exitosamente. ${refundCalculation.description}`,
         });
       }
       
       setShowCancelDialog(false);
+      
+      // Notify parent to refresh/redirect
+      if (onBookingUpdated && data.data) {
+        onBookingUpdated(data.data);
+      } else {
+        // Fallback reload if no callback
+        window.location.reload();
+      }
     } catch (error) {
+      console.error('Error canceling booking:', error);
       toast({
         title: "Error",
         description: "No se pudo procesar la cancelación. Intenta de nuevo.",

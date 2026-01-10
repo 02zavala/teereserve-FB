@@ -123,25 +123,43 @@ export async function GET(request: NextRequest) {
 
     try {
       let q = bookingsCol as FirebaseFirestore.Query<FirebaseFirestore.DocumentData>;
-      if (fromISO) q = q.where('createdAt', '>=', fromISO);
-      if (toISO) q = q.where('createdAt', '<=', toISO);
+      
+      // Use 'date' (tee time) as primary filter for backward compatibility with legacy data
+      // and operational relevance (viewing bookings by game date)
+      if (fromISO) q = q.where('date', '>=', fromISO);
+      if (toISO) q = q.where('date', '<=', toISO);
+      
       if (statusParam && statusParam !== 'all') q = q.where('status', '==', statusParam);
       if (courseIdParam && courseIdParam !== 'all') q = q.where('courseId', '==', courseIdParam);
-      q = q.orderBy('createdAt', 'desc').limit(limit);
+      
+      // Sort by date (tee time) descending
+      q = q.orderBy('date', 'desc').limit(limit);
+      
       const snap = await q.get();
       bookings = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) } as Booking));
     } catch (qErr) {
-      console.warn('Falling back to client-side filtering for bookings:', qErr);
-      const snap = await bookingsCol.orderBy('createdAt', 'desc').limit(1000).get();
+      console.warn('Falling back to client-side filtering for bookings (legacy/index issues):', qErr);
+      // Fetch all bookings (up to a safe limit) without ordering to include those without createdAt
+      const snap = await bookingsCol.limit(1000).get();
       const all = snap.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
       bookings = all.filter((b: any) => {
         const raw = b.createdAt;
         const created = typeof raw === 'string' ? raw : (raw?.toDate ? raw.toDate().toISOString() : '');
-        const inRange = (!fromISO || created >= fromISO) && (!toISO || created <= toISO);
+        // If createdAt is missing, include it if no date filter is active, or rely on 'date' field if available
+        // For simplicity, if we have date filters, we try to match against createdAt or date
+        const dateToCheck = created || (b.date instanceof Date ? b.date.toISOString() : (typeof b.date === 'string' ? b.date : ''));
+        
+        const inRange = (!fromISO || dateToCheck >= fromISO) && (!toISO || dateToCheck <= toISO);
         const statusOk = !statusParam || statusParam === 'all' || b.status === statusParam;
         const courseOk = !courseIdParam || courseIdParam === 'all' || (b as any).courseId === courseIdParam;
         return inRange && statusOk && courseOk;
-      }).slice(0, limit);
+      })
+      .sort((a: any, b: any) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : (a.date ? new Date(a.date).getTime() : 0);
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : (b.date ? new Date(b.date).getTime() : 0);
+          return dateB - dateA;
+      })
+      .slice(0, limit);
     }
 
     // Agregados

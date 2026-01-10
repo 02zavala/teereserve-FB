@@ -215,7 +215,7 @@ export function useDebouncedAsync<T>(
   delay: number = 300,
   options: UseAsyncOptions = {}
 ) {
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const asyncState = useAsync(asyncFunction, options);
 
   const debouncedExecute = useCallback((...args: any[]) => {

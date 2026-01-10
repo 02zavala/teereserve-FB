@@ -49,7 +49,17 @@ function getStatusLabel(status: BookingStatus): string {
     return labels[status] || status;
 }
 
-function BookingRow({ booking, lang }: { booking: Booking, lang: Locale }) {
+function BookingRow({ 
+    booking, 
+    lang, 
+    onStatusChange, 
+    onEdit 
+}: { 
+    booking: Booking, 
+    lang: Locale,
+    onStatusChange: (bookingId: string, newStatus: BookingStatus, reason?: string, data?: any) => Promise<void>,
+    onEdit: (booking: Partial<Booking>) => void
+}) {
     const [formattedDate, setFormattedDate] = useState<string | null>(null);
     const [isClient, setIsClient] = useState(false);
 
@@ -89,7 +99,12 @@ function BookingRow({ booking, lang }: { booking: Booking, lang: Locale }) {
                 <Badge variant={getStatusVariant(booking.status)}>{getStatusLabel(booking.status)}</Badge>
             </TableCell>
             <TableCell>
-                <BookingActionsMenu booking={booking} />
+                <BookingActionsMenu 
+                    booking={booking} 
+                    onStatusChange={onStatusChange}
+                    onEdit={onEdit}
+                    isAdmin={true}
+                />
             </TableCell>
         </TableRow>
     );
@@ -111,6 +126,111 @@ export default function BookingsAdminPage() {
         });
     }, []);
     
+    const handleStatusChange = async (bookingId: string, newStatus: BookingStatus, reason?: string, data?: any) => {
+        try {
+            let response;
+            if (newStatus === 'canceled_admin' || newStatus === 'canceled_customer') {
+                 // Call cancellation API
+                 response = await fetch(`/api/v1/bookings/${bookingId}/cancel`, {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ reason, ...data?.cancellationRequest }),
+                 });
+            } else {
+                 // For other statuses, use the status update API
+                 response = await fetch(`/api/v1/bookings/${bookingId}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        status: newStatus, 
+                        reason,
+                        ...data 
+                    }),
+                 });
+            }
+            
+            if (!response.ok) {
+                 let errorMessage = `API failed with status ${response.status}`;
+                 try {
+                     const text = await response.text();
+                     if (text && text.trim()) {
+                        try {
+                            const errorData = JSON.parse(text);
+                            // Handle case where errorData is {} or { error: ... }
+                            if (errorData && typeof errorData === 'object') {
+                                if (errorData.error) {
+                                    errorMessage = typeof errorData.error === 'string' 
+                                        ? errorData.error 
+                                        : JSON.stringify(errorData.error);
+                                } else if (Object.keys(errorData).length > 0) {
+                                    errorMessage = JSON.stringify(errorData);
+                                }
+                            }
+                        } catch {
+                            errorMessage = text;
+                        }
+                     }
+                 } catch (e) {
+                     console.warn('Failed to parse error response:', e);
+                 }
+                 
+                 // Ensure errorMessage is never undefined or null
+                 const safeErrorMessage = errorMessage || `Unknown API error (${response.status})`;
+                 console.error('API Error:', safeErrorMessage);
+                 throw new Error(safeErrorMessage);
+            }
+            
+            const result = await response.json();
+            
+            // Update local state
+            setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, ...result.data, status: newStatus } : b));
+            
+        } catch (error) {
+            console.error('Error updating booking status:', error);
+            throw error; // Re-throw to be caught by the component
+        }
+    };
+
+    const handleUpdateBooking = async (updatedBooking: Partial<Booking>) => {
+        // Since the Booking object has all fields, we need to extract the ID
+        const bookingId = (updatedBooking as any).id;
+        if (!bookingId) {
+            console.error('No booking ID provided for update');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/v1/bookings/${bookingId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedBooking),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to update booking');
+            }
+
+            const result = await response.json();
+
+            // Update local state
+            setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, ...result.data } : b));
+            
+            toast({
+                title: "Reserva actualizada",
+                description: "Los cambios se han guardado correctamente.",
+            });
+
+        } catch (error) {
+             console.error('Error updating booking:', error);
+             toast({
+                 title: "Error",
+                 description: "No se pudo actualizar la reserva.",
+                 variant: "destructive"
+             });
+        }
+    };
+
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
@@ -146,7 +266,13 @@ export default function BookingsAdminPage() {
                             </TableHeader>
                             <TableBody>
                                 {bookings.map(booking => (
-                                    <BookingRow key={booking.id} booking={booking} lang={lang} />
+                                    <BookingRow 
+                                        key={booking.id} 
+                                        booking={booking} 
+                                        lang={lang} 
+                                        onStatusChange={handleStatusChange}
+                                        onEdit={(b) => handleUpdateBooking(b)}
+                                    />
                                 ))}
                             </TableBody>
                         </Table>

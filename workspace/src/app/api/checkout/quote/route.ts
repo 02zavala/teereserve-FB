@@ -42,6 +42,7 @@ function getHoleMultiplier(holes: number): number {
 
 async function loadCoursePricingData(courseId: string) {
   try {
+    if (!db) throw new Error('Database not initialized');
     const [seasonsSnap, timeBandsSnap, priceRulesSnap, overridesSnap, baseProductDoc] = await Promise.all([
       db.collection('pricing').doc(courseId).collection('seasons').get().catch(() => null),
       db.collection('pricing').doc(courseId).collection('timeBands').get().catch(() => null),
@@ -50,10 +51,10 @@ async function loadCoursePricingData(courseId: string) {
       db.collection('pricing').doc(courseId).collection('baseProducts').doc('default').get().catch(() => null)
     ]);
 
-    const seasons = seasonsSnap ? seasonsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) : [];
-    const timeBands = timeBandsSnap ? timeBandsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) : [];
-    const priceRules = priceRulesSnap ? priceRulesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) : [];
-    const specialOverrides = overridesSnap ? overridesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) : [];
+    const seasons = seasonsSnap ? seasonsSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) : [];
+    const timeBands = timeBandsSnap ? timeBandsSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) : [];
+    const priceRules = priceRulesSnap ? priceRulesSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) : [];
+    const specialOverrides = overridesSnap ? overridesSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })) : [];
 
     let baseProduct: any = null;
     if (baseProductDoc && baseProductDoc.exists) {

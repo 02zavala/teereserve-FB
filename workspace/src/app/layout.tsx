@@ -41,20 +41,25 @@ export const viewport: Viewport = {
 
 interface RootLayoutProps {
   children: React.ReactNode;
-  params: Promise<{ lang: Locale }>;
+  params: Promise<{ lang?: string }>; // Params might be empty in root layout
 }
 
 export default async function RootLayout({
   children,
   params,
 }: RootLayoutProps) {
-  const { lang } = await params;
+  // En el layout raíz, params suele estar vacío o no contener lang fiable
+  // Usamos el idioma por defecto si no está disponible
+  const resolvedParams = await params;
+  const lang = (resolvedParams?.lang as Locale) || 'en';
+  
   const gaId = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
   const gaDisabled = process.env.NEXT_PUBLIC_DISABLE_ANALYTICS === 'true';
   
-  // URGENTE: MODO MANTENIMIENTO ACTIVADO
-  // Cambiar a false para desactivar
-  const IS_MAINTENANCE_MODE = true;
+  // URGENTE: MODO MANTENIMIENTO DESACTIVADO
+  // Cambiar a true para activar manualmente
+  // En desarrollo (local) estará desactivado, en producción (sitio online) también desactivado por defecto
+  const IS_MAINTENANCE_MODE = false;
   
   return (
     <html lang={lang} suppressHydrationWarning>

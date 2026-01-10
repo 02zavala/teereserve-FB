@@ -49,7 +49,7 @@ export const userSchema = z.object({
 
 export const bookingSchema = z.object({
   courseId: z.string().min(1, 'ID del curso requerido'),
-  date: z.date({ invalid_type_error: 'Fecha inválida' }),
+  date: z.date(),
   time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido'),
   players: z.number().int().min(1, 'Mínimo 1 jugador').max(4, 'Máximo 4 jugadores'),
   totalPrice: z.number().min(0, 'Precio no puede ser negativo'),

@@ -421,6 +421,7 @@ const loadAutomaticEvidence = () => {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
+          <DialogTitle className="sr-only">Cargando datos de pago</DialogTitle>
           <div className="flex items-center justify-center p-8">
             <RefreshCw className="h-6 w-6 animate-spin mr-2" />
             <span>Cargando datos de pago...</span>

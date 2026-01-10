@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     };
 
     const { buffer, filename } = await generateReceiptPdf(details, { lang: payload.lang || 'bilingual' });
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',

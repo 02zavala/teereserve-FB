@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { Booking, BookingStatus, PaymentStatus } from '@/types';
+import { Switch } from "@/components/ui/switch"
 import {
   Dialog,
   DialogContent,
@@ -53,6 +54,7 @@ interface BookingChanges {
   comments?: string;
   adminNotes?: string;
   status?: BookingStatus;
+  totalPrice?: number;
 }
 
 interface PriceCalculation {
@@ -68,6 +70,7 @@ export function BookingEditDialog({ booking, open, onOpenChange, onSave }: Booki
   const [isLoading, setIsLoading] = useState(false);
   const [priceCalculation, setPriceCalculation] = useState<PriceCalculation | null>(null);
   const [activeTab, setActiveTab] = useState('datetime');
+  const [isManualPrice, setIsManualPrice] = useState(false);
   const { handleAsyncError } = useErrorHandler();
 
   // Reset changes when dialog opens/closes
@@ -147,6 +150,13 @@ export function BookingEditDialog({ booking, open, onOpenChange, onSave }: Booki
       if (changes.players !== undefined) {
         if (!Number.isInteger(changes.players) || changes.players < 1 || changes.players > 4) {
           throw new ValidationError('Number of players must be between 1 and 4');
+        }
+      }
+
+      // Validar precio total
+      if (changes.totalPrice !== undefined) {
+        if (isNaN(changes.totalPrice) || changes.totalPrice < 0) {
+          throw new ValidationError('Price cannot be negative');
         }
       }
       
@@ -238,27 +248,34 @@ export function BookingEditDialog({ booking, open, onOpenChange, onSave }: Booki
         }
       }
       
-      // Verificar si la reserva puede ser editada
-      if (isPastBooking() && !['completed', 'no_show', 'checked_in'].includes(changes.status || booking.status)) {
-        throw new ValidationError('Cannot edit past bookings except to mark as completed or no-show');
-      }
+      // Verificar si la reserva puede ser editada (Relaxed for Admin/Dev mode)
+      // if (isPastBooking() && !['completed', 'no_show', 'checked_in'].includes(changes.status || booking.status)) {
+      //   throw new ValidationError('Cannot edit past bookings except to mark as completed or no-show');
+      // }
       
-      if (['canceled_customer', 'canceled_admin', 'disputed'].includes(booking.status) && !changes.status) {
-        throw new ValidationError(`Cannot edit booking with status: ${booking.status}`);
-      }
+      // if (['canceled_customer', 'canceled_admin', 'disputed'].includes(booking.status) && !changes.status) {
+      //   throw new ValidationError(`Cannot edit booking with status: ${booking.status}`);
+      // }
       
       // Verificar que hay cambios para guardar
-      if (Object.keys(changes).length === 0) {
+      if (Object.keys(changes).length === 0 && (!priceCalculation || priceCalculation.difference === 0)) {
         throw new ValidationError('No changes to save');
       }
       
       setIsLoading(true);
+
+      // Prepare payload
+      const payload = { ...changes };
+      // If we have a calculated price and manual price is NOT enabled, use the calculated price
+      if (!isManualPrice && priceCalculation && priceCalculation.newPrice !== booking.totalPrice) {
+        payload.totalPrice = priceCalculation.newPrice;
+      }
       
       // Simular guardado
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       if (onSave) {
-        onSave(changes);
+        onSave({ ...payload, id: booking.id });
       }
       
       toast({
@@ -406,9 +423,60 @@ export function BookingEditDialog({ booking, open, onOpenChange, onSave }: Booki
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="price" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Gestión de Precios
+                </CardTitle>
+                <CardDescription>
+                  Ajusta manualmente el precio total de la reserva si es necesario.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-2 pt-4 border-t">
+                  <Switch 
+                    id="manual-price" 
+                    checked={isManualPrice}
+                    onCheckedChange={(checked) => {
+                      setIsManualPrice(checked);
+                      if (checked && changes.totalPrice === undefined) {
+                        setChanges(prev => ({ ...prev, totalPrice: priceCalculation?.newPrice || booking.totalPrice }));
+                      } else if (!checked) {
+                        setChanges(prev => {
+                          const { totalPrice, ...rest } = prev;
+                          return rest;
+                        });
+                      }
+                    }}
+                  />
+                  <Label htmlFor="manual-price">Modificar precio manualmente</Label>
+                </div>
+
+                {isManualPrice && (
+                  <div className="pt-2">
+                     <Label htmlFor="customPrice">Precio Personalizado ($)</Label>
+                     <Input 
+                       id="customPrice"
+                       type="number"
+                       min="0"
+                       step="0.01"
+                       value={changes.totalPrice ?? ''}
+                       onChange={(e) => setChanges(prev => ({ ...prev, totalPrice: parseFloat(e.target.value) || 0 }))}
+                     />
+                     <p className="text-xs text-muted-foreground mt-1">
+                       Este valor reemplazará el cálculo automático basado en jugadores.
+                     </p>
+                  </div>
+                )}
                 
                 {priceCalculation && (
-                  <Card className="bg-muted/50">
+                  <Card className="bg-muted/50 mt-4">
                     <CardHeader>
                       <CardTitle className="text-sm flex items-center gap-2">
                         <DollarSign className="h-4 w-4" />

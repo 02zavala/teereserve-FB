@@ -25,8 +25,8 @@ import { getCourseById } from '@/lib/data';
 
 interface BookingActionsMenuProps {
   booking: Booking;
-  onStatusChange?: (bookingId: string, newStatus: BookingStatus, reason?: string) => void;
-  onEdit?: (booking: Booking) => void;
+  onStatusChange?: (bookingId: string, newStatus: BookingStatus, reason?: string, data?: any) => void;
+  onEdit?: (booking: Partial<Booking>) => void;
   isAdmin?: boolean;
 }
 
@@ -59,17 +59,18 @@ export function BookingActionsMenu({
     return () => { isMounted = false; };
   }, [booking.courseId]);
 
-  const handleStatusChange = async (newStatus: BookingStatus, reason?: string) => {
+  const handleStatusChange = async (newStatus: BookingStatus, reason?: string, data?: any) => {
     if (!onStatusChange) return;
     
     setIsLoading(true);
     try {
-      await onStatusChange(booking.id, newStatus, reason);
+      await onStatusChange(booking.id, newStatus, reason, data);
       toast({
         title: "Estado actualizado",
         description: `La reserva ha sido marcada como ${getStatusLabel(newStatus)}.`,
       });
     } catch (error) {
+      console.error('Failed to update booking status:', error);
       toast({
         title: "Error",
         description: "No se pudo actualizar el estado de la reserva.",
@@ -84,13 +85,18 @@ export function BookingActionsMenu({
     setShowEditDialog(true);
   };
 
-  const handleSaveEdit = async (editedBooking: Booking) => {
+  const handleSaveEdit = async (editedBooking: Partial<Booking>) => {
     console.log('Saving edited booking:', editedBooking);
     
-    toast({
-      title: "Reserva actualizada",
-      description: "Los cambios han sido guardados exitosamente.",
-    });
+    if (onEdit) {
+        // Ensure the ID is present for the update
+        onEdit({ ...editedBooking, id: booking.id });
+    } else {
+        toast({
+          title: "Reserva actualizada",
+          description: "Los cambios han sido guardados exitosamente.",
+        });
+    }
     
     setShowEditDialog(false);
   };
@@ -98,7 +104,7 @@ export function BookingActionsMenu({
   const handleCancellation = async (cancellationRequest: CancellationRequest, refundCalculation: RefundCalculation) => {
     console.log('Processing cancellation:', cancellationRequest, refundCalculation);
     
-    await handleStatusChange('canceled_admin', cancellationRequest.reason);
+    await handleStatusChange('canceled_admin', cancellationRequest.reason, { cancellationRequest, refundCalculation });
     
     setShowCancellationDialog(false);
   };
@@ -106,7 +112,14 @@ export function BookingActionsMenu({
   const handleReschedule = async (rescheduleData: any) => {
     console.log('Processing reschedule:', rescheduleData);
     
-    await handleStatusChange('rescheduled', rescheduleData.rescheduleReason);
+    // Ensure date is formatted properly if it's a Date object
+    const formattedData = { ...rescheduleData };
+    if (formattedData.newDate instanceof Date) {
+        // Format to YYYY-MM-DD
+        formattedData.newDate = formattedData.newDate.toISOString().split('T')[0];
+    }
+
+    await handleStatusChange('rescheduled', rescheduleData.rescheduleReason, formattedData);
     
     setShowRescheduleDialog(false);
   };
@@ -115,7 +128,7 @@ export function BookingActionsMenu({
     console.log('Payment updated:', paymentData);
     
     if (paymentData.type === 'capture') {
-      await handleStatusChange('confirmed', 'Payment captured');
+      await handleStatusChange('confirmed', 'Payment captured', { paymentData });
     }
     
     toast({
@@ -161,6 +174,9 @@ export function BookingActionsMenu({
   };
 
   const canEdit = () => {
+    // Admins can edit anything in "Total Development" mode
+    if (isAdmin) return true;
+
     if (isBookingInPast() && !['confirmed', 'rescheduled', 'checked_in'].includes(booking.status)) {
       return false;
     }

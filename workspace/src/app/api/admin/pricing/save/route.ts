@@ -150,53 +150,34 @@ export async function POST(request: NextRequest) {
     
     let propagationFailed = false;
 
-    // Save seasons
-    if (seasons && seasons.length > 0) {
-      for (const season of seasons) {
-        const seasonData = {
-          ...season,
-          updatedAt: timestamp
-        };
-        const seasonRef = db.collection('pricing').doc(courseId).collection('seasons').doc(season.id);
-        batch.set(seasonRef, seasonData, { merge: true });
+    // Helper to sync collection (delete missing, upsert present)
+    const syncCollection = async (collectionName: string, items: any[] | undefined) => {
+      if (items === undefined) return;
+      
+      const collectionRef = db!.collection('pricing').doc(courseId).collection(collectionName);
+      const snapshot = await collectionRef.get();
+      const existingIds = new Set(snapshot.docs.map(doc => doc.id));
+      const payloadIds = new Set(items.map(item => item.id));
+      
+      // Delete removed items
+      for (const id of existingIds) {
+        if (!payloadIds.has(id)) {
+          batch.delete(collectionRef.doc(id));
+        }
       }
-    }
-    
-    // Save time bands
-    if (timeBands && timeBands.length > 0) {
-      for (const timeBand of timeBands) {
-        const timeBandData = {
-          ...timeBand,
-          updatedAt: timestamp
-        };
-        const timeBandRef = db.collection('pricing').doc(courseId).collection('timeBands').doc(timeBand.id);
-        batch.set(timeBandRef, timeBandData, { merge: true });
+      
+      // Save current items
+      for (const item of items) {
+        const itemData = { ...item, updatedAt: timestamp };
+        batch.set(collectionRef.doc(item.id), itemData, { merge: true });
       }
-    }
-    
-    // Save price rules
-    if (priceRules && priceRules.length > 0) {
-      for (const priceRule of priceRules) {
-        const priceRuleData = {
-          ...priceRule,
-          updatedAt: timestamp
-        };
-        const priceRuleRef = db.collection('pricing').doc(courseId).collection('priceRules').doc(priceRule.id);
-        batch.set(priceRuleRef, priceRuleData, { merge: true });
-      }
-    }
-    
-    // Save special overrides
-    if (specialOverrides && specialOverrides.length > 0) {
-      for (const override of specialOverrides) {
-        const overrideData = {
-          ...override,
-          updatedAt: timestamp
-        };
-        const overrideRef = db.collection('pricing').doc(courseId).collection('specialOverrides').doc(override.id);
-        batch.set(overrideRef, overrideData, { merge: true });
-      }
-    }
+    };
+
+    // Sync all collections
+    await syncCollection('seasons', seasons);
+    await syncCollection('timeBands', timeBands);
+    await syncCollection('priceRules', priceRules);
+    await syncCollection('specialOverrides', specialOverrides);
     
     // Save base product
     if (baseProduct) {
@@ -207,15 +188,57 @@ export async function POST(request: NextRequest) {
       const baseProductRef = db.collection('pricing').doc(courseId).collection('baseProducts').doc('default');
       batch.set(baseProductRef, baseProductData, { merge: true });
 
-      // Propagate basePrice to public courses collection to ensure UI reflects latest pricing
-      try {
-        const resolvedBasePrice = baseProduct.basePrice;
-        const coursePublicRef = db.collection('courses').doc(courseId);
-        batch.set(coursePublicRef, { basePrice: resolvedBasePrice, updatedAt: timestamp }, { merge: true });
-      } catch (propErr) {
-        console.error('Failed to propagate basePrice to courses collection:', propErr);
-        propagationFailed = true;
+      // Propagate basePrice and pricingBands to public courses collection to ensure UI reflects latest pricing
+    try {
+      const resolvedBasePrice = baseProduct?.basePrice;
+      const coursePublicRef = db.collection('courses').doc(courseId);
+      
+      const updateData: any = { updatedAt: timestamp };
+      
+      if (resolvedBasePrice !== undefined) {
+        updateData.basePrice = resolvedBasePrice;
       }
+
+      // Generate public pricingBands from active timeBands and their rules
+      // This ensures the frontend displays the correct bands and approximate prices
+      if (timeBands) {
+        // Sort bands by start time
+        const sortedBands = [...timeBands]
+          .filter(tb => tb.active)
+          .sort((a, b) => {
+             return a.startTime.localeCompare(b.startTime);
+          });
+
+        const publicBands = sortedBands.map(tb => {
+            // Find a matching price rule. 
+            // We prioritize rules that are specifically for this band and are active.
+            // Since we might have multiple rules (e.g. per season), this is a best-effort display price.
+            // We look for a fixed price rule.
+            let rule = priceRules?.find(pr => 
+              pr.active && 
+              pr.timeBandId === tb.id && 
+              pr.priceType === 'fixed'
+            );
+            
+            // If no specific rule found, we might fallback to base price or 0
+            const price = rule ? rule.priceValue : (resolvedBasePrice || 0);
+            
+            return {
+              label: tb.label,
+              startTime: tb.startTime,
+              endTime: tb.endTime,
+              price: price
+            };
+        });
+        
+        updateData.pricingBands = publicBands;
+      }
+
+      batch.set(coursePublicRef, updateData, { merge: true });
+    } catch (propErr) {
+      console.error('Failed to propagate basePrice to courses collection:', propErr);
+      propagationFailed = true;
+    }
     }
     
     // Update course pricing metadata

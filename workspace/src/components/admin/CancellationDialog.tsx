@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -44,9 +45,11 @@ export function CancellationDialog({ booking, open, onOpenChange, onConfirm }: C
   const [reason, setReason] = useState<CancellationRequest['reason']>('customer_request');
   const [adminNotes, setAdminNotes] = useState('');
   const [adminOverride, setAdminOverride] = useState(false);
+  const [customRefundAmount, setCustomRefundAmount] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [refundCalculation, setRefundCalculation] = useState<RefundCalculation | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [forceProceed, setForceProceed] = useState(false);
 
   // Reset state when dialog opens/closes
   useEffect(() => {
@@ -54,7 +57,9 @@ export function CancellationDialog({ booking, open, onOpenChange, onConfirm }: C
       setReason('customer_request');
       setAdminNotes('');
       setAdminOverride(false);
+      setCustomRefundAmount('');
       setShowConfirmation(false);
+      setForceProceed(false);
       calculateRefund('customer_request');
     }
   }, [open]);
@@ -65,6 +70,23 @@ export function CancellationDialog({ booking, open, onOpenChange, onConfirm }: C
       calculateRefund(reason);
     }
   }, [reason, open]);
+
+  // Recalculate refund when custom amount changes
+  useEffect(() => {
+    if (open && adminOverride && customRefundAmount) {
+        const amount = parseFloat(customRefundAmount);
+        if (!isNaN(amount) && refundCalculation) {
+            setRefundCalculation({
+                ...refundCalculation,
+                refundAmount: amount,
+                netRefund: amount,
+                description: 'Monto personalizado por administrador'
+            });
+        }
+    } else if (open && !adminOverride) {
+        calculateRefund(reason);
+    }
+  }, [customRefundAmount, adminOverride, open]);
 
   const calculateRefund = (cancellationReason: CancellationRequest['reason']) => {
     const bookingDate = new Date(booking.date);
@@ -91,8 +113,10 @@ export function CancellationDialog({ booking, open, onOpenChange, onConfirm }: C
         reason,
         adminOverride,
         adminNotes: adminNotes || undefined,
+        force: forceProceed,
         requestedBy: 'current-admin', // En una implementación real, obtener del contexto de usuario
         requestedAt: new Date(),
+        customRefundAmount: adminOverride && customRefundAmount ? parseFloat(customRefundAmount) : undefined
       };
 
       // Simular procesamiento
@@ -140,21 +164,27 @@ export function CancellationDialog({ booking, open, onOpenChange, onConfirm }: C
     return descriptions[reason];
   };
 
-  if (!canCancel()) {
+  if (!canCancel() && !forceProceed) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
-              No se puede cancelar
+              Restricción de Cancelación
             </DialogTitle>
             <DialogDescription>
-              Esta reserva no puede ser cancelada debido a su estado actual o porque ya ha pasado la fecha.
+              Esta reserva no cumple con los criterios estándar para cancelación (fecha pasada o estado inválido).
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="py-4 text-sm text-muted-foreground">
+             Si esto es un error administrativo (ej. sobreventa) o requiere intervención manual, puedes forzar la cancelación.
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="secondary" onClick={() => setForceProceed(true)} className="w-full sm:w-auto">
+              Forzar Cancelación (Admin)
+            </Button>
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
               Cerrar
             </Button>
           </DialogFooter>
@@ -172,6 +202,13 @@ export function CancellationDialog({ booking, open, onOpenChange, onConfirm }: C
             Selecciona el motivo de cancelación para calcular el reembolso correspondiente.
           </DialogDescription>
         </DialogHeader>
+
+        {forceProceed && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md flex items-center gap-2 text-sm text-amber-700">
+            <AlertTriangle className="h-4 w-4" />
+            <span>Modo Forzado: Estás cancelando una reserva que no cumple criterios estándar.</span>
+          </div>
+        )}
 
         <div className="space-y-6">
           {/* Información de la reserva */}
@@ -295,16 +332,38 @@ export function CancellationDialog({ booking, open, onOpenChange, onConfirm }: C
           </div>
 
           {adminOverride && (
-            <Card className="border-amber-200 bg-amber-50">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2 text-amber-700">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span className="text-sm font-medium">
-                    El override administrativo requiere justificación en las notas.
-                  </span>
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="customRefund">Monto de reembolso personalizado ($)</Label>
+                    <div className="flex items-center space-x-2">
+                        <span className="text-gray-500 font-bold">$</span>
+                        <Input
+                            id="customRefund"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={customRefundAmount}
+                            onChange={(e) => setCustomRefundAmount(e.target.value)}
+                            placeholder="0.00"
+                            className="w-full"
+                        />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        Dejar vacío para usar el cálculo automático.
+                    </p>
                 </div>
-              </CardContent>
-            </Card>
+
+                <Card className="border-amber-200 bg-amber-50">
+                  <CardContent className="pt-4">
+                    <div className="flex items-center gap-2 text-amber-700">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        El override administrativo requiere justificación en las notas.
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+            </div>
           )}
         </div>
 

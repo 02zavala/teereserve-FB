@@ -41,9 +41,7 @@ import { dateLocales, getDefaultBookingDate } from "@/lib/date-utils";
 
 const formSchema = z.object({
   location: z.string().min(1, "Location is required"),
-  date: z.date({
-    required_error: "A date is required.",
-  }),
+  date: z.date(),
   players: z.string().min(1, "Number of players is required"),
   time: z.string().optional(),
 })

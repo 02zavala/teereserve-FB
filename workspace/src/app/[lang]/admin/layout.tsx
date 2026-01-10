@@ -11,10 +11,10 @@ export default async function AdminLayout({
   params: paramsProp,
 }: {
   children: React.ReactNode,
-  params: Promise<{ lang: Locale }>
+  params: Promise<{ lang: string }>
 }) {
   const params = await paramsProp;
-  const lang = params.lang;
+  const lang = params.lang as Locale;
   
   return (
     <AdminAuthGuard>

@@ -7,13 +7,14 @@ import { notFound, redirect } from 'next/navigation';
 
 interface CourseLayoutProps {
   children: React.ReactNode;
-  params: Promise<{ lang: Locale; id: string }>;
+  params: Promise<{ lang: string; id: string }>;
 }
 
 // Generar metadata SEO para páginas de cursos individuales
-export async function generateMetadata({ params: paramsProp }: { params: Promise<{ lang: Locale; id: string }> }): Promise<Metadata> {
+export async function generateMetadata({ params: paramsProp }: { params: Promise<{ lang: string; id: string }> }): Promise<Metadata> {
   const params = await paramsProp;
-  const { lang, id } = params;
+  const lang = params.lang as Locale;
+  const id = params.id;
   
   try {
     const course = await getCourseBySlugOrId(id);
@@ -68,7 +69,8 @@ export async function generateMetadata({ params: paramsProp }: { params: Promise
 
 export default async function CourseLayout({ children, params: paramsProp }: CourseLayoutProps) {
   const params = await paramsProp;
-  const { lang, id } = params;
+  const lang = params.lang as Locale;
+  const id = params.id;
   
   try {
     const course = await getCourseBySlugOrId(id);

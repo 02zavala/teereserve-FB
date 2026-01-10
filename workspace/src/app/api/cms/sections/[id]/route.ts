@@ -4,9 +4,10 @@ import { verifyIdToken } from '@/lib/firebase-admin';
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
@@ -26,7 +27,7 @@ export async function PUT(
     }
 
     const updateData = await request.json();
-    await updateCMSSection(params.id, updateData);
+    await updateCMSSection(id, updateData);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -40,9 +41,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json(
@@ -60,8 +62,8 @@ export async function DELETE(
         { status: 403 }
       );
     }
-
-    await deleteCMSSection(params.id);
+    
+    await deleteCMSSection(id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

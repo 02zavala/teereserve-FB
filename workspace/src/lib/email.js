@@ -553,9 +553,21 @@ export async function sendBookingCancellation(userEmail, userName, bookingDetail
     const emailData = {
       from: process.env.EMAIL_FROM || 'noreply@teereserve.golf',
       to: [userEmail],
-      subject: 'Reserva Cancelada - TeeReserve ❌'
+      subject: 'Cancelación de Reserva - TeeReserve ❌'
     };
     
+    // Calcular desglose de pago (asumiendo IVA incluido del 16%)
+    const total = Number(bookingDetails.totalPrice || 0);
+    const taxRate = 0.16;
+    const subtotal = total / (1 + taxRate);
+    const tax = total - subtotal;
+    
+    const formatter = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2
+    });
+
     try {
       const { data, error } = await resend.emails.send({
         ...emailData,
@@ -564,108 +576,96 @@ export async function sendBookingCancellation(userEmail, userName, bookingDetail
           <html>
           <head>
             <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Reserva Cancelada - TeeReserve</title>
+            <title>Cancelación de Reserva</title>
             <style>
               body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
               .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+              .header { background: linear-gradient(135deg, #7a1f1f, #b33a3a); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
               .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-              .cancellation-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444; }
-              .booking-info { background: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #fecaca; }
-              .detail-row { display: flex; justify-content: space-between; margin: 8px 0; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
-              .label { font-weight: 600; color: #475569; }
-              .value { color: #1e293b; font-weight: 500; }
-              .cta-button { background: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 15px 0; font-weight: bold; }
+              .booking-details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #b33a3a; }
+              .detail-row { display: flex; justify-content: space-between; margin: 10px 0; padding: 8px 0; border-bottom: 1px solid #eee; }
+              .label { font-weight: bold; color: #7a1f1f; }
+              .value { color: #333; }
+              .total { background: #7a1f1f; color: white; padding: 15px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: bold; }
               .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
               .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
               .logo-img { max-width: 150px; height: auto; margin-bottom: 15px; }
-              .refund-info { background: #f0f9ff; padding: 15px; border-radius: 6px; border-left: 4px solid #0ea5e9; margin: 15px 0; }
             </style>
           </head>
+          
           <body>
             <div class="container">
               <div class="header">
                 <img src="https://teereserve.golf/logo.png" alt="TeeReserve Golf" class="logo-img" />
-                <div class="logo">❌ TeeReserve Golf</div>
-                <h1>Reserva Cancelada</h1>
-                <p>Tu reserva ha sido cancelada exitosamente</p>
+                <div class="logo">🏌️ TeeReserve Golf</div>
+                <h1>Cancelación de Reserva</h1>
+                <p>Estimado/a <strong>${userName}</strong>, procederemos a cancelar su reserva</p>
               </div>
-              
+          
               <div class="content">
-                <div class="cancellation-details">
-                  <h2 style="color: #ef4444; margin-top: 0;">🚫 Cancelación Confirmada</h2>
-                  <p style="margin: 0; color: #333; line-height: 1.6;">
-                    Hola ${userName}, tu reserva ha sido cancelada exitosamente según tu solicitud.
-                  </p>
-                </div>
-                
-                <div class="booking-info">
-                  <h3 style="color: #ef4444; margin-top: 0;">📋 Detalles de la Reserva Cancelada</h3>
-                  
+                <div class="booking-details">
+                  <h2 style="color: #7a1f1f; margin-top: 0;">📋 Detalles de la Reserva</h2>
+          
                   <div class="detail-row">
-                    <span class="label">🆔 ID de Reserva:</span>
-                    <span class="value">${bookingDetails.bookingId || 'N/A'}</span>
+                    <span class="label">🆔 Número de Confirmación:</span>
+                    <span class="value">${bookingDetails.bookingId ? bookingDetails.bookingId.substring(0, 8).toUpperCase() : 'TRG-CANCEL'}</span>
                   </div>
-                  
+          
                   <div class="detail-row">
                     <span class="label">🏌️ Campo de Golf:</span>
                     <span class="value">${bookingDetails.courseName}</span>
                   </div>
-                  
+          
                   <div class="detail-row">
                     <span class="label">📅 Fecha:</span>
                     <span class="value">${bookingDetails.date}</span>
                   </div>
-                  
+          
                   <div class="detail-row">
                     <span class="label">🕐 Hora:</span>
                     <span class="value">${bookingDetails.time}</span>
                   </div>
-                  
+          
                   <div class="detail-row">
                     <span class="label">👥 Número de Jugadores:</span>
                     <span class="value">${bookingDetails.players}</span>
                   </div>
-                  
-                  ${bookingDetails.totalPrice ? `
+          
+                  <h3 style="color: #7a1f1f; margin: 20px 0 10px 0; border-bottom: 2px solid #b33a3a; padding-bottom: 5px;">
+                    💳 Resumen de Pago
+                  </h3>
+          
                   <div class="detail-row">
-                    <span class="label">💰 Monto:</span>
-                    <span class="value">$${bookingDetails.totalPrice} USD</span>
+                    <span class="label">Subtotal:</span>
+                    <span class="value">${formatter.format(subtotal)}</span>
                   </div>
-                  ` : ''}
+          
+                  <div class="detail-row">
+                    <span class="label">Impuestos (16%):</span>
+                    <span class="value">${formatter.format(tax)}</span>
+                  </div>
+          
+                  <div class="total">
+                    💰 Total Pagado: ${formatter.format(total)}
+                  </div>
                 </div>
-                
-                <div class="refund-info">
-                  <h4 style="color: #0ea5e9; margin-top: 0;">💳 Información de Reembolso</h4>
-                  <ul style="margin: 0; padding-left: 20px; color: #333;">
-                    <li>El reembolso será procesado en 3-5 días hábiles</li>
-                    <li>El monto será devuelto al método de pago original</li>
-                    <li>Recibirás una notificación cuando se complete</li>
-                    <li>Para consultas, contacta nuestro soporte</li>
-                  </ul>
-                </div>
-                
-                <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <h3 style="color: #10b981; margin-top: 0;">🎯 ¿Qué Sigue?</h3>
+          
+                <div style="background: #fdeaea; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <h3 style="color: #7a1f1f; margin-top: 0;">📌 Información Importante</h3>
                   <ul style="margin: 0; padding-left: 20px;">
-                    <li>Explora otros campos disponibles</li>
-                    <li>Programa una nueva reserva</li>
-                    <li>Revisa nuestras ofertas especiales</li>
-                    <li>Únete a nuestros torneos</li>
+                    <li>Su reserva será cancelada conforme a las políticas del campo de golf</li>
+                    <li>El reembolso, si aplica, será procesado al método de pago original</li>
+                    <li>Los tiempos de devolución dependen de su institución bancaria</li>
+                    <li>Este correo sirve como comprobante de la solicitud de cancelación</li>
                   </ul>
                 </div>
-                
-                <div style="text-align: center; margin: 25px 0;">
-                  <a href="https://teereserve.golf/courses" class="cta-button">
-                    🏌️ Explorar Otros Campos
-                  </a>
-                </div>
-                
+          
                 <div class="footer">
-                  <p>¡Esperamos verte pronto en el campo!</p>
+                  <p>Lamentamos cualquier inconveniente.</p>
                   <p><strong>Equipo TeeReserve Golf</strong></p>
-                  <p style="font-size: 12px; color: #999;">Este es un email automático, por favor no responda a este mensaje.</p>
+                  <p style="font-size: 12px; color: #999;">
+                    Este es un email automático, por favor no responda a este mensaje.
+                  </p>
                 </div>
               </div>
             </div>

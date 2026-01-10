@@ -37,7 +37,7 @@ function getClientIP(request: NextRequest): string {
     }
     
     // Fallback a la IP de la conexión
-    return request.ip || 'unknown';
+    return (request as any).ip || 'unknown';
 }
 
 export async function POST(request: NextRequest) {

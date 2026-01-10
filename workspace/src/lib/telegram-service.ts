@@ -137,7 +137,7 @@ ${alert.cardLast4 ? ('💳 *Tarjeta:* ' + (alert.cardBrand || '').toUpperCase() 
 
       logger.info('Telegram notification sent successfully');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to send Telegram notification:', error);
       return false;
     }
@@ -168,7 +168,7 @@ ${alert.cardLast4 ? ('💳 *Tarjeta:* ' + (alert.cardBrand || '').toUpperCase() 
       if (!db) return;
       await addDoc(collection(db, 'admin_alerts'), alertRecord);
       logger.info('Alert record saved to Firestore');
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to save alert record:', error);
     }
   }
@@ -185,7 +185,7 @@ ${alert.cardLast4 ? ('💳 *Tarjeta:* ' + (alert.cardBrand || '').toUpperCase() 
       await this.saveAlertRecord(alert, message, success, success ? undefined : 'Failed to send message');
       
       return success;
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error sending booking alert:', error);
       await this.saveAlertRecord(alert, '', false, error instanceof Error ? error.message : 'Unknown error');
       return false;
@@ -233,7 +233,7 @@ ${alert.cardLast4 ? ('💳 *Tarjeta:* ' + (alert.cardBrand || '').toUpperCase() 
 
       logger.info('Telegram notification sent successfully to specific chat');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to send Telegram notification to specific chat:', error);
       return false;
     }

@@ -12,18 +12,14 @@ import {
 import { format, parseISO, isWithinInterval, getDay } from 'date-fns';
 
 /**
- * Motor de cálculo de precios jerárquico
+ * Motor de cálculo de precios estáticos
  * 
  * Orden de aplicación (de mayor a menor prioridad):
  * 1. Overrides especiales (feriados, torneos, cierre parcial)
  * 2. Temporada (alta/baja: fechas)
  * 3. Día de la semana (lun-dom)
  * 4. Banda horaria (Early, Prime, Twilight)
- * 5. Lead time (anticipación de compra)
- * 6. Ocupación (yield: % de cupos ya vendidos)
- * 7. Jugadores (precio por pax o bundle 2/3/4)
- * 8. Promos/descuentos (códigos, residente, afiliado)
- * 9. Redondeo (al múltiplo de $5/$10) y mín/máx por regla
+ * 5. Reglas manuales estáticas
  */
 export class PricingEngine {
   private seasons: Map<string, Season[]> = new Map();
@@ -191,16 +187,12 @@ export class PricingEngine {
         if (rule.effectiveFrom && parseISO(rule.effectiveFrom) > now) return false;
         if (rule.effectiveTo && parseISO(rule.effectiveTo) < now) return false;
         
-        // Filtros específicos
+        // Filtros específicos (Solo estáticos: Temporada, Día de semana, Banda horaria)
         if (rule.seasonId && rule.seasonId !== season?.id) return false;
         if (rule.dow && !rule.dow.includes(dow)) return false;
         if (rule.timeBandId && rule.timeBandId !== timeBand?.id) return false;
-        if (rule.leadTimeMin && leadTimeHours < rule.leadTimeMin) return false;
-        if (rule.leadTimeMax && leadTimeHours > rule.leadTimeMax) return false;
-        if (rule.occupancyMin && occupancyPercent < rule.occupancyMin) return false;
-        if (rule.occupancyMax && occupancyPercent > rule.occupancyMax) return false;
-        if (rule.playersMin && players < rule.playersMin) return false;
-        if (rule.playersMax && players > rule.playersMax) return false;
+        
+        // Ignorar filtros dinámicos (Lead time, Ocupación, Jugadores) para forzar precios estáticos
         
         return true;
       })

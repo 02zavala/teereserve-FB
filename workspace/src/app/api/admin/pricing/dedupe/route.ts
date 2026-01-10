@@ -83,7 +83,7 @@ async function dedupeTimeBandsInFirestore(courseId: string): Promise<number> {
   
   if (snapshot.empty) return 0;
 
-  const timeBands = snapshot.docs.map(doc => ({
+  const timeBands = snapshot.docs.map((doc: any) => ({
     id: doc.id,
     ...doc.data()
   }));
@@ -102,7 +102,7 @@ async function dedupeTimeBandsInFirestore(courseId: string): Promise<number> {
     
     // Encontrar las bandas que queremos mantener
     for (const target of targetBands) {
-      const match = timeBands.find(b => 
+      const match = timeBands.find((b: any) => 
         b.startTime === target.startTime && 
         b.endTime === target.endTime
       );
@@ -113,8 +113,8 @@ async function dedupeTimeBandsInFirestore(courseId: string): Promise<number> {
 
     // Marcar para eliminar todas las bandas que no están en toKeep
     toDelete = timeBands
-      .filter(band => !toKeep.includes(band.id))
-      .map(band => band.id);
+      .filter((band: any) => !toKeep.includes(band.id))
+      .map((band: any) => band.id);
 
   } else {
     // Para otros cursos, usar lógica de deduplicación estándar
@@ -122,16 +122,17 @@ async function dedupeTimeBandsInFirestore(courseId: string): Promise<number> {
     const toKeepIds = new Set<string>();
 
     for (const band of timeBands) {
-      const key = `${(band.label || '').trim().toLowerCase()}|${band.startTime}|${band.endTime}`;
+      const b = band as any;
+      const key = `${(b.label || '').trim().toLowerCase()}|${b.startTime}|${b.endTime}`;
       if (!seen.has(key)) {
         seen.add(key);
-        toKeepIds.add(band.id);
+        toKeepIds.add(b.id);
       }
     }
 
     toDelete = timeBands
-      .filter(band => !toKeepIds.has(band.id))
-      .map(band => band.id);
+      .filter((band: any) => !toKeepIds.has(band.id))
+      .map((band: any) => band.id);
   }
 
   // Eliminar los documentos duplicados en lotes
@@ -155,7 +156,7 @@ async function dedupePriceRulesInFirestore(courseId: string): Promise<number> {
   
   if (snapshot.empty) return 0;
 
-  const priceRules = snapshot.docs.map(doc => ({
+  const priceRules = snapshot.docs.map((doc: any) => ({
     id: doc.id,
     ...doc.data()
   }));
@@ -169,13 +170,14 @@ async function dedupePriceRulesInFirestore(courseId: string): Promise<number> {
 
     // Agrupar reglas por timeBandId
     for (const rule of priceRules) {
-      if (rule.timeBandId) {
-        if (!rulesByTimeBand.has(rule.timeBandId)) {
-          rulesByTimeBand.set(rule.timeBandId, []);
+      const r = rule as any;
+      if (r.timeBandId) {
+        if (!rulesByTimeBand.has(r.timeBandId)) {
+          rulesByTimeBand.set(r.timeBandId, []);
         }
-        rulesByTimeBand.get(rule.timeBandId)!.push(rule);
+        rulesByTimeBand.get(r.timeBandId)!.push(r);
       } else {
-        generalRules.push(rule);
+        generalRules.push(r);
       }
     }
 
@@ -267,13 +269,14 @@ async function dedupePriceRulesByNameInFirestore(
   const snapshot = await priceRulesRef.get();
   if (snapshot.empty) return 0;
 
-  const priceRules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const priceRules = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
   const groups = new Map<string, any[]>();
   for (const r of priceRules) {
-    const key = (r.name || '').trim().toLowerCase();
+    const rule = r as any;
+    const key = (rule.name || '').trim().toLowerCase();
     if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(r);
+    groups.get(key)!.push(rule);
   }
 
   const toKeepIds = new Set<string>();
@@ -283,7 +286,7 @@ async function dedupePriceRulesByNameInFirestore(
     } else {
       let keep = list[0];
       if (strategy === 'highest_priority') {
-        keep = list.reduce((acc, cur) => {
+        keep = list.reduce((acc: any, cur: any) => {
           const accP = acc.priority ?? 0;
           const curP = cur.priority ?? 0;
           if (curP > accP) return cur;
@@ -295,7 +298,7 @@ async function dedupePriceRulesByNameInFirestore(
           return acc;
         }, list[0]);
       } else {
-        keep = list.reduce((acc, cur) => {
+        keep = list.reduce((acc: any, cur: any) => {
           const accUpdated = acc.updatedAt ? new Date(acc.updatedAt).getTime() : 0;
           const curUpdated = cur.updatedAt ? new Date(cur.updatedAt).getTime() : 0;
           return curUpdated > accUpdated ? cur : acc;

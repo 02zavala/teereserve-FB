@@ -153,7 +153,7 @@ export function VisitMetrics() {
           : [];
 
         const uniqueIPs = recentIPs.length > 0
-          ? Array.from(new Set(recentIPs.map(ip => ip.ipAddress))).length
+          ? Array.from(new Set(recentIPs.map((ip: any) => ip.ipAddress))).length
           : 0;
 
         setMetrics({

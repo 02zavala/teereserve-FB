@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     // Verify the user's authentication
     let decodedToken;
     try {
+      if (!auth) throw new Error('Auth not initialized');
       decodedToken = await auth.verifyIdToken(idToken);
     } catch (authError) {
       logger.error('Card validation: Authentication failed', authError as Error);
@@ -138,6 +139,9 @@ export async function POST(request: NextRequest) {
 
 // Handle validation completion after 3D Secure
 export async function PUT(request: NextRequest) {
+  if (!auth) {
+    return NextResponse.json({ error: 'Auth not initialized' }, { status: 500 });
+  }
   try {
     const { paymentIntentId, idToken } = await request.json();
 

@@ -18,26 +18,27 @@ export default async function RootLayout({
   params: paramsProp,
 }: {
   children: React.ReactNode;
-  params: Promise<{ lang: Locale }>;
+  params: Promise<{ lang: string }>;
 }) {
   const params = await paramsProp;
+  const lang = params.lang as Locale;
   
   // Load shared dictionary for Header and Footer
-  const sharedDictionary = await getSharedDictionary(params.lang);
+  const sharedDictionary = await getSharedDictionary(lang);
   
   // Load only the cookieConsent section for CookieConsent component
-  const cookieConsentDict = await getDictionarySection(params.lang, 'cookieConsent');
-  const exitIntentDict = await getDictionarySection(params.lang, 'exitIntent');
+  const cookieConsentDict = await getDictionarySection(lang, 'cookieConsent');
+  const exitIntentDict = await getDictionarySection(lang, 'exitIntent');
 
   return (
     <div className="relative flex min-h-screen flex-col">
-       <Header dictionary={sharedDictionary} lang={params.lang} />
+       <Header dictionary={sharedDictionary} lang={lang} />
        <main className="flex-1">{children}</main>
-       <Footer dictionary={sharedDictionary} lang={params.lang} />
+       <Footer dictionary={sharedDictionary} lang={lang} />
        <CookieConsent dictionary={cookieConsentDict} />
        <WhatsAppButton />
        {/* Exit intent modal, client-side only */}
-       <ExitIntentModal lang={params.lang} dictionary={exitIntentDict} />
+       <ExitIntentModal lang={lang} dictionary={exitIntentDict} />
     </div>
   );
 }

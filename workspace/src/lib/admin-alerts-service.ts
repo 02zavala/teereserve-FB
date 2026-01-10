@@ -103,7 +103,7 @@ class AdminAlertsService {
         telegramService.updateConfig({ chatId: this.config.telegram.chatId, enabled: true });
         const success = await telegramService.sendBookingAlert(alert);
         results.push({ channel: 'telegram', success });
-      } catch (error) {
+      } catch (error: any) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error('Failed to send Telegram admin alert:', error);
         results.push({ channel: 'telegram', success: false, error: errorMessage });
@@ -129,7 +129,7 @@ class AdminAlertsService {
 
         const success = await sendAdminWhatsAppAlert(whatsappData, this.config.whatsapp.phoneNumber);
         results.push({ channel: 'whatsapp', success });
-      } catch (error) {
+      } catch (error: any) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error('Failed to send WhatsApp admin alert:', error);
         results.push({ channel: 'whatsapp', success: false, error: errorMessage });
@@ -141,7 +141,7 @@ class AdminAlertsService {
       try {
         const success = await this.sendEmailAlert(data);
         results.push({ channel: 'email', success });
-      } catch (error) {
+      } catch (error: any) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error('Failed to send email admin alert:', error);
         results.push({ channel: 'email', success: false, error: errorMessage });
@@ -291,7 +291,7 @@ Enviado el ${new Date().toLocaleString('es-ES')}
 
       return true;
     } catch (error) {
-      logger.error('Failed to send admin email alert:', error);
+      logger.error('Failed to send admin email alert:', error as any);
       return false;
     }
   }
@@ -327,7 +327,7 @@ Enviado el ${new Date().toLocaleString('es-ES')}
       await addDoc(collection(db, 'admin_alert_summaries'), alertSummary);
       logger.info('Admin alert summary saved to Firestore');
     } catch (error) {
-      logger.error('Failed to save admin alert summary:', error);
+      logger.error('Failed to save admin alert summary:', error as any);
     }
   }
 

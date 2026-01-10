@@ -267,7 +267,7 @@ async function handleSuccessfulPayPalPayment(capture: any, orderId: string) {
         logger.info(`Telegram notifications sent for successful PayPal payment: ${capture.id}`);
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error in handleSuccessfulPayPalPayment:', error);
   }
 }
@@ -316,7 +316,7 @@ async function handleFailedPayPalPayment(capture: any, orderId: string, reason?:
       }
     }
   } catch (error) {
-    logger.error('Error in handleFailedPayPalPayment:', error);
+    logger.error('Error in handleFailedPayPalPayment:', error as Error);
   }
 }
 
@@ -335,7 +335,7 @@ async function findBookingByPayPalOrder(orderId: string): Promise<any> {
     
     return null; // Replace with actual implementation
   } catch (error) {
-    logger.error('Error finding booking by PayPal order:', error);
+    logger.error('Error finding booking by PayPal order:', error as Error);
     return null;
   }
 }

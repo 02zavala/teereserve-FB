@@ -224,7 +224,7 @@ function BookingConfirmContent() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{dict?.confirm?.phone || 'Teléfono'}</p>
-                  <p className="font-medium">{booking.guest?.phone || booking['customerInfo']?.phone || 'No proporcionado'}</p>
+                  <p className="font-medium">{booking.guest?.phone || (booking as any)['customerInfo']?.phone || 'No proporcionado'}</p>
                 </div>
               </div>
             </CardContent>
@@ -244,13 +244,7 @@ function BookingConfirmContent() {
             <div className="space-y-3 mb-4">
               {booking.pricing_snapshot ? (
                 <PriceBreakdown 
-                  pricing={{
-                    subtotal: booking.pricing_snapshot.subtotal_cents / 100,
-                    tax: booking.pricing_snapshot.tax_cents / 100,
-                    discount: booking.pricing_snapshot.discount_cents / 100,
-                    total: booking.pricing_snapshot.total_cents / 100,
-                    promo_code: booking.pricing_snapshot.promo_code
-                  }}
+                  pricing={booking.pricing_snapshot}
                   showDiscountWhenZero={false}
                   className="border-0 shadow-none"
                 />

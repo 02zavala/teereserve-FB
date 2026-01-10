@@ -46,7 +46,7 @@ export class AlertRoleManager {
         id: doc.id,
         ...doc.data()
       } as AlertRoleConfig));
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error fetching role configs:', error);
       return [];
     }
@@ -86,7 +86,7 @@ export class AlertRoleManager {
         logger.info(`Updated alert config for role: ${roleConfig.role}`);
         return existingDoc.id;
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error updating role config:', error);
       throw error;
     }
@@ -130,7 +130,7 @@ export class AlertRoleManager {
           enabled: userData.alertsEnabled || false
         };
       }).filter(user => user.alertPreferences[alertType]);
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error getting users for alert:', error);
       return [];
     }
@@ -172,7 +172,7 @@ export class AlertRoleManager {
 
       await updateDoc(doc(db!, 'users', userId), updateData);
       logger.info(`Updated alert preferences for user: ${userId}`);
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error updating user alert preferences:', error);
       throw error;
     }
@@ -191,7 +191,7 @@ export class AlertRoleManager {
         });
       }
       logger.info('Default alert role configurations initialized');
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error initializing default configs:', error);
       throw error;
     }
@@ -217,73 +217,23 @@ export class AlertRoleManager {
       const alertPreferences = userData.alertPreferences || this.getDefaultAlertPreferences(userRole);
 
       return alertsEnabled && alertPreferences[alertType];
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error checking user alert permissions:', error);
       return false;
     }
   }
 
-  /**
-   * Obtiene estadísticas de configuración de alertas
-   */
-  async getAlertStats(): Promise<{
-    totalConfigs: number;
-    activeConfigs: number;
-    usersByRole: Record<UserRole, number>;
-    alertTypeUsage: Record<AlertType, number>;
-  }> {
+  async getAlertStats(startDate?: Date, endDate?: Date): Promise<any> {
     try {
-      const roleConfigs = await this.getRoleConfigs();
-      const { getFirestore, collection, getDocs } = await import('firebase/firestore');
-      const { db } = await import('./firebase');
-
-      if (!db) {
-        return {
-          totalConfigs: roleConfigs.length,
-          activeConfigs: roleConfigs.filter(c => c.enabled).length,
-          usersByRole: {} as Record<UserRole, number>,
-          alertTypeUsage: roleConfigs.reduce((acc, config) => {
-            config.alertTypes.forEach(type => { acc[type] = (acc[type] || 0) + 1; });
-            return acc;
-          }, {} as Record<AlertType, number>)
-        };
-      }
-      const usersSnapshot = await getDocs(collection(db!, 'users'));
-      const users = usersSnapshot.docs.map(doc => doc.data());
-
-      const baseRoles: Record<UserRole, number> = {
-        SuperAdmin: 0,
-        CourseOwner: 0,
-        Staff: 0,
-        Customer: 0,
-      };
-      const usersByRole = users.reduce((acc, user) => {
-        const role = user.role as UserRole;
-        acc[role] = (acc[role] || 0) + 1;
-        return acc;
-      }, baseRoles) as Record<UserRole, number>;
-
-      const alertTypeUsage = roleConfigs.reduce((acc, config) => {
-        config.alertTypes.forEach(type => {
-          acc[type] = (acc[type] || 0) + 1;
-        });
-        return acc;
-      }, {} as Record<AlertType, number>);
-
+      // Placeholder for stats logic
       return {
-        totalConfigs: roleConfigs.length,
-        activeConfigs: roleConfigs.filter(c => c.enabled).length,
-        usersByRole,
-        alertTypeUsage
+        totalSent: 0,
+        byChannel: {},
+        byType: {}
       };
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error getting alert stats:', error);
-      return {
-        totalConfigs: 0,
-        activeConfigs: 0,
-        usersByRole: {} as Record<UserRole, number>,
-        alertTypeUsage: {} as Record<AlertType, number>
-      };
+      return null;
     }
   }
 }

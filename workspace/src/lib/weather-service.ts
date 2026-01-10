@@ -162,7 +162,7 @@ class WeatherService {
         timestamp: Date.now()
       });
       return weatherData!;
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error fetching weather data:', error);
 
       // En caso de error, devolver datos de ejemplo

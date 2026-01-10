@@ -30,8 +30,10 @@ export interface CancellationRequest {
   reason: 'customer_request' | 'weather' | 'maintenance' | 'overbooking' | 'course_closure' | 'other';
   adminOverride?: boolean;
   adminNotes?: string;
+  force?: boolean;
   requestedBy: string;
   requestedAt: Date;
+  customRefundAmount?: number;
 }
 
 export interface CancellationResult {
@@ -74,6 +76,13 @@ export const WEATHER_OVERRIDE_POLICY: Partial<CancellationPolicy> = {
   refundPercent: 100,
   fixedFee: 0,
   description: 'Cancelación por condiciones climáticas - Reembolso completo',
+};
+
+// Excepciones por error administrativo/sobreventa
+export const ADMIN_ERROR_POLICY: Partial<CancellationPolicy> = {
+  refundPercent: 100,
+  fixedFee: 0,
+  description: 'Error administrativo / Sobreventa - Reembolso completo',
 };
 
 export class CancellationPolicyService {
@@ -138,6 +147,29 @@ export class CancellationPolicyService {
         } as CancellationPolicy,
         hoursUntilBooking,
         description: WEATHER_OVERRIDE_POLICY.description || 'Cancelación por condiciones climáticas - Reembolso completo',
+        fees: [],
+      };
+    }
+
+    // Verificar si es error administrativo/sobreventa
+    if (this.isAdminErrorException(cancellationReason)) {
+      return {
+        originalAmount: totalAmount,
+        refundPercent: 100,
+        refundAmount: totalAmount,
+        fixedFee: 0,
+        netRefund: totalAmount,
+        policy: {
+          ...ADMIN_ERROR_POLICY,
+          id: 'admin-error-override',
+          courseId,
+          hoursBeforeMin: 0,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as CancellationPolicy,
+        hoursUntilBooking,
+        description: ADMIN_ERROR_POLICY.description || 'Error administrativo - Reembolso completo',
         fees: [],
       };
     }
@@ -208,6 +240,10 @@ export class CancellationPolicyService {
 
   private isWeatherException(reason?: CancellationRequest['reason']): boolean {
     return reason === 'weather' || reason === 'course_closure';
+  }
+
+  private isAdminErrorException(reason?: CancellationRequest['reason']): boolean {
+    return reason === 'overbooking' || reason === 'maintenance';
   }
 
   /**
