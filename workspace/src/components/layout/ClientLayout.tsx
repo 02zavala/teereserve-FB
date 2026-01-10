@@ -21,6 +21,7 @@ if (process.env.NODE_ENV === 'development') {
 interface ClientLayoutProps {
   children: React.ReactNode;
   lang: Locale;
+  nonce?: string;
 }
 
 // Mover el guard a un subcomponente envuelto por AppProviders
@@ -47,7 +48,7 @@ function EmailVerificationGuard({ children, lang }: { children: React.ReactNode;
   return <>{children}</>;
 }
 
-export function ClientLayout({ children, lang }: ClientLayoutProps) {
+export function ClientLayout({ children, lang, nonce }: ClientLayoutProps) {
   // Initialize global error handling and analytics
   // Eliminar uso directo de useAuth aquí: el provider está más abajo
   useEffect(() => {
@@ -70,7 +71,7 @@ export function ClientLayout({ children, lang }: ClientLayoutProps) {
         // Usar setTimeout para evitar bloqueos en el render
         const timeoutId = setTimeout(() => {
           try {
-            initGA4();
+            initGA4(nonce);
           } catch (error: any) {
             // Manejar errores específicos de GA4
             if (error?.message?.includes('Failed to fetch') || 
@@ -89,7 +90,7 @@ export function ClientLayout({ children, lang }: ClientLayoutProps) {
         console.log('📴 GA4: Error en configuración inicial (modo offline)');
       }
     }
-  }, []);
+  }, [nonce]);
 
   return (
     <ThemeProvider

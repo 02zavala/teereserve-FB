@@ -352,7 +352,7 @@ let ga4Initialized = false;
 let ga4Error: string | null = null;
 
 // Inicializar Google Analytics 4
-export const initGA4 = () => {
+export const initGA4 = (nonce?: string) => {
   if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID && process.env.NEXT_PUBLIC_DISABLE_ANALYTICS !== 'true') {
      try {
        // Verificar si ya existe el script
@@ -382,6 +382,9 @@ export const initGA4 = () => {
 
        // Cargar gtag script con manejo de errores mejorado
        const script = document.createElement('script');
+       if (nonce) {
+         script.setAttribute('nonce', nonce);
+       }
        script.async = true;
        script.src = `https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID}`;
        

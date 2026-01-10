@@ -6,10 +6,10 @@ import { cn } from '@/lib/utils'
 import { ClientLayout } from '@/components/layout/ClientLayout'
 import { MaintenanceOverlay } from '@/components/MaintenanceOverlay'
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics'
-import { VisitTracker } from '@/components/analytics/VisitTracker' // NUEVO: Importar tracker de visitas
+import { VisitTracker } from '@/components/analytics/VisitTracker'
 import type { Locale } from '@/i18n-config'
 import { AppProviders } from '@/context/AppProviders'
-import Script from 'next/script'
+import { headers } from 'next/headers'
 
 const fontHeadline = Playfair_Display({
   subsets: ['latin'],
@@ -41,24 +41,23 @@ export const viewport: Viewport = {
 
 interface RootLayoutProps {
   children: React.ReactNode;
-  params: Promise<{ lang?: string }>; // Params might be empty in root layout
+  params: Promise<{ lang?: string }>;
 }
 
 export default async function RootLayout({
   children,
   params,
 }: RootLayoutProps) {
-  // En el layout raíz, params suele estar vacío o no contener lang fiable
-  // Usamos el idioma por defecto si no está disponible
   const resolvedParams = await params;
   const lang = (resolvedParams?.lang as Locale) || 'en';
+  
+  // Obtener nonce de los headers
+  const headersList = await headers();
+  const nonce = headersList.get('x-nonce') || undefined;
   
   const gaId = process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID;
   const gaDisabled = process.env.NEXT_PUBLIC_DISABLE_ANALYTICS === 'true';
   
-  // URGENTE: MODO MANTENIMIENTO DESACTIVADO
-  // Cambiar a true para activar manualmente
-  // En desarrollo (local) estará desactivado, en producción (sitio online) también desactivado por defecto
   const IS_MAINTENANCE_MODE = false;
   
   return (
@@ -70,23 +69,14 @@ export default async function RootLayout({
           fontBody.variable
         )}
       >
-        {gaId && !gaDisabled && <GoogleAnalytics gaId={gaId} />}
-        <Script src={`https://www.googletagmanager.com/gtag/js?id=G-LZ0Y4R86E7`} strategy="afterInteractive" />
-        <Script id="gtag-init" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-LZ0Y4R86E7');
-          `}
-        </Script>
+        {gaId && !gaDisabled && <GoogleAnalytics gaId={gaId} nonce={nonce} />}
         
-        {/* Visit Tracking - NUEVO */}
+        {/* Visit Tracking */}
         <VisitTracker enabled={true} debounceMs={1000} />
         
         <AppProviders>
           {IS_MAINTENANCE_MODE && <MaintenanceOverlay />}
-          <ClientLayout lang={lang}>
+          <ClientLayout lang={lang} nonce={nonce}>
             {children}
           </ClientLayout>
         </AppProviders>
